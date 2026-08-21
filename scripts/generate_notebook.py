@@ -185,7 +185,6 @@ subprocess.run(
         "transformers",
         "diffusers",
         "safetensors",
-        "bitsandbytes",
         "einops",
         "ftfy",
         "opencv-python",
@@ -193,8 +192,15 @@ subprocess.run(
         "voluptuous",
         "imagesize",
         "huggingface_hub",
+        "rich",
+        "omegaconf",
+        "lion-pytorch",
     ],
     check=True,
+)
+subprocess.run(
+    [sys.executable, "-m", "pip", "install", "-q", "-e", SD_SCRIPTS, "--no-deps"],
+    check=False,
 )
 print("sd-scripts ready:", SD_SCRIPTS)
 print("train_network.py exists:", os.path.exists(os.path.join(SD_SCRIPTS, "train_network.py")))"""
@@ -285,14 +291,11 @@ if not torch.cuda.is_available():
 parent_dataset = os.path.dirname(DATASET_DIR)
 os.chdir("/content/sd-scripts")
 
+# Direct python (no accelerate launch). Colab + accelerate.launch often exits 1 with empty logs.
 def build_cmd(max_epochs, max_steps=None):
     c = [
         sys.executable,
-        "-m",
-        "accelerate.commands.launch",
-        "--num_cpu_threads_per_process=1",
-        "--mixed_precision=fp16",
-        "--num_processes=1",
+        "-u",
         "train_network.py",
         "--pretrained_model_name_or_path=" + BASE_MODEL_FILE,
         "--train_data_dir=" + parent_dataset,
@@ -310,20 +313,23 @@ def build_cmd(max_epochs, max_steps=None):
         "--enable_bucket",
         "--min_bucket_reso=256",
         "--max_bucket_reso=1024",
+        "--bucket_reso_steps=64",
         "--gradient_checkpointing",
         "--learning_rate=" + str(LEARNING_RATE),
         "--lr_scheduler=cosine",
         "--lr_warmup_steps=0",
-        "--optimizer_type=AdamW8bit",
+        "--optimizer_type=AdamW",
         "--mixed_precision=fp16",
         "--seed=42",
-        "--max_data_loader_n_workers=2",
+        "--max_data_loader_n_workers=0",
         "--cache_latents",
+        "--sdpa",
         "--network_module=networks.lora",
         "--network_dim=" + str(NETWORK_DIM),
         "--network_alpha=" + str(NETWORK_ALPHA),
         "--network_train_unet_only",
         "--logging_dir=" + LOGS_DIR,
+        "--console_log_simple",
     ]
     if max_steps is not None:
         c.append("--max_train_steps=" + str(max_steps))
@@ -338,10 +344,23 @@ else:
 
 print("Command:")
 print(" ".join(cmd))
-result = subprocess.run(cmd, capture_output=False, text=True)
+env = os.environ.copy()
+env["PYTHONUNBUFFERED"] = "1"
+env["ACCELERATE_DISABLE_RICH"] = "1"
+result = subprocess.run(
+    cmd,
+    cwd="/content/sd-scripts",
+    env=env,
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT,
+    text=True,
+)
+log = result.stdout or "(no output from train_network.py)"
+print(log)
 if result.returncode != 0:
+    tail = log[-4000:] if log else ""
     raise RuntimeError(
-        "Training failed (exit " + str(result.returncode) + "). Scroll up for the real error above."
+        "Training failed (exit " + str(result.returncode) + "). Last log lines:\\n" + tail
     )
 if DRY_RUN:
     print("\\nDry run PASSED. Set DRY_RUN = False in cell 2 and rerun this cell for full training.")
