@@ -42,8 +42,13 @@ md(
 
 ## לפני שמתחילים
 1. **Runtime → Change runtime type → GPU** (T4 ל-SD 1.5)
-2. הרץ את התאים **לפי הסדר**
+2. הרץ את התאים **לפי הסדר** (1 → 9)
 3. אשר חיבור ל-Google Drive
+4. **תא 7**: קודם `DRY_RUN = True` (5 steps). אחרי הצלחה → `DRY_RUN = False` ואימון מלא
+
+## Preset נוכחי: Quick
+- 5 epochs, rank 16 — בדיקה מהירה (~15 דק)
+- אחרי preview טוב: שנה ל-`TRAINING_PRESET = "standard"` ב-cell 2
 
 ## מבנה תיקיות ב-Drive
 ```
@@ -84,15 +89,25 @@ SOURCE_FOLDER_ID = "1FOwDPkzqjmOo0LPuNKmgJtK4YuWU9Pmi"
 SOURCE_FOLDER_URL = "https://drive.google.com/drive/folders/1FOwDPkzqjmOo0LPuNKmgJtK4YuWU9Pmi"
 REPEATS = 10                      # כמה פעמים כל תמונה נספרת ב-epoch
 MODEL_TYPE = "sd15"               # "sd15" או "sdxl"
-MAX_TRAIN_EPOCHS = 10
-NETWORK_DIM = 32
-NETWORK_ALPHA = 16
-LEARNING_RATE = 1e-4
-RESOLUTION = 512 if MODEL_TYPE == "sd15" else 1024
-AUTO_CAPTION = True
-CAPTION_STYLE = "blip"            # "blip" (משפט) או "tags"
+TRAINING_PRESET = "quick"         # "quick" | "standard" | "thorough"
+DRY_RUN = True                    # True = 5 steps בלבד (Gate 4). False = אימון מלא
+DATASET_PREPARED = True           # True = תמונות+captions כבר ב-Drive
+AUTO_CAPTION = False              # captions כבר מוכנים
+CAPTION_STYLE = "blip"
 STYLE_TAGS = "fashion photo, swimsuit, lingerie, high quality"
-DATASET_PREPARED = True           # True = תמונות+captions כבר ב-Drive (Cursor הכין)
+
+PRESETS = {
+    "quick": {"epochs": 5, "dim": 16, "alpha": 16, "lr": 1e-4, "save_every": 2},
+    "standard": {"epochs": 10, "dim": 32, "alpha": 16, "lr": 1e-4, "save_every": 2},
+    "thorough": {"epochs": 15, "dim": 32, "alpha": 16, "lr": 5e-5, "save_every": 3},
+}
+p = PRESETS.get(TRAINING_PRESET, PRESETS["quick"])
+MAX_TRAIN_EPOCHS = p["epochs"]
+NETWORK_DIM = p["dim"]
+NETWORK_ALPHA = p["alpha"]
+LEARNING_RATE = p["lr"]
+SAVE_EVERY_N_EPOCHS = p["save_every"]
+RESOLUTION = 512 if MODEL_TYPE == "sd15" else 1024
 # =================
 KEEP_TOKENS = len(TRIGGER_WORD.split())
 
@@ -121,6 +136,8 @@ else:
 
 print("Project:", PROJECT_NAME)
 print("Trigger:", TRIGGER_WORD)
+print("Preset:", TRAINING_PRESET, p)
+print("Dry run:", DRY_RUN)
 print("Dataset:", DATASET_DIR)
 print("Output:", OUTPUT_DIR)
 print("Base model file:", BASE_MODEL_FILE)"""
@@ -206,9 +223,9 @@ else:
 )
 
 md(
-    """## 5) בדיקת דאטאסט
+    """## 5–6) Gate 1 — בדיקת דאטאסט
 
-התמונות וה-captions כבר מוכנים ב-Drive. התאים הבאים רק מוודאים שהכל במקום."""
+25 תמונות + 25 captions כבר ב-Drive. התאים הבאים מוודאים שהכל במקום."""
 )
 
 code(
@@ -246,66 +263,90 @@ print("Captions ready")"""
 )
 
 code(
-    """# @title 7) אימון LoRA
+    """# @title 7) Gate 3–4 + אימון LoRA (Dry Run או מלא)
 import os
 import subprocess
 import sys
 import torch
 
+print("=== Gate 3: Environment ===")
 print("CUDA:", torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else "NO")
-print("Model file exists:", os.path.exists(BASE_MODEL_FILE), BASE_MODEL_FILE)
-print("Dataset exists:", os.path.exists(DATASET_DIR), DATASET_DIR)
-print("train_network.py:", os.path.exists("/content/sd-scripts/train_network.py"))
+if torch.cuda.is_available():
+    vram_gb = torch.cuda.get_device_properties(0).total_memory / 1024**3
+    print("VRAM GB:", round(vram_gb, 1))
+print("Model file:", os.path.exists(BASE_MODEL_FILE), BASE_MODEL_FILE)
+print("Dataset:", os.path.exists(DATASET_DIR), DATASET_DIR)
+print("sd-scripts:", os.path.exists("/content/sd-scripts/train_network.py"))
 if not os.path.exists(BASE_MODEL_FILE):
-    raise RuntimeError("Base model file missing. Re-run cell 4.")
+    raise RuntimeError("Base model missing — rerun cell 4.")
 if not torch.cuda.is_available():
-    raise RuntimeError("No GPU. Runtime -> Change runtime type -> T4 GPU")
+    raise RuntimeError("No GPU — Runtime -> Change runtime type -> T4 GPU")
 
 parent_dataset = os.path.dirname(DATASET_DIR)
 os.chdir("/content/sd-scripts")
-cmd = [
-    sys.executable,
-    "-m",
-    "accelerate.commands.launch",
-    "--num_cpu_threads_per_process=1",
-    "--mixed_precision=fp16",
-    "--num_processes=1",
-    "train_network.py",
-    "--pretrained_model_name_or_path=" + BASE_MODEL_FILE,
-    "--train_data_dir=" + parent_dataset,
-    "--output_dir=" + OUTPUT_DIR,
-    "--output_name=" + PROJECT_NAME + "_lora",
-    "--save_model_as=safetensors",
-    "--save_precision=fp16",
-    "--save_every_n_epochs=1",
-    "--max_train_epochs=" + str(MAX_TRAIN_EPOCHS),
-    "--train_batch_size=1",
-    "--resolution=" + str(RESOLUTION),
-    "--caption_extension=.txt",
-    "--shuffle_caption",
-    "--keep_tokens=" + str(KEEP_TOKENS),
-    "--enable_bucket",
-    "--gradient_checkpointing",
-    "--learning_rate=" + str(LEARNING_RATE),
-    "--lr_scheduler=cosine",
-    "--lr_warmup_steps=0",
-    "--optimizer_type=AdamW8bit",
-    "--mixed_precision=fp16",
-    "--seed=42",
-    "--max_data_loader_n_workers=2",
-    "--cache_latents",
-    "--network_module=networks.lora",
-    "--network_dim=" + str(NETWORK_DIM),
-    "--network_alpha=" + str(NETWORK_ALPHA),
-    "--network_train_unet_only",
-    "--logging_dir=" + LOGS_DIR,
-]
-print("Starting training...")
+
+def build_cmd(max_epochs, max_steps=None):
+    c = [
+        sys.executable,
+        "-m",
+        "accelerate.commands.launch",
+        "--num_cpu_threads_per_process=1",
+        "--mixed_precision=fp16",
+        "--num_processes=1",
+        "train_network.py",
+        "--pretrained_model_name_or_path=" + BASE_MODEL_FILE,
+        "--train_data_dir=" + parent_dataset,
+        "--output_dir=" + OUTPUT_DIR,
+        "--output_name=" + PROJECT_NAME + "_lora",
+        "--save_model_as=safetensors",
+        "--save_precision=fp16",
+        "--save_every_n_epochs=" + str(SAVE_EVERY_N_EPOCHS),
+        "--max_train_epochs=" + str(max_epochs),
+        "--train_batch_size=1",
+        "--resolution=" + str(RESOLUTION) + "," + str(RESOLUTION),
+        "--caption_extension=.txt",
+        "--shuffle_caption",
+        "--keep_tokens=" + str(KEEP_TOKENS),
+        "--enable_bucket",
+        "--min_bucket_reso=256",
+        "--max_bucket_reso=1024",
+        "--gradient_checkpointing",
+        "--learning_rate=" + str(LEARNING_RATE),
+        "--lr_scheduler=cosine",
+        "--lr_warmup_steps=0",
+        "--optimizer_type=AdamW8bit",
+        "--mixed_precision=fp16",
+        "--seed=42",
+        "--max_data_loader_n_workers=2",
+        "--cache_latents",
+        "--network_module=networks.lora",
+        "--network_dim=" + str(NETWORK_DIM),
+        "--network_alpha=" + str(NETWORK_ALPHA),
+        "--network_train_unet_only",
+        "--logging_dir=" + LOGS_DIR,
+    ]
+    if max_steps is not None:
+        c.append("--max_train_steps=" + str(max_steps))
+    return c
+
+if DRY_RUN:
+    print("\\n=== Gate 4: Dry Run (5 steps) ===")
+    cmd = build_cmd(max_epochs=1, max_steps=5)
+else:
+    print("\\n=== Full training:", TRAINING_PRESET, "preset ===")
+    cmd = build_cmd(max_epochs=MAX_TRAIN_EPOCHS)
+
+print("Command:")
 print(" ".join(cmd))
-result = subprocess.run(cmd)
+result = subprocess.run(cmd, capture_output=False, text=True)
 if result.returncode != 0:
-    raise RuntimeError("Training failed with exit code " + str(result.returncode) + ". Scroll up for the real error.")
-print("Training finished.")"""
+    raise RuntimeError(
+        "Training failed (exit " + str(result.returncode) + "). Scroll up for the real error above."
+    )
+if DRY_RUN:
+    print("\\nDry run PASSED. Set DRY_RUN = False in cell 2 and rerun this cell for full training.")
+else:
+    print("Training finished.")"""
 )
 
 code(

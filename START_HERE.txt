@@ -1,0 +1,19 @@
+FiratSuper — אימון LoRA (lapetitemilf)
+=====================================
+
+שלב 1 — פתח את הנוטבוק:
+  SD_LoRA_Training_Colab.ipynb
+  (בתיקיית FiratSuper ב-Drive)
+
+שלב 2 — ב-Colab:
+  1. Runtime → Change runtime type → T4 GPU
+  2. הרץ תאים 1→7 לפי הסדר
+  3. תא 2: DRY_RUN = True (ברירת מחדל) — dry run של 5 steps
+  4. אם תא 7 עבר → תא 2: DRY_RUN = False → הרץ שוב תא 7
+  5. תאים 8–9: ייצוא LoRA + preview
+
+Preset: Quick (5 epochs, ~15 דק)
+Trigger: ohwx woman
+תוצאה: MyDrive/FiratSuper/loras/lapetitemilf_lora.safetensors
+
+אם יש שגיאה — צלם screenshot ושלח.
