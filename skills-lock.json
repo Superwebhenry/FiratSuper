@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "skills": {
+    "add-training-support": {
+      "source": "civitai/civitai",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/add-training-support/SKILL.md",
+      "computedHash": "2315910cfd0222e707b8dd30684d3284a20f1816cbe473bc56ce79d83624cee6"
+    },
+    "demo-skill": {
+      "source": "/tmp/my-skill",
+      "sourceType": "local",
+      "computedHash": "a828eac88c1e0ff7e9e8c3933fc385469926e8b49c18d83ed0e2deef17fc1073"
+    },
+    "train": {
+      "source": "/workspace/.agents/skills/train",
+      "sourceType": "local",
+      "computedHash": "eae50f24ded7e4ebeb42ecc1d730fd38e3e48ff10028d61432a6f580f46990fd"
+    }
+  }
+}
