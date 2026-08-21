@@ -29,21 +29,22 @@ def code(source: str) -> None:
 md(
     """# FiratSuper — אימון LoRA ל-Stable Diffusion (Google Colab)
 
-נוטבוק זה מגדיר אימון LoRA מלא עם **kohya sd-scripts**, שומר הכל ב-**Google Drive**, ומייצא קובץ `.safetensors` מוכן לשימוש.
+נוטבוק זה מאמן LoRA עם **kohya sd-scripts**, שומר הכל ב-**Google Drive**, ומייצא `.safetensors`.
+
+**דאטאסט מחובר:** תיקיית Drive `Lapetitemilf Model / dataset` — 25 תמונות JPG.
 
 ## לפני שמתחילים
-1. **Runtime → Change runtime type → GPU** (מומלץ T4; SDXL דורש GPU חזק יותר)
+1. **Runtime → Change runtime type → GPU** (T4 ל-SD 1.5)
 2. הרץ את התאים **לפי הסדר**
-3. בהרשאת Drive — אשר גישה לחשבון Google שלך
-4. העלה תמונות אימון לתיקייה שתיווצר ב-Drive
+3. אשר חיבור ל-Google Drive
 
 ## מבנה תיקיות ב-Drive
 ```
 MyDrive/FiratSuper/
-├── datasets/<שם_פרויקט>/10_trigger/   ← תמונות + קבצי .txt
-├── output/<שם_פרויקט>/                  ← checkpoints בזמן אימון
-├── models/                              ← מודל בסיס (מורד אוטומטית)
-└── loras/                               ← LoRA סופי
+├── datasets/lapetitemilf/10_ohwx_woman/   ← עותק אימון + captions
+├── output/lapetitemilf/                     ← checkpoints
+├── models/                                  ← מודל בסיס
+└── loras/                                   ← LoRA סופי
 ```"""
 )
 
@@ -70,20 +71,27 @@ import os
 drive.mount("/content/drive")
 
 # === ערוך כאן ===
-PROJECT_NAME = "my_lora"          # שם הפרויקט (באנגלית, בלי רווחים)
-TRIGGER_WORD = "sks person"       # מילת טריגר שתופיע בכל caption
+PROJECT_NAME = "lapetitemilf"
+TRIGGER_WORD = "ohwx woman"       # מילת טריגר בפרומפט אחרי האימון
+SOURCE_FOLDER_ID = "1FOwDPkzqjmOo0LPuNKmgJtK4YuWU9Pmi"
+SOURCE_FOLDER_URL = "https://drive.google.com/drive/folders/1FOwDPkzqjmOo0LPuNKmgJtK4YuWU9Pmi"
+REPEATS = 10                      # כמה פעמים כל תמונה נספרת ב-epoch
 MODEL_TYPE = "sd15"               # "sd15" או "sdxl"
 MAX_TRAIN_EPOCHS = 10
 NETWORK_DIM = 32
 NETWORK_ALPHA = 16
 LEARNING_RATE = 1e-4
 RESOLUTION = 512 if MODEL_TYPE == "sd15" else 1024
-AUTO_CAPTION = True               # יצירת captions אוטומטית לפני אימון
-CAPTION_STYLE = "blip"            # "blip" (משפט) או "tags" (wd14 tagger)
+AUTO_CAPTION = True
+CAPTION_STYLE = "blip"            # "blip" (משפט) או "tags"
+STYLE_TAGS = "fashion photo, swimsuit, lingerie, high quality"
 # =================
+KEEP_TOKENS = len(TRIGGER_WORD.split())
 
 ROOT = "/content/drive/MyDrive/FiratSuper"
-DATASET_DIR = f"{ROOT}/datasets/{PROJECT_NAME}/10_{TRIGGER_WORD.replace(' ', '_')}"
+DATASET_DIR = (
+    f"{ROOT}/datasets/{PROJECT_NAME}/{REPEATS}_{TRIGGER_WORD.replace(' ', '_')}"
+)
 OUTPUT_DIR = f"{ROOT}/output/{PROJECT_NAME}"
 MODELS_DIR = f"{ROOT}/models"
 LORAS_DIR = f"{ROOT}/loras"
@@ -102,6 +110,8 @@ else:
     raise ValueError('MODEL_TYPE חייב להיות "sd15" או "sdxl"')
 
 print("Project:", PROJECT_NAME)
+print("Trigger:", TRIGGER_WORD)
+print("Source folder ID:", SOURCE_FOLDER_ID)
 print("Dataset:", DATASET_DIR)
 print("Output:", OUTPUT_DIR)
 print("Base model:", BASE_MODEL_REPO)"""
@@ -193,46 +203,83 @@ else:
 )
 
 md(
-    """## 5) העלאת תמונות אימון
+    """## 5) הכנת הדאטאסט מ-Google Drive
 
-**דרישות:**
-- 10–30 תמונות איכותיות (יותר = בדרך כלל יותר טוב)
-- רזולוציה מינימלית ~512px
-- פורמats: `.jpg`, `.jpeg`, `.png`, `.webp`
-- גיוון בזוויות, תאורה, רקע
+התא הבא מעתיק את 25 התמונות מתיקיית המקור (`Lapetitemilf Model / dataset`) אל מבנה האימון של kohya.
 
-**אפשרות א — העלאה ידנית:**  
-גרור תמונות לתיקייה `DATASET_DIR` ב-Google Drive (הנתיב מודפס בתא 2).
-
-**אפשרות ב — העלאה מהמחשב:** הרץ את התא הבא."""
+אין צורך להעלות ידנית — הקישור כבר מוגדר בנוטבוק."""
 )
 
 code(
-    """# @title 5) העלאת תמונות מהמחשב (אופציונלי)
-from google.colab import files
+    """# @title 5) העתקת תמונות מתיקיית Drive לתיקיית האימון
 import os
+import shutil
+import subprocess
+import sys
 
-uploaded = files.upload()
-image_ext = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 
-for name, data in uploaded.items():
+
+def find_source_folder(folder_id):
+    shortcut = f"/content/drive/.shortcut-targets-by-id/{folder_id}"
+    if os.path.isdir(shortcut):
+        return shortcut
+
+    for root in ("/content/drive/MyDrive", "/content/drive/Shareddrives"):
+        if not os.path.isdir(root):
+            continue
+        for dirpath, dirnames, _ in os.walk(root):
+            if os.path.basename(dirpath) == "dataset" and "Lapetitemilf" in dirpath:
+                return dirpath
+            # avoid scanning huge trees too deep
+            if dirpath.count(os.sep) - root.count(os.sep) > 4:
+                dirnames.clear()
+    return None
+
+
+src = find_source_folder(SOURCE_FOLDER_ID)
+if src is None:
+    print("לא נמצא shortcut מקומי — מוריד את התיקייה עם gdown...")
+    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "gdown"], check=True)
+    tmp = "/content/source_dataset"
+    os.makedirs(tmp, exist_ok=True)
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "gdown",
+            "--folder",
+            SOURCE_FOLDER_URL,
+            "-O",
+            tmp,
+            "--remaining-ok",
+        ],
+        check=True,
+    )
+    # gdown may create a nested folder
+    nested = [os.path.join(tmp, n) for n in os.listdir(tmp) if os.path.isdir(os.path.join(tmp, n))]
+    src = nested[0] if nested else tmp
+
+print("Source:", src)
+copied = 0
+for name in os.listdir(src):
+    path = os.path.join(src, name)
+    if not os.path.isfile(path):
+        continue
     ext = os.path.splitext(name)[1].lower()
-    if ext in image_ext:
-        dest = os.path.join(DATASET_DIR, name)
-        with open(dest, "wb") as f:
-            f.write(data)
-        print("Saved:", dest)
-    else:
-        print("Skipped (not an image):", name)
+    if ext not in IMAGE_EXT:
+        continue
+    dest = os.path.join(DATASET_DIR, name)
+    if not os.path.exists(dest):
+        shutil.copy2(path, dest)
+    copied += 1
+    print("Ready:", name)
 
-count = len(
-    [
-        f
-        for f in os.listdir(DATASET_DIR)
-        if os.path.splitext(f)[1].lower() in image_ext
-    ]
-)
-print("\\nImages in dataset:", count)"""
+if copied == 0:
+    raise RuntimeError(
+        "לא נמצאו תמונות בתיקיית המקור. ודא שה-Drive מחובר ושיתפת את התיקייה."
+    )
+print(f"\\n{copied} images ready in {DATASET_DIR}")"""
 )
 
 code(
@@ -279,7 +326,8 @@ if AUTO_CAPTION:
             inputs = processor(image, return_tensors="pt").to(device)
             out = model.generate(**inputs, max_new_tokens=40)
             caption = processor.decode(out[0], skip_special_tokens=True)
-            full_caption = f"{TRIGGER_WORD}, {caption}"
+            extra = f", {STYLE_TAGS}" if STYLE_TAGS else ""
+            full_caption = f"{TRIGGER_WORD}, {caption}{extra}"
             with open(caption_path, "w", encoding="utf-8") as f:
                 f.write(full_caption)
             print("Caption:", os.path.basename(caption_path))
@@ -308,9 +356,11 @@ if AUTO_CAPTION:
             if os.path.exists(caption_path):
                 with open(caption_path, "r", encoding="utf-8") as f:
                     text = f.read().strip()
+                extra = f", {STYLE_TAGS}" if STYLE_TAGS else ""
                 if TRIGGER_WORD not in text:
+                    text = f"{TRIGGER_WORD}, {text}{extra}"
                     with open(caption_path, "w", encoding="utf-8") as f:
-                        f.write(f"{TRIGGER_WORD}, {text}")
+                        f.write(text)
     else:
         raise ValueError('CAPTION_STYLE חייב להיות "blip" או "tags"')
 else:
@@ -353,7 +403,7 @@ config = textwrap.dedent(
     bucket_no_upscale = false
     caption_extension = ".txt"
     shuffle_caption = true
-    keep_tokens = 1
+    keep_tokens = {KEEP_TOKENS}
 
     [training_arguments]
     output_dir = "{OUTPUT_DIR}"
@@ -458,7 +508,10 @@ else:
     lora_file = os.path.join(LORAS_DIR, f"{PROJECT_NAME}_lora.safetensors")
     pipe.load_lora_weights(lora_file)
 
-    prompt = f"portrait photo of {TRIGGER_WORD}, high quality, detailed"
+    prompt = (
+        f"{TRIGGER_WORD}, swimsuit, lingerie, fashion photography, "
+        "studio lighting, high quality, detailed"
+    )
     image = pipe(prompt, num_inference_steps=25, guidance_scale=7.5).images[0]
     preview_path = os.path.join(OUTPUT_DIR, "preview.png")
     image.save(preview_path)
@@ -470,11 +523,11 @@ md(
     """## סיום
 
 ה-LoRA שלך נמצא ב:
-`MyDrive/FiratSuper/loras/<PROJECT_NAME>_lora.safetensors`
+`MyDrive/FiratSuper/loras/lapetitemilf_lora.safetensors`
 
 ### שימוש ב-Automatic1111 / ComfyUI / Forge
 1. העתק את קובץ `.safetensors` לתיקיית `models/Lora/`
-2. בפרומпт השתמש במילת הטריגר שהגדרת (`TRIGGER_WORD`)
+2. בפרומפט: `ohwx woman, swimsuit, ...` (או lingerie)
 3. משקל LoRA מומלץ להתחלה: `0.6–0.9`
 
 ### טיפים
