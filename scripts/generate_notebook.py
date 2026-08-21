@@ -179,9 +179,40 @@ if os.path.exists("requirements.txt"):
     )
 
 subprocess.run(
-    ["accelerate", "config", "default", "--config_file", "/content/accelerate_config.yaml"],
+    [
+        sys.executable,
+        "-m",
+        "pip",
+        "install",
+        "-q",
+        "pyyaml",
+    ],
     check=True,
 )
+
+# accelerate config (ידני — יותר אמין מ-accelerate config default)
+import yaml
+
+accel_config = {
+    "compute_environment": "LOCAL_MACHINE",
+    "distributed_type": "NO",
+    "downcast_bf16": "no",
+    "gpu_ids": "all",
+    "machine_rank": 0,
+    "main_training_function": "main",
+    "mixed_precision": "fp16",
+    "num_machines": 1,
+    "num_processes": 1,
+    "rdzv_backend": "static",
+    "same_network": True,
+    "tpu_env": [],
+    "tpu_use_cluster": False,
+    "tpu_use_sudo": False,
+    "use_cpu": False,
+}
+with open("/content/accelerate_config.yaml", "w", encoding="utf-8") as f:
+    yaml.dump(accel_config, f)
+
 print("sd-scripts מוכן:", SD_SCRIPTS)"""
 )
 
@@ -391,75 +422,34 @@ import os
 import subprocess
 import textwrap
 
-parent_dataset = os.path.dirname(DATASET_DIR)
-config_path = f"/content/{PROJECT_NAME}_train.toml"
-sdxl_flag = "true" if MODEL_TYPE == "sdxl" else "false"
+dataset_config_path = f"/content/{PROJECT_NAME}_dataset.toml"
 grad_accum = 4 if MODEL_TYPE == "sdxl" else 1
 
-config = textwrap.dedent(
+dataset_toml = textwrap.dedent(
     f\"\"\"
-    [model_arguments]
-    pretrained_model_name_or_path = "{BASE_MODEL_DIR}"
-    v2 = false
-    v_parameterization = false
-    sdxl = {sdxl_flag}
-
-    [dataset_arguments]
-    train_data_dir = "{parent_dataset}"
-    reg_data_dir = ""
-    resolution = "{RESOLUTION},{RESOLUTION}"
-    enable_bucket = true
-    min_bucket_reso = 256
-    max_bucket_reso = 2048
-    bucket_reso_steps = 64
-    bucket_no_upscale = false
-    caption_extension = ".txt"
+    [general]
     shuffle_caption = true
+    caption_extension = ".txt"
     keep_tokens = {KEEP_TOKENS}
 
-    [training_arguments]
-    output_dir = "{OUTPUT_DIR}"
-    output_name = "{PROJECT_NAME}_lora"
-    save_model_as = "safetensors"
-    save_precision = "fp16"
-    save_every_n_epochs = 1
-    max_train_epochs = {MAX_TRAIN_EPOCHS}
-    train_batch_size = 1
-    gradient_checkpointing = true
-    gradient_accumulation_steps = {grad_accum}
-    learning_rate = {LEARNING_RATE}
-    lr_scheduler = "cosine"
-    lr_warmup_steps = 0
-    optimizer_type = "AdamW8bit"
-    mixed_precision = "fp16"
-    seed = 42
-    max_data_loader_n_workers = 2
-    persistent_data_loader_workers = true
-    max_token_length = 75
-    xformers = true
-    cache_latents = true
-    cache_latents_to_disk = true
+    [[datasets]]
+    resolution = {RESOLUTION}
+    batch_size = 1
+    enable_bucket = true
+    min_bucket_reso = 256
+    max_bucket_reso = 1024
+    bucket_reso_steps = 64
 
-    [network_arguments]
-    network_module = "networks.lora"
-    network_dim = {NETWORK_DIM}
-    network_alpha = {NETWORK_ALPHA}
-    network_train_unet_only = true
-    network_train_text_encoder = false
-
-    [sample_prompt_arguments]
-    sample_every_n_epochs = 0
-
-    [logging_arguments]
-    log_with = "tensorboard"
-    logging_dir = "{LOGS_DIR}"
+      [[datasets.subsets]]
+      image_dir = "{DATASET_DIR}"
     \"\"\"
 ).strip()
 
-with open(config_path, "w", encoding="utf-8") as f:
-    f.write(config)
+with open(dataset_config_path, "w", encoding="utf-8") as f:
+    f.write(dataset_toml)
 
-print("Config written:", config_path)
+print("Dataset config:", dataset_config_path)
+print(open(dataset_config_path).read())
 print("Starting training...")
 
 os.chdir("/content/sd-scripts")
@@ -471,10 +461,45 @@ cmd = [
     "--config_file",
     "/content/accelerate_config.yaml",
     "train_network.py",
-    "--config_file",
-    config_path,
+    f"--pretrained_model_name_or_path={BASE_MODEL_DIR}",
+    f"--dataset_config={dataset_config_path}",
+    f"--output_dir={OUTPUT_DIR}",
+    f"--output_name={PROJECT_NAME}_lora",
+    "--save_model_as=safetensors",
+    "--save_precision=fp16",
+    "--save_every_n_epochs=1",
+    f"--max_train_epochs={MAX_TRAIN_EPOCHS}",
+    "--train_batch_size=1",
+    "--gradient_checkpointing",
+    f"--gradient_accumulation_steps={grad_accum}",
+    f"--learning_rate={LEARNING_RATE}",
+    "--lr_scheduler=cosine",
+    "--lr_warmup_steps=0",
+    "--optimizer_type=AdamW8bit",
+    "--mixed_precision=fp16",
+    "--seed=42",
+    "--max_data_loader_n_workers=2",
+    "--persistent_data_loader_workers",
+    "--max_token_length=75",
+    "--xformers",
+    "--cache_latents",
+    "--cache_latents_to_disk",
+    "--network_module=networks.lora",
+    f"--network_dim={NETWORK_DIM}",
+    f"--network_alpha={NETWORK_ALPHA}",
+    "--network_train_unet_only",
+    f"--logging_dir={LOGS_DIR}",
+    "--log_with=tensorboard",
 ]
-subprocess.run(cmd, check=True)
+if MODEL_TYPE == "sdxl":
+    cmd.append("--sdxl")
+
+result = subprocess.run(cmd, capture_output=True, text=True)
+print(result.stdout)
+if result.stderr:
+    print(result.stderr)
+if result.returncode != 0:
+    raise RuntimeError(f"Training failed (exit {result.returncode}). See output above.")
 print("Training finished.")"""
 )
 
