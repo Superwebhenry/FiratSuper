@@ -85,6 +85,7 @@ RESOLUTION = 512 if MODEL_TYPE == "sd15" else 1024
 AUTO_CAPTION = True
 CAPTION_STYLE = "blip"            # "blip" (משפט) או "tags"
 STYLE_TAGS = "fashion photo, swimsuit, lingerie, high quality"
+DATASET_PREPARED = True           # True = תמונות+captions כבר ב-Drive (Cursor הכין)
 # =================
 KEEP_TOKENS = len(TRIGGER_WORD.split())
 
@@ -203,87 +204,89 @@ else:
 )
 
 md(
-    """## 5) הכנת הדאטאסט מ-Google Drive
+    """## 5) הכנת הדאטאסט
 
-התא הבא מעתיק את 25 התמונות מתיקיית המקור (`Lapetitemilf Model / dataset`) אל מבנה האימון של kohya.
-
-אין צורך להעלות ידנית — הקישור כבר מוגדר בנוטבוק."""
+**הדאטאסט כבר מוכן ב-Drive** (25 תמונות + captions).
+התא הבא ידלג אוטומטית אם `DATASET_PREPARED = True`."""
 )
 
 code(
-    """# @title 5) העתקת תמונות מתיקיית Drive לתיקיית האימון
+    """# @title 5) העתקת תמונות (דילוג אם כבר מוכן)
 import os
 import shutil
 import subprocess
 import sys
 
-IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-
-
-def find_source_folder(folder_id):
-    shortcut = f"/content/drive/.shortcut-targets-by-id/{folder_id}"
-    if os.path.isdir(shortcut):
-        return shortcut
-
-    for root in ("/content/drive/MyDrive", "/content/drive/Shareddrives"):
-        if not os.path.isdir(root):
-            continue
-        for dirpath, dirnames, _ in os.walk(root):
-            if os.path.basename(dirpath) == "dataset" and "Lapetitemilf" in dirpath:
-                return dirpath
-            # avoid scanning huge trees too deep
-            if dirpath.count(os.sep) - root.count(os.sep) > 4:
-                dirnames.clear()
-    return None
-
-
-src = find_source_folder(SOURCE_FOLDER_ID)
-if src is None:
-    print("לא נמצא shortcut מקומי — מוריד את התיקייה עם gdown...")
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "gdown"], check=True)
-    tmp = "/content/source_dataset"
-    os.makedirs(tmp, exist_ok=True)
-    subprocess.run(
+if DATASET_PREPARED:
+    image_ext = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+    count = len(
         [
-            sys.executable,
-            "-m",
-            "gdown",
-            "--folder",
-            SOURCE_FOLDER_URL,
-            "-O",
-            tmp,
-            "--remaining-ok",
-        ],
-        check=True,
+            f
+            for f in os.listdir(DATASET_DIR)
+            if os.path.splitext(f)[1].lower() in image_ext
+        ]
     )
-    # gdown may create a nested folder
-    nested = [os.path.join(tmp, n) for n in os.listdir(tmp) if os.path.isdir(os.path.join(tmp, n))]
-    src = nested[0] if nested else tmp
+    print(f"DATASET_PREPARED=True — מדלג. נמצאו {count} תמונות ב-{DATASET_DIR}")
+else:
+    IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
 
-print("Source:", src)
-copied = 0
-for name in os.listdir(src):
-    path = os.path.join(src, name)
-    if not os.path.isfile(path):
-        continue
-    ext = os.path.splitext(name)[1].lower()
-    if ext not in IMAGE_EXT:
-        continue
-    dest = os.path.join(DATASET_DIR, name)
-    if not os.path.exists(dest):
-        shutil.copy2(path, dest)
-    copied += 1
-    print("Ready:", name)
+    def find_source_folder(folder_id):
+        shortcut = f"/content/drive/.shortcut-targets-by-id/{folder_id}"
+        if os.path.isdir(shortcut):
+            return shortcut
+        for root in ("/content/drive/MyDrive", "/content/drive/Shareddrives"):
+            if not os.path.isdir(root):
+                continue
+            for dirpath, dirnames, _ in os.walk(root):
+                if os.path.basename(dirpath) == "dataset" and "Lapetitemilf" in dirpath:
+                    return dirpath
+                if dirpath.count(os.sep) - root.count(os.sep) > 4:
+                    dirnames.clear()
+        return None
 
-if copied == 0:
-    raise RuntimeError(
-        "לא נמצאו תמונות בתיקיית המקור. ודא שה-Drive מחובר ושיתפת את התיקייה."
-    )
-print(f"\\n{copied} images ready in {DATASET_DIR}")"""
+    src = find_source_folder(SOURCE_FOLDER_ID)
+    if src is None:
+        print("לא נמצא shortcut מקומי — מוריד את התיקייה עם gdown...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q", "gdown"], check=True)
+        tmp = "/content/source_dataset"
+        os.makedirs(tmp, exist_ok=True)
+        subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "gdown",
+                "--folder",
+                SOURCE_FOLDER_URL,
+                "-O",
+                tmp,
+            ],
+            check=True,
+        )
+        nested = [
+            os.path.join(tmp, n)
+            for n in os.listdir(tmp)
+            if os.path.isdir(os.path.join(tmp, n))
+        ]
+        src = nested[0] if nested else tmp
+
+    print("Source:", src)
+    copied = 0
+    for name in os.listdir(src):
+        path = os.path.join(src, name)
+        if not os.path.isfile(path):
+            continue
+        ext = os.path.splitext(name)[1].lower()
+        if ext not in IMAGE_EXT:
+            continue
+        dest = os.path.join(DATASET_DIR, name)
+        if not os.path.exists(dest):
+            shutil.copy2(path, dest)
+        copied += 1
+    print(f"{copied} images ready in {DATASET_DIR}")"""
 )
 
 code(
-    """# @title 6) יצירת captions אוטומטית
+    """# @title 6) יצירת captions (דילוג אם כבר מוכן)
 import glob
 import os
 
@@ -300,13 +303,22 @@ def list_images(folder):
 
 images = list_images(DATASET_DIR)
 if not images:
-    raise RuntimeError(
-        f"לא נמצאו תמונות ב-{DATASET_DIR}. העלה תמונות ל-Drive והרץ שוב."
-    )
+    raise RuntimeError(f"לא נמצאו תמונות ב-{DATASET_DIR}")
 
 print(f"נמצאו {len(images)} תמונות")
 
-if AUTO_CAPTION:
+if DATASET_PREPARED:
+    missing = [p for p in images if not os.path.exists(os.path.splitext(p)[0] + ".txt")]
+    if missing:
+        print(f"אזהרה: חסרים {len(missing)} captions — ממשיך ליצור...")
+        AUTO_CAPTION_RUN = True
+    else:
+        print("DATASET_PREPARED=True — כל ה-captions כבר קיימים. מדלג.")
+        AUTO_CAPTION_RUN = False
+else:
+    AUTO_CAPTION_RUN = AUTO_CAPTION
+
+if AUTO_CAPTION_RUN:
     if CAPTION_STYLE == "blip":
         from PIL import Image
         from transformers import BlipForConditionalGeneration, BlipProcessor
