@@ -3,11 +3,18 @@
 import json
 from pathlib import Path
 
+import nbformat
+from nbformat.validator import normalize
+
 cells = []
 
 
 def md(source: str) -> None:
-    cells.append({"cell_type": "markdown", "metadata": {}, "source": source.split("\n")})
+    lines = source.split("\n")
+    src = [line + "\n" for line in lines[:-1]]
+    if lines:
+        src.append(lines[-1])
+    cells.append({"cell_type": "markdown", "metadata": {}, "source": src})
 
 
 def code(source: str) -> None:
@@ -589,6 +596,13 @@ nb = {
     "cells": cells,
 }
 
+notebook = nbformat.from_dict(nb)
+normalize(notebook)
+for i, cell in enumerate(notebook.cells):
+    if "id" not in cell:
+        cell["id"] = f"cell-{i:04d}"
+
 out = Path("/workspace/notebooks/SD_LoRA_Training_Colab.ipynb")
-out.write_text(json.dumps(nb, ensure_ascii=False, indent=2), encoding="utf-8")
+nbformat.write(notebook, out)
+json.loads(out.read_text(encoding="utf-8"), strict=True)
 print(f"Wrote {out} ({len(cells)} cells)")
