@@ -242,220 +242,74 @@ else:
 )
 
 md(
-    """## 5) הכנת הדאטאסט
+    """## 5) בדיקת דאטאסט
 
-**הדאטאסט כבר מוכן ב-Drive** (25 תמונות + captions).
-התא הבא ידלג אוטומטית אם `DATASET_PREPARED = True`."""
+התמונות וה-captions כבר מוכנים ב-Drive. התאים הבאים רק מוודאים שהכל במקום."""
 )
 
 code(
-    """# @title 5) העתקת תמונות (דילוג אם כבר מוכן)
+    """# @title 5) בדיקת תמונות
 import os
-import shutil
-import subprocess
-import sys
 
-if DATASET_PREPARED:
-    image_ext = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-    count = len(
-        [
-            f
-            for f in os.listdir(DATASET_DIR)
-            if os.path.splitext(f)[1].lower() in image_ext
-        ]
-    )
-    print(f"DATASET_PREPARED=True — מדלג. נמצאו {count} תמונות ב-{DATASET_DIR}")
-else:
-    IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
-
-    def find_source_folder(folder_id):
-        shortcut = f"/content/drive/.shortcut-targets-by-id/{folder_id}"
-        if os.path.isdir(shortcut):
-            return shortcut
-        for root in ("/content/drive/MyDrive", "/content/drive/Shareddrives"):
-            if not os.path.isdir(root):
-                continue
-            for dirpath, dirnames, _ in os.walk(root):
-                if os.path.basename(dirpath) == "dataset" and "Lapetitemilf" in dirpath:
-                    return dirpath
-                if dirpath.count(os.sep) - root.count(os.sep) > 4:
-                    dirnames.clear()
-        return None
-
-    src = find_source_folder(SOURCE_FOLDER_ID)
-    if src is None:
-        print("לא נמצא shortcut מקומי — מוריד את התיקייה עם gdown...")
-        subprocess.run([sys.executable, "-m", "pip", "install", "-q", "gdown"], check=True)
-        tmp = "/content/source_dataset"
-        os.makedirs(tmp, exist_ok=True)
-        subprocess.run(
-            [
-                sys.executable,
-                "-m",
-                "gdown",
-                "--folder",
-                SOURCE_FOLDER_URL,
-                "-O",
-                tmp,
-            ],
-            check=True,
-        )
-        nested = [
-            os.path.join(tmp, n)
-            for n in os.listdir(tmp)
-            if os.path.isdir(os.path.join(tmp, n))
-        ]
-        src = nested[0] if nested else tmp
-
-    print("Source:", src)
-    copied = 0
-    for name in os.listdir(src):
-        path = os.path.join(src, name)
-        if not os.path.isfile(path):
-            continue
-        ext = os.path.splitext(name)[1].lower()
-        if ext not in IMAGE_EXT:
-            continue
-        dest = os.path.join(DATASET_DIR, name)
-        if not os.path.exists(dest):
-            shutil.copy2(path, dest)
-        copied += 1
-    print(f"{copied} images ready in {DATASET_DIR}")"""
+IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
+files = os.listdir(DATASET_DIR)
+images = [f for f in files if f.lower().endswith(IMAGE_EXT)]
+print("Dataset folder:", DATASET_DIR)
+print("Images found:", len(images))
+if len(images) == 0:
+    raise RuntimeError("No images in dataset folder. Check Drive mount.")
+print("OK")"""
 )
 
 code(
-    """# @title 6) יצירת captions (דילוג אם כבר מוכן)
-import glob
+    """# @title 6) בדיקת captions
 import os
 
-IMAGE_EXT = {".jpg", ".jpeg", ".png", ".webp", ".bmp"}
+IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
+images = [f for f in os.listdir(DATASET_DIR) if f.lower().endswith(IMAGE_EXT)]
+missing = []
+for name in images:
+    stem = os.path.splitext(name)[0]
+    txt = os.path.join(DATASET_DIR, stem + ".txt")
+    if not os.path.exists(txt):
+        missing.append(name)
 
-
-def list_images(folder):
-    files = []
-    for path in glob.glob(os.path.join(folder, "**", "*"), recursive=True):
-        if os.path.isfile(path) and os.path.splitext(path)[1].lower() in IMAGE_EXT:
-            files.append(path)
-    return sorted(files)
-
-
-images = list_images(DATASET_DIR)
-if not images:
-    raise RuntimeError(f"לא נמצאו תמונות ב-{DATASET_DIR}")
-
-print(f"נמצאו {len(images)} תמונות")
-
-if DATASET_PREPARED:
-    missing = [p for p in images if not os.path.exists(os.path.splitext(p)[0] + ".txt")]
-    if missing:
-        print(f"אזהרה: חסרים {len(missing)} captions — ממשיך ליצור...")
-        AUTO_CAPTION_RUN = True
-    else:
-        print("DATASET_PREPARED=True — כל ה-captions כבר קיימים. מדלג.")
-        AUTO_CAPTION_RUN = False
-else:
-    AUTO_CAPTION_RUN = AUTO_CAPTION
-
-if AUTO_CAPTION_RUN:
-    if CAPTION_STYLE == "blip":
-        from PIL import Image
-        from transformers import BlipForConditionalGeneration, BlipProcessor
-        import torch
-
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-        model = BlipForConditionalGeneration.from_pretrained(
-            "Salesforce/blip-image-captioning-base"
-        ).to(device)
-
-        for img_path in images:
-            caption_path = os.path.splitext(img_path)[0] + ".txt"
-            if os.path.exists(caption_path):
-                continue
-            image = Image.open(img_path).convert("RGB")
-            inputs = processor(image, return_tensors="pt").to(device)
-            out = model.generate(**inputs, max_new_tokens=40)
-            caption = processor.decode(out[0], skip_special_tokens=True)
-            extra = f", {STYLE_TAGS}" if STYLE_TAGS else ""
-            full_caption = f"{TRIGGER_WORD}, {caption}{extra}"
-            with open(caption_path, "w", encoding="utf-8") as f:
-                f.write(full_caption)
-            print("Caption:", os.path.basename(caption_path))
-
-    elif CAPTION_STYLE == "tags":
-        tagger_script = "/content/sd-scripts/finetune/make_captions.py"
-        if not os.path.exists(tagger_script):
-            raise FileNotFoundError("Caption script not found in sd-scripts")
-        import subprocess
-        import sys
-
-        subprocess.run(
-            [
-                sys.executable,
-                tagger_script,
-                "--caption_extension",
-                ".txt",
-                "--batch_size",
-                "1",
-                DATASET_DIR,
-            ],
-            check=True,
-        )
-        for img_path in images:
-            caption_path = os.path.splitext(img_path)[0] + ".txt"
-            if os.path.exists(caption_path):
-                with open(caption_path, "r", encoding="utf-8") as f:
-                    text = f.read().strip()
-                extra = f", {STYLE_TAGS}" if STYLE_TAGS else ""
-                if TRIGGER_WORD not in text:
-                    text = f"{TRIGGER_WORD}, {text}{extra}"
-                    with open(caption_path, "w", encoding="utf-8") as f:
-                        f.write(text)
-    else:
-        raise ValueError('CAPTION_STYLE חייב להיות "blip" או "tags"')
-else:
-    missing = [p for p in images if not os.path.exists(os.path.splitext(p)[0] + ".txt")]
-    if missing:
-        raise RuntimeError(
-            f"חסרים {len(missing)} קבצי caption (.txt). הפעל AUTO_CAPTION=True או צור ידנית."
-        )
-
-print("Captions ready.")"""
+print("Images:", len(images))
+print("Missing captions:", len(missing))
+if missing:
+    raise RuntimeError("Missing caption files: " + ", ".join(missing[:5]))
+print("Captions ready")"""
 )
 
 code(
     """# @title 7) אימון LoRA
 import os
 import subprocess
-import textwrap
 
-dataset_config_path = f"/content/{PROJECT_NAME}_dataset.toml"
+dataset_config_path = "/content/{}_dataset.toml".format(PROJECT_NAME)
 grad_accum = 4 if MODEL_TYPE == "sdxl" else 1
 
-dataset_toml = textwrap.dedent(
-    f\"\"\"
-    [general]
-    shuffle_caption = true
-    caption_extension = ".txt"
-    keep_tokens = {KEEP_TOKENS}
-
-    [[datasets]]
-    resolution = {RESOLUTION}
-    batch_size = 1
-    enable_bucket = true
-    min_bucket_reso = 256
-    max_bucket_reso = 1024
-    bucket_reso_steps = 64
-
-      [[datasets.subsets]]
-      image_dir = "{DATASET_DIR}"
-    \"\"\"
-).strip()
-
+toml_lines = [
+    "[general]",
+    "shuffle_caption = true",
+    'caption_extension = ".txt"',
+    "keep_tokens = {}".format(KEEP_TOKENS),
+    "",
+    "[[datasets]]",
+    "resolution = {}".format(RESOLUTION),
+    "batch_size = 1",
+    "enable_bucket = true",
+    "min_bucket_reso = 256",
+    "max_bucket_reso = 1024",
+    "bucket_reso_steps = 64",
+    "",
+    "  [[datasets.subsets]]",
+    '  image_dir = "{}"'.format(DATASET_DIR),
+]
 with open(dataset_config_path, "w", encoding="utf-8") as f:
-    f.write(dataset_toml)
+    f.write("\\n".join(toml_lines) + "\\n")
 
-print("Dataset config:", dataset_config_path)
+print("Dataset config:")
 print(open(dataset_config_path).read())
 print("Starting training...")
 
@@ -465,71 +319,63 @@ cmd = [
     "launch",
     "--num_cpu_threads_per_process",
     "1",
-    "--config_file",
-    "/content/accelerate_config.yaml",
+    "--mixed_precision=fp16",
     "train_network.py",
-    f"--pretrained_model_name_or_path={BASE_MODEL_DIR}",
-    f"--dataset_config={dataset_config_path}",
-    f"--output_dir={OUTPUT_DIR}",
-    f"--output_name={PROJECT_NAME}_lora",
+    "--pretrained_model_name_or_path=" + BASE_MODEL_DIR,
+    "--dataset_config=" + dataset_config_path,
+    "--output_dir=" + OUTPUT_DIR,
+    "--output_name=" + PROJECT_NAME + "_lora",
     "--save_model_as=safetensors",
     "--save_precision=fp16",
     "--save_every_n_epochs=1",
-    f"--max_train_epochs={MAX_TRAIN_EPOCHS}",
+    "--max_train_epochs=" + str(MAX_TRAIN_EPOCHS),
     "--train_batch_size=1",
     "--gradient_checkpointing",
-    f"--gradient_accumulation_steps={grad_accum}",
-    f"--learning_rate={LEARNING_RATE}",
+    "--gradient_accumulation_steps=" + str(grad_accum),
+    "--learning_rate=" + str(LEARNING_RATE),
     "--lr_scheduler=cosine",
     "--lr_warmup_steps=0",
     "--optimizer_type=AdamW8bit",
     "--mixed_precision=fp16",
     "--seed=42",
     "--max_data_loader_n_workers=2",
-    "--persistent_data_loader_workers",
-    "--max_token_length=75",
     "--xformers",
     "--cache_latents",
-    "--cache_latents_to_disk",
     "--network_module=networks.lora",
-    f"--network_dim={NETWORK_DIM}",
-    f"--network_alpha={NETWORK_ALPHA}",
+    "--network_dim=" + str(NETWORK_DIM),
+    "--network_alpha=" + str(NETWORK_ALPHA),
     "--network_train_unet_only",
-    f"--logging_dir={LOGS_DIR}",
-    "--log_with=tensorboard",
+    "--logging_dir=" + LOGS_DIR,
 ]
 if MODEL_TYPE == "sdxl":
     cmd.append("--sdxl")
 
-result = subprocess.run(cmd, capture_output=True, text=True)
-print(result.stdout)
-if result.stderr:
-    print(result.stderr)
+print(" ".join(cmd))
+result = subprocess.run(cmd)
 if result.returncode != 0:
-    raise RuntimeError(f"Training failed (exit {result.returncode}). See output above.")
+    raise RuntimeError("Training failed with exit code " + str(result.returncode))
 print("Training finished.")"""
 )
 
 code(
-    """# @title 8) ייצוא LoRA סופי לתיקיית loras/
+    """# @title 8) ייצוא LoRA סופי
 import glob
 import os
 import shutil
 
-candidates = sorted(
-    glob.glob(os.path.join(OUTPUT_DIR, "*.safetensors")),
-    key=os.path.getmtime,
-)
-if not candidates:
-    raise RuntimeError(f"לא נמצא LoRA ב-{OUTPUT_DIR}")
+pattern = os.path.join(OUTPUT_DIR, "*.safetensors")
+files = glob.glob(pattern)
+files.sort(key=os.path.getmtime)
+if len(files) == 0:
+    raise RuntimeError("No LoRA found in " + OUTPUT_DIR)
 
-latest = candidates[-1]
-final_name = f"{PROJECT_NAME}_lora.safetensors"
+latest = files[-1]
+final_name = PROJECT_NAME + "_lora.safetensors"
 final_path = os.path.join(LORAS_DIR, final_name)
 shutil.copy2(latest, final_path)
-
+size_mb = round(os.path.getsize(final_path) / 1024 / 1024, 2)
 print("LoRA exported to:", final_path)
-print("Size MB:", round(os.path.getsize(final_path) / 1024 / 1024, 2))"""
+print("Size MB:", size_mb)"""
 )
 
 code(
