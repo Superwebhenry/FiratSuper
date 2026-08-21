@@ -109,37 +109,47 @@ for path in [DATASET_DIR, OUTPUT_DIR, MODELS_DIR, LORAS_DIR, LOGS_DIR]:
     os.makedirs(path, exist_ok=True)
 
 if MODEL_TYPE == "sd15":
-    BASE_MODEL_REPO = "runwayml/stable-diffusion-v1-5"
-    BASE_MODEL_DIR = f"{MODELS_DIR}/stable-diffusion-v1-5"
+    BASE_MODEL_FILE = MODELS_DIR + "/v1-5-pruned-emaonly.safetensors"
+    BASE_MODEL_REPO = "stable-diffusion-v1-5/stable-diffusion-v1-5"
+    BASE_MODEL_NAME = "v1-5-pruned-emaonly.safetensors"
 elif MODEL_TYPE == "sdxl":
+    BASE_MODEL_FILE = MODELS_DIR + "/sd_xl_base_1.0.safetensors"
     BASE_MODEL_REPO = "stabilityai/stable-diffusion-xl-base-1.0"
-    BASE_MODEL_DIR = f"{MODELS_DIR}/stable-diffusion-xl-base-1.0"
+    BASE_MODEL_NAME = "sd_xl_base_1.0.safetensors"
 else:
-    raise ValueError('MODEL_TYPE חייב להיות "sd15" או "sdxl"')
+    raise ValueError("MODEL_TYPE must be sd15 or sdxl")
 
 print("Project:", PROJECT_NAME)
 print("Trigger:", TRIGGER_WORD)
-print("Source folder ID:", SOURCE_FOLDER_ID)
 print("Dataset:", DATASET_DIR)
 print("Output:", OUTPUT_DIR)
-print("Base model:", BASE_MODEL_REPO)"""
+print("Base model file:", BASE_MODEL_FILE)"""
 )
 
 code(
-    """# @title 3) התקנת sd-scripts ותלויות
+    """# @title 3) התקנת sd-scripts (בלי לדרוס את Torch של Colab)
 import os
 import subprocess
 import sys
+import torch
+
+print("Torch:", torch.__version__)
+print("CUDA:", torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else "NO GPU")
+if not torch.cuda.is_available():
+    raise RuntimeError("CUDA is not available. Runtime -> Change runtime type -> T4 GPU")
 
 SD_SCRIPTS = "/content/sd-scripts"
-
-if not os.path.exists(SD_SCRIPTS):
+if not os.path.exists(os.path.join(SD_SCRIPTS, "train_network.py")):
+    if os.path.exists(SD_SCRIPTS):
+        subprocess.run(["rm", "-rf", SD_SCRIPTS], check=True)
     subprocess.run(
         [
             "git",
             "clone",
             "--depth",
             "1",
+            "--branch",
+            "v0.10.1",
             "https://github.com/kohya-ss/sd-scripts.git",
             SD_SCRIPTS,
         ],
@@ -147,8 +157,6 @@ if not os.path.exists(SD_SCRIPTS):
     )
 
 os.chdir(SD_SCRIPTS)
-
-subprocess.run([sys.executable, "-m", "pip", "install", "-q", "-U", "pip"], check=True)
 subprocess.run(
     [
         sys.executable,
@@ -156,89 +164,45 @@ subprocess.run(
         "pip",
         "install",
         "-q",
-        "torch",
-        "torchvision",
-        "xformers",
-        "bitsandbytes",
         "accelerate",
         "transformers",
         "diffusers",
         "safetensors",
-        "opencv-python",
+        "bitsandbytes",
         "einops",
         "ftfy",
-        "imagesize",
-        "lion-pytorch",
-        "prodigyopt",
-        "altair",
-        "huggingface_hub",
+        "opencv-python",
         "toml",
         "voluptuous",
-        "invisible-watermark",
+        "imagesize",
+        "huggingface_hub",
     ],
     check=True,
 )
-
-if os.path.exists("requirements.txt"):
-    subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-q", "-r", "requirements.txt"],
-        check=True,
-    )
-
-subprocess.run(
-    [
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "-q",
-        "pyyaml",
-    ],
-    check=True,
-)
-
-# accelerate config (ידני — יותר אמין מ-accelerate config default)
-import yaml
-
-accel_config = {
-    "compute_environment": "LOCAL_MACHINE",
-    "distributed_type": "NO",
-    "downcast_bf16": "no",
-    "gpu_ids": "all",
-    "machine_rank": 0,
-    "main_training_function": "main",
-    "mixed_precision": "fp16",
-    "num_machines": 1,
-    "num_processes": 1,
-    "rdzv_backend": "static",
-    "same_network": True,
-    "tpu_env": [],
-    "tpu_use_cluster": False,
-    "tpu_use_sudo": False,
-    "use_cpu": False,
-}
-with open("/content/accelerate_config.yaml", "w", encoding="utf-8") as f:
-    yaml.dump(accel_config, f)
-
-print("sd-scripts מוכן:", SD_SCRIPTS)"""
+print("sd-scripts ready:", SD_SCRIPTS)
+print("train_network.py exists:", os.path.exists(os.path.join(SD_SCRIPTS, "train_network.py")))"""
 )
 
 code(
-    """# @title 4) הורדת מודל בסיס (פעם אחת, נשמר ב-Drive)
-from huggingface_hub import snapshot_download
+    """# @title 4) הורדת מודל SD 1.5 (קובץ safetensors יחיד)
+from huggingface_hub import hf_hub_download
 import os
+import shutil
 
-marker = os.path.join(BASE_MODEL_DIR, "model_index.json")
-if not os.path.exists(marker):
-    print("מוריד מודל בסיס — זה ייקח כמה דקות בפעם הראשונה...")
-    snapshot_download(
-        repo_id=BASE_MODEL_REPO,
-        local_dir=BASE_MODEL_DIR,
-        local_dir_use_symlinks=False,
-    )
-    print("הורדה הושלמה.")
+if os.path.exists(BASE_MODEL_FILE) and os.path.getsize(BASE_MODEL_FILE) > 1000000000:
+    print("Base model already on Drive:", BASE_MODEL_FILE)
+    print("Size GB:", round(os.path.getsize(BASE_MODEL_FILE) / 1024 / 1024 / 1024, 2))
 else:
-    print("מודל בסיס כבר קיים ב-Drive:", BASE_MODEL_DIR)"""
+    print("Downloading base model to Drive. This takes several minutes...")
+    downloaded = hf_hub_download(
+        repo_id=BASE_MODEL_REPO,
+        filename=BASE_MODEL_NAME,
+        local_dir=MODELS_DIR,
+    )
+    if os.path.abspath(downloaded) != os.path.abspath(BASE_MODEL_FILE):
+        shutil.copy2(downloaded, BASE_MODEL_FILE)
+    print("Saved:", BASE_MODEL_FILE)
+    print("Size GB:", round(os.path.getsize(BASE_MODEL_FILE) / 1024 / 1024 / 1024, 2))"""
 )
 
 md(
@@ -285,44 +249,30 @@ code(
     """# @title 7) אימון LoRA
 import os
 import subprocess
+import sys
+import torch
 
-dataset_config_path = "/content/{}_dataset.toml".format(PROJECT_NAME)
-grad_accum = 4 if MODEL_TYPE == "sdxl" else 1
+print("CUDA:", torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else "NO")
+print("Model file exists:", os.path.exists(BASE_MODEL_FILE), BASE_MODEL_FILE)
+print("Dataset exists:", os.path.exists(DATASET_DIR), DATASET_DIR)
+print("train_network.py:", os.path.exists("/content/sd-scripts/train_network.py"))
+if not os.path.exists(BASE_MODEL_FILE):
+    raise RuntimeError("Base model file missing. Re-run cell 4.")
+if not torch.cuda.is_available():
+    raise RuntimeError("No GPU. Runtime -> Change runtime type -> T4 GPU")
 
-toml_lines = [
-    "[general]",
-    "shuffle_caption = true",
-    'caption_extension = ".txt"',
-    "keep_tokens = {}".format(KEEP_TOKENS),
-    "",
-    "[[datasets]]",
-    "resolution = {}".format(RESOLUTION),
-    "batch_size = 1",
-    "enable_bucket = true",
-    "min_bucket_reso = 256",
-    "max_bucket_reso = 1024",
-    "bucket_reso_steps = 64",
-    "",
-    "  [[datasets.subsets]]",
-    '  image_dir = "{}"'.format(DATASET_DIR),
-]
-with open(dataset_config_path, "w", encoding="utf-8") as f:
-    f.write("\\n".join(toml_lines) + "\\n")
-
-print("Dataset config:")
-print(open(dataset_config_path).read())
-print("Starting training...")
-
+parent_dataset = os.path.dirname(DATASET_DIR)
 os.chdir("/content/sd-scripts")
 cmd = [
-    "accelerate",
-    "launch",
-    "--num_cpu_threads_per_process",
-    "1",
+    sys.executable,
+    "-m",
+    "accelerate.commands.launch",
+    "--num_cpu_threads_per_process=1",
     "--mixed_precision=fp16",
+    "--num_processes=1",
     "train_network.py",
-    "--pretrained_model_name_or_path=" + BASE_MODEL_DIR,
-    "--dataset_config=" + dataset_config_path,
+    "--pretrained_model_name_or_path=" + BASE_MODEL_FILE,
+    "--train_data_dir=" + parent_dataset,
     "--output_dir=" + OUTPUT_DIR,
     "--output_name=" + PROJECT_NAME + "_lora",
     "--save_model_as=safetensors",
@@ -330,8 +280,12 @@ cmd = [
     "--save_every_n_epochs=1",
     "--max_train_epochs=" + str(MAX_TRAIN_EPOCHS),
     "--train_batch_size=1",
+    "--resolution=" + str(RESOLUTION),
+    "--caption_extension=.txt",
+    "--shuffle_caption",
+    "--keep_tokens=" + str(KEEP_TOKENS),
+    "--enable_bucket",
     "--gradient_checkpointing",
-    "--gradient_accumulation_steps=" + str(grad_accum),
     "--learning_rate=" + str(LEARNING_RATE),
     "--lr_scheduler=cosine",
     "--lr_warmup_steps=0",
@@ -339,7 +293,6 @@ cmd = [
     "--mixed_precision=fp16",
     "--seed=42",
     "--max_data_loader_n_workers=2",
-    "--xformers",
     "--cache_latents",
     "--network_module=networks.lora",
     "--network_dim=" + str(NETWORK_DIM),
@@ -347,13 +300,11 @@ cmd = [
     "--network_train_unet_only",
     "--logging_dir=" + LOGS_DIR,
 ]
-if MODEL_TYPE == "sdxl":
-    cmd.append("--sdxl")
-
+print("Starting training...")
 print(" ".join(cmd))
 result = subprocess.run(cmd)
 if result.returncode != 0:
-    raise RuntimeError("Training failed with exit code " + str(result.returncode))
+    raise RuntimeError("Training failed with exit code " + str(result.returncode) + ". Scroll up for the real error.")
 print("Training finished.")"""
 )
 
@@ -386,22 +337,17 @@ from diffusers import DPMSolverMultistepScheduler, StableDiffusionPipeline
 from IPython.display import display
 
 if MODEL_TYPE != "sd15":
-    print("תא זה מוגדר ל-SD 1.5. ל-SDXL השתמש ב-AutoPipelineForText2Image.")
+    print("Preview cell is for SD 1.5 only.")
 else:
-    pipe = StableDiffusionPipeline.from_pretrained(
-        BASE_MODEL_DIR,
+    pipe = StableDiffusionPipeline.from_single_file(
+        BASE_MODEL_FILE,
         torch_dtype=torch.float16,
         safety_checker=None,
     ).to("cuda")
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
-
-    lora_file = os.path.join(LORAS_DIR, f"{PROJECT_NAME}_lora.safetensors")
+    lora_file = os.path.join(LORAS_DIR, PROJECT_NAME + "_lora.safetensors")
     pipe.load_lora_weights(lora_file)
-
-    prompt = (
-        f"{TRIGGER_WORD}, swimsuit, lingerie, fashion photography, "
-        "studio lighting, high quality, detailed"
-    )
+    prompt = TRIGGER_WORD + ", swimsuit, fashion photography, studio lighting, high quality"
     image = pipe(prompt, num_inference_steps=25, guidance_scale=7.5).images[0]
     preview_path = os.path.join(OUTPUT_DIR, "preview.png")
     image.save(preview_path)
