@@ -1,6 +1,6 @@
 # Status: lapetitemilf
 
-- **Phase**: Thorough retraining on Realistic Vision (photorealism)
+- **Phase**: Body eval (Thorough face is better; cell 10 tests full body)
 - **Gate 1 (Dataset)**: GO
 - **Gate 2 (Config)**: GO — Thorough + Realistic Vision V5.1 + text encoder
 - **Gate 3 (Environment)**: GO — Colab T4 14.6 GB
