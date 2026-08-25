@@ -1,17 +1,18 @@
-FiratSuper — אימון LoRA (lapetitemilf) TRAIN_V4
-==============================================
+FiratSuper — TRAIN_V5 (תיקון transformers)
+==========================================
 
-פתח את הנוטבוק:
+פתח:
   https://colab.research.google.com/drive/REPLACE_ME
 
-מה תוקן ב-V4:
-- בלי accelerate launch (זה מה שנפל בשקט)
-- לוג מלא מודפס בתא 7
-- optimizer: AdamW (בלי bitsandbytes)
-- data loader workers=0
+מה נשבר: Colab התקין transformers 5.x — CLIPFeatureExtractor הוסר.
+מה תוקן: pin ל-transformers 4.x + תיקון import ב-kohya.
 
-שלבים:
-1. Runtime → Change runtime type → T4 GPU
-2. Runtime → Disconnect and delete runtime (מומלץ, סשן נקי)
-3. הרץ תאים 1→7 לפי הסדר
-4. DRY_RUN=True קודם. אם עבר: DRY_RUN=False והרץ שוב תא 7
+שלבים (חשוב — runtime נקי):
+1. Runtime → Disconnect and delete runtime
+2. Runtime → T4 GPU
+3. פתח TRAIN_V5.ipynb
+4. הרץ תאים 1 → 4, ואז 7
+   DRY_RUN = False כבר מוגדר (ה-dry run עבר)
+5. אחרי Training finished → תאים 8 ו-9
+
+אל תריץ את הנוטבוק הישן (TRAIN_V4).

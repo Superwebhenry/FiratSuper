@@ -44,7 +44,7 @@ md(
 1. **Runtime → Change runtime type → GPU** (T4 ל-SD 1.5)
 2. הרץ את התאים **לפי הסדר** (1 → 9)
 3. אשר חיבור ל-Google Drive
-4. **תא 7**: קודם `DRY_RUN = True` (5 steps). אחרי הצלחה → `DRY_RUN = False` ואימון מלא
+4. **תא 7**: `DRY_RUN = False` לאימון מלא (ה-dry run כבר עבר). אם זה runtime חדש לגמרי — אפשר `True` קודם.
 
 ## Preset נוכחי: Quick
 - 5 epochs, rank 16 — בדיקה מהירה (~15 דק)
@@ -90,7 +90,7 @@ SOURCE_FOLDER_URL = "https://drive.google.com/drive/folders/1FOwDPkzqjmOo0LPuNKm
 REPEATS = 10                      # כמה פעמים כל תמונה נספרת ב-epoch
 MODEL_TYPE = "sd15"               # "sd15" או "sdxl"
 TRAINING_PRESET = "quick"         # "quick" | "standard" | "thorough"
-DRY_RUN = True                    # True = 5 steps בלבד (Gate 4). False = אימון מלא
+DRY_RUN = False                   # True = 5 steps בלבד (Gate 4). False = אימון מלא
 DATASET_PREPARED = True           # True = תמונות+captions כבר ב-Drive
 AUTO_CAPTION = False              # captions כבר מוכנים
 CAPTION_STYLE = "blip"
@@ -174,6 +174,7 @@ if not os.path.exists(os.path.join(SD_SCRIPTS, "train_network.py")):
     )
 
 os.chdir(SD_SCRIPTS)
+# Colab now ships transformers 5.x (no CLIPFeatureExtractor). Pin 4.x for kohya.
 subprocess.run(
     [
         sys.executable,
@@ -182,8 +183,8 @@ subprocess.run(
         "install",
         "-q",
         "accelerate",
-        "transformers",
-        "diffusers",
+        "transformers>=4.46.0,<5.0.0",
+        "diffusers==0.32.1",
         "safetensors",
         "einops",
         "ftfy",
@@ -202,6 +203,30 @@ subprocess.run(
     [sys.executable, "-m", "pip", "install", "-q", "-e", SD_SCRIPTS, "--no-deps"],
     check=False,
 )
+
+# Fallback if transformers 5 is still active: kohya still imports CLIPFeatureExtractor
+lpw = os.path.join(SD_SCRIPTS, "library", "lpw_stable_diffusion.py")
+if os.path.exists(lpw):
+    text = open(lpw, encoding="utf-8").read()
+    old = "from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection"
+    new = (
+        "try:\\n"
+        "    from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection\\n"
+        "except ImportError:\\n"
+        "    from transformers import CLIPImageProcessor as CLIPFeatureExtractor\\n"
+        "    from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection"
+    )
+    if old in text and "CLIPImageProcessor as CLIPFeatureExtractor" not in text:
+        open(lpw, "w", encoding="utf-8").write(text.replace(old, new, 1))
+        print("Patched CLIPFeatureExtractor import for transformers 5.x")
+
+import transformers
+print("transformers:", transformers.__version__)
+if transformers.__version__.startswith("5"):
+    raise RuntimeError(
+        "transformers 5.x is still loaded in this runtime. "
+        "Runtime → Restart session, then run cells 1–4 and 7 again (do not Run all from a dirty kernel)."
+    )
 print("sd-scripts ready:", SD_SCRIPTS)
 print("train_network.py exists:", os.path.exists(os.path.join(SD_SCRIPTS, "train_network.py")))"""
 )
