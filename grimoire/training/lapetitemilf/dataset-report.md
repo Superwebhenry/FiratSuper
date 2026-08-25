@@ -22,4 +22,4 @@ Dataset is ready for Quick preset training on SD 1.5 / Colab T4.
 ## Known limitations
 - Some captions are generic/repeated — fine for first run; can refine after eval
 - SD 1.5 at 512px — sufficient for character LoRA test
-- **Body coverage is weak in captions**: almost all 25 texts describe hair + top/dress (e.g. "blonde hair and a black top"). Few mention standing, full body, legs, or figure. Face identity can work while body stays generic until head-to-toe photos are added.
+- **Body coverage is weak**: almost all 25 captions describe hair + top. Swimsuit pose sheet did not match the subject. Gate 1 is GO for **face**, not for **full-body swimsuit**. Need 10-15 head-to-toe photos.

@@ -53,16 +53,15 @@ This is a Colab Drive-login popup issue, not the training code.
 3. In the popup: Continue, then **Allow ALL permissions** (do not uncheck boxes)
 4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
-## Current preset: Thorough on Realistic Vision
-- Standard run finished: OFF (base SD 1.5) is a generic face. ON is closer to the subject. Identity is working.
-- Vanilla SD 1.5 still looks plastic / airbrushed. That is the base model, not a broken LoRA.
-- This notebook retrains on **Realistic Vision V5.1** (photoreal SD 1.5), 15 epochs, text encoder on.
-- Standard LoRA is kept as `loras/lapetitemilf_standard.safetensors` (not overwritten).
-- New file: `loras/lapetitemilf_thorough.safetensors` (~45-60 min on T4).
+## Current preset: stop retraining until body photos are added
+- Thorough face on portraits was closer. Swimsuit pose sheet was **not close**.
+- Do not run cell 7 again on the same 25 photos. The LoRA cannot invent a body it never saw.
+- Put 10-15 standing head-to-toe swimsuit photos in `ADD_BODY_PHOTOS`, run the import cell, then Thorough again.
 
 ## Drive layout
 ```
 MyDrive/FiratSuper/
+|-- ADD_BODY_PHOTOS/                       # drop 10-15 full-body swimsuit photos here
 |-- datasets/lapetitemilf/10_ohwx_woman/   # images + captions
 |-- output/lapetitemilf/quick/             # Quick checkpoints (done)
 |-- output/lapetitemilf/standard/          # Standard checkpoints (done)
@@ -287,6 +286,7 @@ REPEATS = 10                      # how many times each image counts per epoch
 MODEL_TYPE = "sd15"               # "sd15" or "sdxl"
 BASE_CHECKPOINT = "realistic_vision"  # "sd15" or "realistic_vision"
 TRAINING_PRESET = "thorough"      # "quick" | "standard" | "thorough"
+RUN_NAME = ""                     # set to "body" only after 10+ full-body photos are imported
 TRAIN_TEXT_ENCODER = True         # required for character identity (trigger -> face)
 DRY_RUN = False                   # True = 5 steps (Gate 4). False = full training
 DATASET_PREPARED = True           # True = images+captions already on Drive
@@ -316,12 +316,13 @@ else:
 DATASET_DIR = (
     f"{ROOT}/datasets/{PROJECT_NAME}/{REPEATS}_{TRIGGER_WORD.replace(' ', '_')}"
 )
-# Separate output folder so Standard does not overwrite Quick checkpoints
-OUTPUT_DIR = f"{ROOT}/output/{PROJECT_NAME}/{TRAINING_PRESET}"
+# Separate output folder so a new run does not overwrite Thorough portraits
+RUN_TAG = RUN_NAME if RUN_NAME else TRAINING_PRESET
+OUTPUT_DIR = f"{ROOT}/output/{PROJECT_NAME}/{RUN_TAG}"
 MODELS_DIR = f"{ROOT}/models"
 LORAS_DIR = f"{ROOT}/loras"
 LOGS_DIR = f"{ROOT}/logs/{PROJECT_NAME}/{TRAINING_PRESET}"
-LORA_BASENAME = PROJECT_NAME + "_" + TRAINING_PRESET
+LORA_BASENAME = PROJECT_NAME + "_" + RUN_TAG
 
 for path in [DATASET_DIR, OUTPUT_DIR, MODELS_DIR, LORAS_DIR, LOGS_DIR]:
     os.makedirs(path, exist_ok=True)
@@ -518,6 +519,48 @@ print("Captions tagged photorealistic:", updated)
 if missing:
     raise RuntimeError("Missing caption files: " + ", ".join(missing[:5]))
 print("Captions ready")"""
+)
+
+code(
+    """# @title 6b) Import full-body photos (run after you upload them)
+import os
+import shutil
+
+BODY_INBOX = os.path.join(ROOT, "ADD_BODY_PHOTOS")
+os.makedirs(BODY_INBOX, exist_ok=True)
+IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp")
+incoming = [f for f in os.listdir(BODY_INBOX) if f.lower().endswith(IMAGE_EXT)]
+print("Inbox:", BODY_INBOX)
+print("Photos waiting:", len(incoming))
+print("Upload folder: https://drive.google.com/drive/folders/1YK-nUV4ihzqpDhxZICwM9YFngFbS34LP")
+if len(incoming) == 0:
+    print("Empty. Add 10-15 head-to-toe swimsuit photos, then rerun THIS cell.")
+    print("Do not run cell 7 until this count is 10 or more.")
+else:
+    copied = 0
+    for name in sorted(incoming):
+        src = os.path.join(BODY_INBOX, name)
+        stem = os.path.splitext(name)[0].replace(" ", "_")
+        ext = os.path.splitext(name)[1].lower()
+        if ext == ".jpeg":
+            ext = ".jpg"
+        dst = os.path.join(DATASET_DIR, "body_" + stem + ext)
+        shutil.copy2(src, dst)
+        cap = os.path.splitext(dst)[0] + ".txt"
+        text = (
+            TRIGGER_WORD
+            + ", full body, swimsuit, looking at camera, "
+            + "photorealistic, raw photo, natural skin, high quality"
+        )
+        open(cap, "w", encoding="utf-8").write(text)
+        copied += 1
+    n_img = len([f for f in os.listdir(DATASET_DIR) if f.lower().endswith(IMAGE_EXT)])
+    print("Copied into training folder:", copied)
+    print("Dataset images now:", n_img)
+    if copied < 10:
+        print("Still under 10 body photos. Add more before cell 7.")
+    else:
+        print("Ready. Set a new output name if needed, then run cell 7 Thorough.")"""
 )
 
 code(
