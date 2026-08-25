@@ -22,5 +22,5 @@
   - ON preview closer to the subject; still plastic / airbrushed
 - **lapetitemilf (Thorough, face better)**: `MyDrive/FiratSuper/loras/lapetitemilf_thorough.safetensors`
   - 15 epochs, rank 32, UNet + text encoder, Realistic Vision V5.1
-  - Face preview improved. Body eval is cell 10 (no extra training).
+  - Face preview improved. Cell 10 swimsuit pose sheet: 5 poses, **not the subject**. Waiting for full-body photos before `lapetitemilf_body`.
 

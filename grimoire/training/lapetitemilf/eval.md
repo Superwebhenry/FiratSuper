@@ -8,10 +8,10 @@
 
 ## Body / swimsuit pose sheet (FAIL)
 
-- Cell 10 produced 5 swimsuit poses (`preview_swim_SHEET.png`).
-- User: **not close at all** (face and body).
+- Cell 10 produced 5 swimsuit poses (`preview_swim_SHEET.png`) — five different frames, not a display duplicate.
+- User (2026-08-25): **not close at all** (face and body). Confirmed after seeing all 5.
 - Cause: the 25 training images are small social JPGs; captions are almost all hair + top. There are not enough head-to-toe swimsuit shots for the LoRA to learn the figure.
-- More epochs on the same 25 photos will not fix this.
+- More epochs on the same 25 photos will not fix this. Raising LoRA weight will not either.
 
 ## Decision
 

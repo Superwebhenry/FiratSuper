@@ -54,9 +54,11 @@ This is a Colab Drive-login popup issue, not the training code.
 4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
 ## Current preset: stop retraining until body photos are added
-- Thorough face on portraits was closer. Swimsuit pose sheet was **not close**.
-- Do not run cell 7 again on the same 25 photos. The LoRA cannot invent a body it never saw.
-- Put 10-15 standing head-to-toe swimsuit photos in `ADD_BODY_PHOTOS`, run the import cell, then Thorough again.
+- Thorough portraits: face was closer. Keep that LoRA file.
+- Cell 10 swimsuit sheet: 5 different poses came out. **None of them look like her.**
+- That is a dataset miss, not a Colab display bug. The 25 training photos are mostly hair + top.
+- Do not run cell 7 again on those 25 photos. More epochs will not invent a body.
+- Put 10-15 standing head-to-toe swimsuit photos in `ADD_BODY_PHOTOS`, run cell 6b, then train a NEW file (`lapetitemilf_body`).
 
 ## Drive layout
 ```
@@ -365,7 +367,23 @@ print("Drive mode:", "API fallback (local copy)" if USE_DRIVE_API else "FUSE mou
 print("Dataset:", DATASET_DIR)
 print("Output:", OUTPUT_DIR)
 print("LoRA export name:", LORA_BASENAME + ".safetensors")
-print("Base model file:", BASE_MODEL_FILE)"""
+print("Base model file:", BASE_MODEL_FILE)
+IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp")
+n_body = 0
+if os.path.isdir(DATASET_DIR):
+    n_body = len(
+        [
+            f
+            for f in os.listdir(DATASET_DIR)
+            if f.startswith("body_") and f.lower().endswith(IMAGE_EXT)
+        ]
+    )
+print("Full-body photos imported (body_*):", n_body)
+if n_body < 10:
+    print("STOP: do not run cell 7. Swimsuit poses already failed identity.")
+    print("Upload 10-15 head-to-toe swimsuit photos here:")
+    print("https://drive.google.com/drive/folders/1YK-nUV4ihzqpDhxZICwM9YFngFbS34LP")
+    print("Then run cell 6b. After that, set RUN_NAME = 'body' and rerun this cell.")"""
 )
 
 code(
@@ -560,7 +578,8 @@ else:
     if copied < 10:
         print("Still under 10 body photos. Add more before cell 7.")
     else:
-        print("Ready. Set a new output name if needed, then run cell 7 Thorough.")"""
+        print("Ready. In cell 2 set RUN_NAME = 'body', rerun cell 2, then run cell 7.")
+        print("That writes lapetitemilf_body.safetensors and keeps Thorough portraits.")"""
 )
 
 code(
@@ -582,6 +601,30 @@ if not os.path.exists(BASE_MODEL_FILE):
     raise RuntimeError("Base model missing - rerun cell 4.")
 if not torch.cuda.is_available():
     raise RuntimeError("No GPU - Runtime -> Change runtime type -> T4 GPU")
+
+# Body identity already failed on the current 25 cropped photos. Do not retrain them.
+IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp")
+body_files = [
+    f
+    for f in os.listdir(DATASET_DIR)
+    if f.startswith("body_") and f.lower().endswith(IMAGE_EXT)
+]
+print("Imported full-body photos (body_*):", len(body_files))
+print("This run would write:", LORA_BASENAME + ".safetensors")
+if not DRY_RUN:
+    if len(body_files) < 10:
+        raise RuntimeError(
+            "Stopped. Cell 10 swimsuit poses were not the subject because the "
+            "25 training photos are not head-to-toe. Upload 10-15 full-body "
+            "swimsuit photos to ADD_BODY_PHOTOS, run cell 6b, set RUN_NAME = "
+            "'body' in cell 2, rerun cell 2, then this cell. Do not overwrite "
+            "lapetitemilf_thorough.safetensors."
+        )
+    if RUN_TAG != "body":
+        raise RuntimeError(
+            "Stopped. Set RUN_NAME = 'body' in cell 2 so Thorough portraits "
+            "are not overwritten. Then rerun cell 2 and this cell."
+        )
 
 parent_dataset = os.path.dirname(DATASET_DIR)
 os.chdir("/content/sd-scripts")
@@ -976,7 +1019,8 @@ upload_project_file(sheet_path)
 for path in paths:
     upload_project_file(path)
 print("Wrote", len(paths), "pose files.")
-print("Judge the face on 1_waist_up. Judge the body on 2-5.")"""
+print("Judge the face on 1_waist_up. Judge the body on 2-5.")
+print("If none of these look like her, stop. Add full-body swimsuit photos next.")"""
 )
 
 md(
@@ -1009,10 +1053,12 @@ Quick LoRA (kept, identity was weak):
 - `waist_up` should still look like her. Full-body shots often lose the face on SD 1.5
 - Same LoRA, no extra training
 
-### Next if body identity is weak
-- The current 25 captions are mostly hair + top, not head-to-toe
-- Add 10-15 standing full-body swimsuit photos (different poses, same person)
-- Caption them `ohwx woman, standing, full body, swimsuit, ...` then rerun Thorough"""
+### Next if body identity is weak (confirmed: cell 10 was not close)
+- Do not raise LoRA weight. Do not retrain Thorough on the same 25 photos.
+- Add 10-15 standing full-body swimsuit photos (feet in frame, mix of poses)
+- Drop them in `MyDrive/FiratSuper/ADD_BODY_PHOTOS`, run cell 6b
+- Set `RUN_NAME = "body"` in cell 2, rerun cell 2, then cell 7
+- New file: `loras/lapetitemilf_body.safetensors` (Thorough portraits stay)"""
 )
 
 nb = {
