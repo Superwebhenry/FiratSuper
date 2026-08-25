@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the FiratSuper Colab notebook."""
+"""Generate the FiratSuper Colab notebook (ASCII-only JSON for Colab)."""
 import json
 from pathlib import Path
 
@@ -34,39 +34,39 @@ def code(source: str) -> None:
 
 
 md(
-    """# FiratSuper — אימון LoRA ל-Stable Diffusion (Google Colab)
+    """# FiratSuper - Stable Diffusion LoRA training (Google Colab)
 
-נוטבוק זה מאמן LoRA עם **kohya sd-scripts**, שומר הכל ב-**Google Drive**, ומייצא `.safetensors`.
+This notebook trains a character LoRA with **kohya sd-scripts**, stores files on **Google Drive**, and exports `.safetensors`.
 
-**דאטאסט מחובר:** תיקיית Drive `Lapetitemilf Model / dataset` — 25 תמונות JPG.
+**Dataset:** Drive folder `Lapetitemilf Model / dataset` - 25 JPG images.
 
-## לפני שמתחילים
-1. **Runtime → Change runtime type → GPU** (T4 ל-SD 1.5)
-2. הרץ את התאים **לפי הסדר** (1 → 9)
-3. אשר חיבור ל-Google Drive
-4. **תא 7**: `DRY_RUN = False` לאימון מלא (ה-dry run כבר עבר). אם זה runtime חדש לגמרי — אפשר `True` קודם.
+## Before you start
+1. **Runtime > Change runtime type > GPU** (T4 for SD 1.5)
+2. Run cells **in order** (1 to 9)
+3. Approve Google Drive access
+4. **Cell 7:** `DRY_RUN = False` for full training (dry run already passed)
 
-## Preset נוכחי: Quick
-- 5 epochs, rank 16 — בדיקה מהירה (~15 דק)
-- אחרי preview טוב: שנה ל-`TRAINING_PRESET = "standard"` ב-cell 2
+## Current preset: Quick
+- 5 epochs, rank 16 - fast check (~15 min on T4)
+- After a good preview: set `TRAINING_PRESET = "standard"` in cell 2
 
-## מבנה תיקיות ב-Drive
+## Drive layout
 ```
 MyDrive/FiratSuper/
-├── datasets/lapetitemilf/10_ohwx_woman/   ← עותק אימון + captions
-├── output/lapetitemilf/                     ← checkpoints
-├── models/                                  ← מודל בסיס
-└── loras/                                   ← LoRA סופי
+|-- datasets/lapetitemilf/10_ohwx_woman/   # images + captions
+|-- output/lapetitemilf/                   # checkpoints
+|-- models/                                # base model
+`-- loras/                                 # final LoRA
 ```"""
 )
 
 code(
-    """# @title 1) בדיקת GPU
+    """# @title 1) GPU check
 import torch
 
 if not torch.cuda.is_available():
     raise RuntimeError(
-        "לא נמצא GPU! עבור ל-Runtime → Change runtime type → T4 GPU ואז הרץ שוב."
+        "No GPU. Runtime > Change runtime type > T4 GPU, then rerun."
     )
 
 gpu = torch.cuda.get_device_name(0)
@@ -76,23 +76,23 @@ print(f"VRAM: {vram:.1f} GB")"""
 )
 
 code(
-    """# @title 2) חיבור Google Drive + הגדרות פרויקט
+    """# @title 2) Mount Google Drive + project settings
 from google.colab import drive
 import os
 
 drive.mount("/content/drive")
 
-# === ערוך כאן ===
+# === edit here ===
 PROJECT_NAME = "lapetitemilf"
-TRIGGER_WORD = "ohwx woman"       # מילת טריגר בפרומפט אחרי האימון
+TRIGGER_WORD = "ohwx woman"       # trigger word in prompts after training
 SOURCE_FOLDER_ID = "1FOwDPkzqjmOo0LPuNKmgJtK4YuWU9Pmi"
 SOURCE_FOLDER_URL = "https://drive.google.com/drive/folders/1FOwDPkzqjmOo0LPuNKmgJtK4YuWU9Pmi"
-REPEATS = 10                      # כמה פעמים כל תמונה נספרת ב-epoch
-MODEL_TYPE = "sd15"               # "sd15" או "sdxl"
+REPEATS = 10                      # how many times each image counts per epoch
+MODEL_TYPE = "sd15"               # "sd15" or "sdxl"
 TRAINING_PRESET = "quick"         # "quick" | "standard" | "thorough"
-DRY_RUN = False                   # True = 5 steps בלבד (Gate 4). False = אימון מלא
-DATASET_PREPARED = True           # True = תמונות+captions כבר ב-Drive
-AUTO_CAPTION = False              # captions כבר מוכנים
+DRY_RUN = False                   # True = 5 steps (Gate 4). False = full training
+DATASET_PREPARED = True           # True = images+captions already on Drive
+AUTO_CAPTION = False              # captions already exist
 CAPTION_STYLE = "blip"
 STYLE_TAGS = "fashion photo, swimsuit, lingerie, high quality"
 
@@ -144,7 +144,7 @@ print("Base model file:", BASE_MODEL_FILE)"""
 )
 
 code(
-    """# @title 3) התקנת sd-scripts (בלי לדרוס את Torch של Colab)
+    """# @title 3) Install sd-scripts (do not overwrite Colab torch)
 import os
 import subprocess
 import sys
@@ -225,7 +225,7 @@ print("train_network.py exists:", os.path.exists(os.path.join(SD_SCRIPTS, "train
 )
 
 code(
-    """# @title 4) הורדת מודל SD 1.5 (קובץ safetensors יחיד)
+    """# @title 4) Download SD 1.5 (single safetensors file)
 from huggingface_hub import hf_hub_download
 import os
 import shutil
@@ -247,13 +247,13 @@ else:
 )
 
 md(
-    """## 5–6) Gate 1 — בדיקת דאטאסט
+    """## 5-6) Gate 1 - dataset check
 
-25 תמונות + 25 captions כבר ב-Drive. התאים הבאים מוודאים שהכל במקום."""
+25 images + 25 captions are already on Drive. The next cells verify they are present."""
 )
 
 code(
-    """# @title 5) בדיקת תמונות
+    """# @title 5) Check images
 import os
 
 IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
@@ -267,7 +267,7 @@ print("OK")"""
 )
 
 code(
-    """# @title 6) בדיקת captions
+    """# @title 6) Check captions
 import os
 
 IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
@@ -287,7 +287,7 @@ print("Captions ready")"""
 )
 
 code(
-    """# @title 7) Gate 3–4 + אימון LoRA (Dry Run או מלא)
+    """# @title 7) Gate 3-4 + LoRA training (dry run or full)
 import os
 import subprocess
 import sys
@@ -302,9 +302,9 @@ print("Model file:", os.path.exists(BASE_MODEL_FILE), BASE_MODEL_FILE)
 print("Dataset:", os.path.exists(DATASET_DIR), DATASET_DIR)
 print("sd-scripts:", os.path.exists("/content/sd-scripts/train_network.py"))
 if not os.path.exists(BASE_MODEL_FILE):
-    raise RuntimeError("Base model missing — rerun cell 4.")
+    raise RuntimeError("Base model missing - rerun cell 4.")
 if not torch.cuda.is_available():
-    raise RuntimeError("No GPU — Runtime -> Change runtime type -> T4 GPU")
+    raise RuntimeError("No GPU - Runtime -> Change runtime type -> T4 GPU")
 
 parent_dataset = os.path.dirname(DATASET_DIR)
 os.chdir("/content/sd-scripts")
@@ -387,7 +387,7 @@ else:
 )
 
 code(
-    """# @title 8) ייצוא LoRA סופי
+    """# @title 8) Export final LoRA
 import glob
 import os
 import shutil
@@ -408,7 +408,7 @@ print("Size MB:", size_mb)"""
 )
 
 code(
-    """# @title 9) בדיקה מהירה (אופציונלי)
+    """# @title 9) Quick preview (optional)
 import os
 import torch
 from diffusers import DPMSolverMultistepScheduler, StableDiffusionPipeline
@@ -434,20 +434,20 @@ else:
 )
 
 md(
-    """## סיום
+    """## Done
 
-ה-LoRA שלך נמצא ב:
+Your LoRA is at:
 `MyDrive/FiratSuper/loras/lapetitemilf_lora.safetensors`
 
-### שימוש ב-Automatic1111 / ComfyUI / Forge
-1. העתק את קובץ `.safetensors` לתיקיית `models/Lora/`
-2. בפרומפט: `ohwx woman, swimsuit, ...` (או lingerie)
-3. משקל LoRA מומלץ להתחלה: `0.6–0.9`
+### Use in Automatic1111 / ComfyUI / Forge
+1. Copy the `.safetensors` file to `models/Lora/`
+2. Prompt: `ohwx woman, swimsuit, ...` (or lingerie)
+3. Start LoRA weight around `0.6-0.9`
 
-### טיפים
-- אם התוצאה "נשכחת" את הנושא — הוסף עוד תמונות או העלה `MAX_TRAIN_EPOCHS`
-- אם overfit (עותק מדויק מדי) — הורד epochs או הוסף גיוון בתמונות
-- שמור את ה-Drive מסודר — checkpoints גדולים תופסים מקום"""
+### Tips
+- If the result forgets the subject, add more images or raise `MAX_TRAIN_EPOCHS`
+- If it overfits (too close to one photo), lower epochs or add more variety
+- Keep Drive tidy - checkpoints take a lot of space"""
 )
 
 nb = {
@@ -474,10 +474,14 @@ for i, cell in enumerate(notebook.cells):
 
 out = Path("/workspace/notebooks/SD_LoRA_Training_Colab.ipynb")
 payload = json.loads(nbformat.writes(notebook))
-# ASCII-only JSON: Colab/Drive corrupt notebooks that contain raw control chars or mixed UTF-8.
+# ASCII-only JSON: Colab fails to open notebooks with raw control chars or mixed UTF-8.
 text = json.dumps(payload, ensure_ascii=True, indent=1) + "\n"
-out.write_text(text, encoding="ascii")
-json.loads(out.read_text(encoding="ascii"), strict=True)
+if any(ord(ch) > 127 for ch in text):
+    raise RuntimeError("notebook JSON is not ASCII")
+if "\\u" in text:
+    raise RuntimeError("notebook JSON still contains unicode escapes")
+json.loads(text, strict=True)
 if any(ord(ch) < 32 and ch not in "\n\r\t" for ch in text):
     raise RuntimeError("notebook contains raw control characters")
+out.write_text(text, encoding="ascii")
 print(f"Wrote {out} ({len(cells)} cells, {out.stat().st_size} bytes)")
