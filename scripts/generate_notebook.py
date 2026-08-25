@@ -414,23 +414,37 @@ import torch
 from diffusers import DPMSolverMultistepScheduler, StableDiffusionPipeline
 from IPython.display import display
 
+# Colab ships torchao 0.10. Newer peft requires >=0.16 and crashes in load_lora_weights.
+# SD 1.5 preview does not need torchao. Disable the check.
+try:
+    import peft.import_utils as peft_iu
+    peft_iu.is_torchao_available = lambda: False
+except Exception:
+    pass
+
 if MODEL_TYPE != "sd15":
     print("Preview cell is for SD 1.5 only.")
 else:
+    lora_file = os.path.join(LORAS_DIR, PROJECT_NAME + "_lora.safetensors")
+    if not os.path.exists(lora_file):
+        raise RuntimeError("LoRA not found: " + lora_file + " - rerun cell 8.")
+    print("Loading base model from Drive...")
     pipe = StableDiffusionPipeline.from_single_file(
         BASE_MODEL_FILE,
         torch_dtype=torch.float16,
         safety_checker=None,
     ).to("cuda")
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
-    lora_file = os.path.join(LORAS_DIR, PROJECT_NAME + "_lora.safetensors")
+    print("Loading LoRA:", lora_file)
     pipe.load_lora_weights(lora_file)
+    pipe.fuse_lora(lora_scale=0.7)
     prompt = TRIGGER_WORD + ", swimsuit, fashion photography, studio lighting, high quality"
     image = pipe(prompt, num_inference_steps=25, guidance_scale=7.5).images[0]
     preview_path = os.path.join(OUTPUT_DIR, "preview.png")
     image.save(preview_path)
     display(image)
-    print("Preview saved:", preview_path)"""
+    print("Preview saved:", preview_path)
+    print("Ignore HF_TOKEN warning - public SD 1.5 does not need a token.")"""
 )
 
 md(
