@@ -1,25 +1,21 @@
 # Dataset Report: lapetitemilf
 
-## Summary
-- **Images**: 25 JPG
-- **Captioned**: 25/25 (100%)
-- **Average file size**: ~90 KB (typical phone/social resolution)
-- **Duplicates found**: Several near-duplicate captions (e.g. "long blonde hair and blue eyes" ×2, "black top" × many) — acceptable for character LoRA
-- **Quality issues**: 0 blocking
+- **Images**: 25 JPG original + 14 new body photos in `ADD_BODY_PHOTOS` (mp4 skipped)
+- **Captioned**: original 25/25; new 14 have per-image captions (not a generic swimsuit line)
+- **Average file size**: original ~90 KB; new body set includes camera files up to ~4 MB
+- **Duplicates found**: Two near-pairs in the new set (carriage bikini crop; green-screen lingerie pair) — keep, poses differ
+- **Quality issues**: 2 WhatsApp compressions, 2 Photoroom edits, 2 green-screen shots (captioned), 1 face-cropped mirror selfie, 1 face hidden by phone. Still usable for **body**.
 
 ## Diversity Assessment
-- Good pose/outfit variety: bikini, lingerie, dresses, casual tops
+- Original 25: weak body coverage (hair + top)
+- New 14: mix of bikini (beach/outdoor) and lingerie (indoor), standing / sitting / kneeling, front and side
+- Best identity+body frame: green-screen standing front (`20250924_221459.jpg`) — must keep "green screen" in the caption
 - Consistent identity (same person) — correct for character LoRA
-- Mix of indoor/studio-style shots
 
 ## Content-Style Balance
-- Captions separate **what** (outfit, hair, pose) from **style** via trailing tags
+- Captions separate outfit/pose from trailing photoreal tags
 - Trigger word `ohwx woman` present in all captions
+- Lingerie is **not** labeled as swimsuit
 
-## Gate 1 Decision: **GO**
-Dataset is ready for Quick preset training on SD 1.5 / Colab T4.
-
-## Known limitations
-- Some captions are generic/repeated — fine for first run; can refine after eval
-- SD 1.5 at 512px — sufficient for character LoRA test
-- **Body coverage is weak**: almost all 25 captions describe hair + top. Swimsuit pose sheet did not match the subject. Gate 1 is GO for **face**, not for **full-body swimsuit**. Need 10-15 head-to-toe photos.
+## Gate 1 Decision: **GO for body run**
+Import via cell 6b, train as `lapetitemilf_body`. Do not overwrite Thorough portraits.

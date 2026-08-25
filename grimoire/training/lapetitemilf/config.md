@@ -20,9 +20,10 @@
 - **Estimated VRAM**: ~8–12 GB (T4 OK with gradient checkpointing)
 - **Estimated time**: ~45–60 min on Colab T4 (+ download of RV ~2 GB)
 - **Config file**: Colab notebook cell 2 + cell 7
-- **Output name**: `lapetitemilf_thorough` (does not overwrite Quick or Standard)
+- **Output name**: `lapetitemilf_body` (Thorough portraits stay as `lapetitemilf_thorough`)
 
 ## History
 - Quick (done): 5 epochs, rank 16, UNet-only, vanilla SD 1.5. Identity fail.
 - Standard (done): 10 epochs, rank 32, TE on, vanilla SD 1.5. Identity closer; look is plastic.
-- Thorough (next): same rank, 15 epochs, lower LR, Realistic Vision V5.1.
+- Thorough (done): same rank, 15 epochs, lower LR, Realistic Vision V5.1. Face closer; swimsuit poses not the subject.
+- Body (next): same Thorough recipe + 14 imported full-body photos. New file only.

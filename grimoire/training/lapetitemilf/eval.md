@@ -15,11 +15,6 @@
 
 ## Decision
 
-Stop generating. Collect **10-15 new photos**:
-- same person
-- swimsuit
-- feet in frame (full body)
-- mix of front / 3/4 / side / sitting / standing
-- original camera files if possible, not tiny crops
+14 new photos are in `ADD_BODY_PHOTOS`. Import with cell 6b, train Thorough recipe as **`lapetitemilf_body`**. Keep Thorough for portraits.
 
-Drop them in Drive folder `ADD_BODY_PHOTOS`, run import cell 6b, then retrain Thorough to a new file (`lapetitemilf_body`). Keep the current Thorough file for portraits.
+Skip the mp4. Two green-screen shots stay, with "green screen background" in the caption.

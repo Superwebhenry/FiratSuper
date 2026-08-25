@@ -53,12 +53,11 @@ This is a Colab Drive-login popup issue, not the training code.
 3. In the popup: Continue, then **Allow ALL permissions** (do not uncheck boxes)
 4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
-## Current preset: stop retraining until body photos are added
-- Thorough portraits: face was closer. Keep that LoRA file.
-- Cell 10 swimsuit sheet: 5 different poses came out. **None of them look like her.**
-- That is a dataset miss, not a Colab display bug. The 25 training photos are mostly hair + top.
-- Do not run cell 7 again on those 25 photos. More epochs will not invent a body.
-- Put 10-15 standing head-to-toe swimsuit photos in `ADD_BODY_PHOTOS`, run cell 6b, then train a NEW file (`lapetitemilf_body`).
+## Current preset: body run (14 new photos are in Drive)
+- Keep Thorough for portraits: `lapetitemilf_thorough.safetensors`
+- New photos are in `ADD_BODY_PHOTOS` (14 JPG, skip the mp4)
+- Run cells 1-6, then **cell 6b**, then cell 7. Output: `lapetitemilf_body.safetensors`
+- Reopen this notebook from GitHub. An old Colab tab will still have the stop-training cells.
 
 ## Drive layout
 ```
@@ -248,6 +247,12 @@ def sync_dataset_via_api(local_root):
         project_ds["id"],
         os.path.join(local_root, "datasets", "lapetitemilf"),
     )
+    inbox = api_find_child(service, FIRATSUPER_DRIVE_ID, "ADD_BODY_PHOTOS")
+    inbox_dir = os.path.join(local_root, "ADD_BODY_PHOTOS")
+    if inbox:
+        api_download_folder(service, inbox["id"], inbox_dir)
+    else:
+        os.makedirs(inbox_dir, exist_ok=True)
     for sub in ("output", "models", "loras", "logs"):
         os.makedirs(os.path.join(local_root, sub), exist_ok=True)
     return service
@@ -288,7 +293,7 @@ REPEATS = 10                      # how many times each image counts per epoch
 MODEL_TYPE = "sd15"               # "sd15" or "sdxl"
 BASE_CHECKPOINT = "realistic_vision"  # "sd15" or "realistic_vision"
 TRAINING_PRESET = "thorough"      # "quick" | "standard" | "thorough"
-RUN_NAME = ""                     # set to "body" only after 10+ full-body photos are imported
+RUN_NAME = "body"                 # new file; does not overwrite Thorough portraits
 TRAIN_TEXT_ENCODER = True         # required for character identity (trigger -> face)
 DRY_RUN = False                   # True = 5 steps (Gate 4). False = full training
 DATASET_PREPARED = True           # True = images+captions already on Drive
@@ -380,10 +385,10 @@ if os.path.isdir(DATASET_DIR):
     )
 print("Full-body photos imported (body_*):", n_body)
 if n_body < 10:
-    print("STOP: do not run cell 7. Swimsuit poses already failed identity.")
-    print("Upload 10-15 head-to-toe swimsuit photos here:")
-    print("https://drive.google.com/drive/folders/1YK-nUV4ihzqpDhxZICwM9YFngFbS34LP")
-    print("Then run cell 6b. After that, set RUN_NAME = 'body' and rerun this cell.")"""
+    print("Next: run cell 6b to copy ADD_BODY_PHOTOS into the training folder.")
+    print("Inbox: https://drive.google.com/drive/folders/1YK-nUV4ihzqpDhxZICwM9YFngFbS34LP")
+else:
+    print("Body photos are in the dataset. Next: cell 7 writes", LORA_BASENAME + ".safetensors")"""
 )
 
 code(
@@ -548,8 +553,15 @@ BODY_INBOX = os.path.join(ROOT, "ADD_BODY_PHOTOS")
 os.makedirs(BODY_INBOX, exist_ok=True)
 IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp")
 incoming = [f for f in os.listdir(BODY_INBOX) if f.lower().endswith(IMAGE_EXT)]
+skipped = [
+    f
+    for f in os.listdir(BODY_INBOX)
+    if (not f.lower().endswith(IMAGE_EXT)) and (not f.lower().endswith(".txt"))
+]
 print("Inbox:", BODY_INBOX)
 print("Photos waiting:", len(incoming))
+if skipped:
+    print("Skipped (not images):", ", ".join(skipped))
 print("Upload folder: https://drive.google.com/drive/folders/1YK-nUV4ihzqpDhxZICwM9YFngFbS34LP")
 if len(incoming) == 0:
     print("Empty. Add 10-15 head-to-toe swimsuit photos, then rerun THIS cell.")
@@ -565,20 +577,28 @@ else:
         dst = os.path.join(DATASET_DIR, "body_" + stem + ext)
         shutil.copy2(src, dst)
         cap = os.path.splitext(dst)[0] + ".txt"
-        text = (
-            TRIGGER_WORD
-            + ", full body, swimsuit, looking at camera, "
-            + "photorealistic, raw photo, natural skin, high quality"
-        )
+        inbox_txt = os.path.splitext(src)[0] + ".txt"
+        if os.path.isfile(inbox_txt):
+            text = open(inbox_txt, encoding="utf-8").read().strip()
+            if not text.lower().startswith(TRIGGER_WORD.lower()):
+                text = TRIGGER_WORD + ", " + text
+        else:
+            text = (
+                TRIGGER_WORD
+                + ", full body, swimsuit, looking at camera, "
+                + "photorealistic, raw photo, natural skin, high quality"
+            )
         open(cap, "w", encoding="utf-8").write(text)
         copied += 1
+        print(" ", os.path.basename(dst))
+        print("   ", text[:140])
     n_img = len([f for f in os.listdir(DATASET_DIR) if f.lower().endswith(IMAGE_EXT)])
     print("Copied into training folder:", copied)
     print("Dataset images now:", n_img)
     if copied < 10:
         print("Still under 10 body photos. Add more before cell 7.")
     else:
-        print("Ready. In cell 2 set RUN_NAME = 'body', rerun cell 2, then run cell 7.")
+        print("Ready. Confirm RUN_NAME = 'body' in cell 2, rerun cell 2, then run cell 7.")
         print("That writes lapetitemilf_body.safetensors and keeps Thorough portraits.")"""
 )
 
@@ -1026,8 +1046,11 @@ print("If none of these look like her, stop. Add full-body swimsuit photos next.
 md(
     """## Done
 
-Thorough LoRA export (this run):
+Thorough LoRA export (portraits, keep this file):
 `MyDrive/FiratSuper/loras/lapetitemilf_thorough.safetensors`
+
+Body LoRA export (this run, after cell 6b + cell 7):
+`MyDrive/FiratSuper/loras/lapetitemilf_body.safetensors`
 
 Standard LoRA (kept, identity was close):
 `MyDrive/FiratSuper/loras/lapetitemilf_standard.safetensors`
@@ -1054,10 +1077,9 @@ Quick LoRA (kept, identity was weak):
 - Same LoRA, no extra training
 
 ### Next if body identity is weak (confirmed: cell 10 was not close)
-- Do not raise LoRA weight. Do not retrain Thorough on the same 25 photos.
-- Add 10-15 standing full-body swimsuit photos (feet in frame, mix of poses)
-- Drop them in `MyDrive/FiratSuper/ADD_BODY_PHOTOS`, run cell 6b
-- Set `RUN_NAME = "body"` in cell 2, rerun cell 2, then cell 7
+- 14 new photos are in ADD_BODY_PHOTOS. Skip the mp4.
+- Run cell 6b (copies them as body_*.jpg with per-image captions)
+- Confirm RUN_NAME = "body" in cell 2, rerun cell 2, then cell 7
 - New file: `loras/lapetitemilf_body.safetensors` (Thorough portraits stay)"""
 )
 
