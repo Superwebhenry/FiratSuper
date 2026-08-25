@@ -43,8 +43,15 @@ This notebook trains a character LoRA with **kohya sd-scripts**, stores files on
 ## Before you start
 1. **Runtime > Change runtime type > GPU** (T4 for SD 1.5)
 2. Run cells **in order** (1 to 9)
-3. Approve Google Drive access
+3. Approve Google Drive access. In the popup click Continue, then **Allow ALL permissions** (do not uncheck boxes).
 4. **Cell 7:** `DRY_RUN = False` for full training (dry run already passed)
+
+## If cell 2 fails: credential propagation
+This is a Colab Drive-login popup issue, not the training code.
+1. Left sidebar: folder icon, then **Mount Drive**, then rerun cell 2
+2. Chrome, one Google account only (the account that owns the photos)
+3. In the popup: Continue, then **Allow ALL permissions** (do not uncheck boxes)
+4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
 ## Current preset: Standard (character identity)
 - Quick run already finished. Preview looked like a generic SD 1.5 woman, not the subject.
@@ -79,11 +86,195 @@ print(f"VRAM: {vram:.1f} GB")"""
 )
 
 code(
-    """# @title 2) Mount Google Drive + project settings
-from google.colab import drive
+    """# @title 2) Connect Drive + project settings
+from google.colab import auth, drive
 import os
 
-drive.mount("/content/drive")
+MOUNT = "/content/drive"
+MYDRIVE = os.path.join(MOUNT, "MyDrive")
+FIRATSUPER_DRIVE_ID = "18UE4fijDjq8ggmkDYjaUpRQXVDE0cqYt"
+USE_DRIVE_API = False
+DRIVE_SERVICE = None
+
+
+def _drive_ok():
+    return os.path.isdir(MYDRIVE)
+
+
+def _mount_fuse(force=False):
+    if _drive_ok() and not force:
+        return True
+    print("Drive popup: click Continue, then Allow ALL permissions. Do not uncheck boxes.")
+    try:
+        drive.mount(MOUNT, force_remount=force)
+    except Exception as err:
+        print("drive.mount failed:", err)
+    return _drive_ok()
+
+
+def _google_login():
+    print("Google login popup (not the Drive FUSE popup)...")
+    try:
+        auth.authenticate_user()
+        print("Google login OK")
+        return True
+    except Exception as err:
+        print("Google login failed:", err)
+        return False
+
+
+def _api_service():
+    from googleapiclient.discovery import build
+    return build("drive", "v3")
+
+
+def api_find_child(service, parent_id, name):
+    q = "'" + parent_id + "' in parents and name = '" + name + "' and trashed = false"
+    resp = service.files().list(
+        q=q,
+        fields="files(id, name, mimeType)",
+        pageSize=10,
+        supportsAllDrives=True,
+        includeItemsFromAllDrives=True,
+    ).execute()
+    files = resp.get("files", [])
+    return files[0] if files else None
+
+
+def api_ensure_folder(service, parent_id, name):
+    found = api_find_child(service, parent_id, name)
+    if found:
+        return found["id"]
+    meta = {
+        "name": name,
+        "mimeType": "application/vnd.google-apps.folder",
+        "parents": [parent_id],
+    }
+    return service.files().create(
+        body=meta, fields="id", supportsAllDrives=True
+    ).execute()["id"]
+
+
+def api_list_children(service, folder_id):
+    items = []
+    token = None
+    while True:
+        resp = service.files().list(
+            q="'" + folder_id + "' in parents and trashed = false",
+            fields="nextPageToken, files(id, name, mimeType)",
+            pageToken=token,
+            pageSize=1000,
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+        ).execute()
+        items.extend(resp.get("files", []))
+        token = resp.get("nextPageToken")
+        if not token:
+            break
+    return items
+
+
+def api_download_file(service, file_id, dest):
+    from googleapiclient.http import MediaIoBaseDownload
+    parent = os.path.dirname(dest)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    request = service.files().get_media(fileId=file_id, supportsAllDrives=True)
+    with open(dest, "wb") as fh:
+        downloader = MediaIoBaseDownload(fh, request)
+        done = False
+        while not done:
+            _status, done = downloader.next_chunk()
+
+
+def api_download_folder(service, folder_id, dest_dir):
+    os.makedirs(dest_dir, exist_ok=True)
+    for item in api_list_children(service, folder_id):
+        path = os.path.join(dest_dir, item["name"])
+        if item["mimeType"] == "application/vnd.google-apps.folder":
+            api_download_folder(service, item["id"], path)
+        else:
+            print("  copy", item["name"])
+            api_download_file(service, item["id"], path)
+
+
+def api_upload_file(service, local_path, parent_id, name):
+    from googleapiclient.http import MediaFileUpload
+    media = MediaFileUpload(local_path, resumable=True)
+    found = api_find_child(service, parent_id, name)
+    if found:
+        service.files().update(
+            fileId=found["id"], media_body=media, supportsAllDrives=True
+        ).execute()
+        return found["id"]
+    body = {"name": name, "parents": [parent_id]}
+    created = service.files().create(
+        body=body, media_body=media, fields="id", supportsAllDrives=True
+    ).execute()
+    return created["id"]
+
+
+def upload_project_file(local_path):
+    if not USE_DRIVE_API:
+        return
+    if DRIVE_SERVICE is None:
+        print("Skip Drive upload: no API client")
+        return
+    rel = os.path.relpath(local_path, ROOT)
+    print("Uploading to Drive:", rel)
+    parts = rel.split(os.sep)
+    parent = FIRATSUPER_DRIVE_ID
+    for folder in parts[:-1]:
+        parent = api_ensure_folder(DRIVE_SERVICE, parent, folder)
+    api_upload_file(DRIVE_SERVICE, local_path, parent, parts[-1])
+    print("Uploaded:", rel)
+
+
+def sync_dataset_via_api(local_root):
+    print("FUSE mount failed. Copying dataset via Drive API to", local_root)
+    service = _api_service()
+    os.makedirs(local_root, exist_ok=True)
+    datasets = api_find_child(service, FIRATSUPER_DRIVE_ID, "datasets")
+    if not datasets:
+        raise RuntimeError("Drive API: datasets folder not found in FiratSuper")
+    project_ds = api_find_child(service, datasets["id"], "lapetitemilf")
+    if not project_ds:
+        raise RuntimeError("Drive API: datasets/lapetitemilf not found")
+    api_download_folder(
+        service,
+        project_ds["id"],
+        os.path.join(local_root, "datasets", "lapetitemilf"),
+    )
+    for sub in ("output", "models", "loras", "logs"):
+        os.makedirs(os.path.join(local_root, sub), exist_ok=True)
+    return service
+
+
+if _drive_ok():
+    print("Drive already mounted at", MYDRIVE)
+elif _mount_fuse(force=False):
+    print("Drive mounted at", MYDRIVE)
+else:
+    print("FUSE mount failed. Trying Google login, then mount again...")
+    logged_in = _google_login()
+    if logged_in and _mount_fuse(force=True):
+        print("Drive mounted after Google login:", MYDRIVE)
+    elif logged_in:
+        USE_DRIVE_API = True
+        DRIVE_SERVICE = sync_dataset_via_api("/content/FiratSuper")
+        print("DRIVE MODE: API fallback (local /content/FiratSuper)")
+        print("Base model will download from HuggingFace in cell 4.")
+        print("LoRA and previews will upload back to Drive after training.")
+    else:
+        print("Could not connect to Drive.")
+        print("1. Left sidebar: folder icon -> Mount Drive, then rerun this cell")
+        print("2. Chrome, one Google account only (the account that owns the photos)")
+        print("3. Allow ALL permissions. Do not close extra popups")
+        print("4. Runtime > Disconnect and delete runtime, reconnect T4 GPU")
+        raise RuntimeError("Drive is not connected. See the steps printed above.")
+
+if (not USE_DRIVE_API) and (not _drive_ok()):
+    raise RuntimeError("Drive folder is empty. Grant access and rerun this cell.")
 
 # === edit here ===
 PROJECT_NAME = "lapetitemilf"
@@ -115,7 +306,10 @@ RESOLUTION = 512 if MODEL_TYPE == "sd15" else 1024
 # =================
 KEEP_TOKENS = len(TRIGGER_WORD.split())
 
-ROOT = "/content/drive/MyDrive/FiratSuper"
+if USE_DRIVE_API:
+    ROOT = "/content/FiratSuper"
+else:
+    ROOT = "/content/drive/MyDrive/FiratSuper"
 DATASET_DIR = (
     f"{ROOT}/datasets/{PROJECT_NAME}/{REPEATS}_{TRIGGER_WORD.replace(' ', '_')}"
 )
@@ -145,6 +339,7 @@ print("Trigger:", TRIGGER_WORD)
 print("Preset:", TRAINING_PRESET, p)
 print("Train text encoder:", TRAIN_TEXT_ENCODER)
 print("Dry run:", DRY_RUN)
+print("Drive mode:", "API fallback (local copy)" if USE_DRIVE_API else "FUSE mount")
 print("Dataset:", DATASET_DIR)
 print("Output:", OUTPUT_DIR)
 print("LoRA export name:", LORA_BASENAME + ".safetensors")
@@ -431,7 +626,8 @@ shutil.copy2(latest, final_path)
 size_mb = round(os.path.getsize(final_path) / 1024 / 1024, 2)
 print("Exported from:", latest)
 print("LoRA exported to:", final_path)
-print("Size MB:", size_mb)"""
+print("Size MB:", size_mb)
+upload_project_file(final_path)"""
 )
 
 code(
@@ -534,6 +730,8 @@ else:
     display(image_on)
     print("Saved:", off_path)
     print("Saved:", on_path)
+    upload_project_file(off_path)
+    upload_project_file(on_path)
     print("If OFF and ON look the same, the LoRA did not apply.")
     print("If ON is different but still not the subject, train longer (thorough).")
     print("Ignore HF_TOKEN warning - public SD 1.5 does not need a token.")"""
