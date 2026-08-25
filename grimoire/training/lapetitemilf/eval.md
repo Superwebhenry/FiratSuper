@@ -13,8 +13,10 @@
 - Cause: the 25 training images are small social JPGs; captions are almost all hair + top. There are not enough head-to-toe swimsuit shots for the LoRA to learn the figure.
 - More epochs on the same 25 photos will not fix this. Raising LoRA weight will not either.
 
-## Decision
+## Body LoRA (`lapetitemilf_body`) — closer, not locked
 
-14 new photos are in `ADD_BODY_PHOTOS`. Import with cell 6b, train Thorough recipe as **`lapetitemilf_body`**. Keep Thorough for portraits.
-
-Skip the mp4. Two green-screen shots stay, with "green screen background" in the caption.
+- User: **not far, but still not close**.
+- Body/figure improved vs Thorough swimsuit sheet. Face still generic, especially on full-body frames.
+- Cause mix: SD 1.5 full-body faces are tiny; eval prompts were only `ohwx woman + swimsuit` so Realistic Vision pulled a generic bikini woman; original photos are still small social JPGs.
+- Next: **prompt lock, no retrain** (hair/eyes/adult woman in cell 9-10). Judge face on cell 9 and `1_waist_up`.
+- If waist_up is still not her: add sharp camera close-ups, not more epochs.

@@ -53,11 +53,11 @@ This is a Colab Drive-login popup issue, not the training code.
 3. In the popup: Continue, then **Allow ALL permissions** (do not uncheck boxes)
 4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
-## Current preset: body run (14 new photos are in Drive)
-- Keep Thorough for portraits: `lapetitemilf_thorough.safetensors`
-- New photos are in `ADD_BODY_PHOTOS` (14 JPG, skip the mp4)
-- Run cells 1-6, then **cell 6b**, then cell 7. Output: `lapetitemilf_body.safetensors`
-- Reopen this notebook from GitHub. An old Colab tab will still have the stop-training cells.
+## Current preset: body LoRA is trained - tighten identity with prompts (no retrain)
+- File: `loras/lapetitemilf_body.safetensors`
+- Body poses are closer than Thorough. Face is still not locked.
+- Do not run cell 7 again. Reopen this notebook, run cell 9 then cell 10.
+- Judge the face on cell 9 and `1_waist_up`. Full-body faces stay soft on SD 1.5.
 
 ## Drive layout
 ```
@@ -847,12 +847,14 @@ else:
 
     prompt = (
         TRIGGER_WORD
-        + ", portrait, close up face, looking at camera, photorealistic, "
+        + ", long wavy highlighted blonde hair, brown eyes, adult woman, "
+        + "portrait, close up face, looking at camera, photorealistic, "
         + "raw photo, natural skin texture, natural lighting, high quality"
     )
     negative = (
         "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
-        "doll, deformed, extra fingers, blurry"
+        "doll, deformed, extra fingers, blurry, black hair, child, teen, "
+        "different person, extra people"
     )
     seed = 42
     gen_kw = {
@@ -891,7 +893,7 @@ else:
     upload_project_file(off_path)
     upload_project_file(on_path)
     print("If OFF and ON look the same, the LoRA did not apply.")
-    print("If ON is closer but still plastic, add sharper face close-ups and retrain.")
+    print("Judge identity HERE (close-up). Cell 10 full-body faces will look softer.")
     print("Ignore HF_TOKEN warning - public checkpoints do not need a token.")"""
 )
 
@@ -915,9 +917,12 @@ except Exception:
     pass
 pipe.load_lora_weights(lora_file)
 
+print("This cell does NOT retrain. It only generates with a tighter identity prompt.")
+LOOK = "long wavy highlighted blonde hair, brown eyes, adult woman"
 negative = (
     "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
-    "doll, deformed, extra fingers, extra legs, extra people, cropped head"
+    "doll, deformed, extra fingers, extra legs, extra people, cropped head, "
+    "black hair, child, teen, different person, extra faces"
 )
 # Far-apart seeds + different poses so the sheet cannot collapse to one frame.
 poses = [
@@ -959,14 +964,15 @@ poses = [
 ]
 
 print("This cell must create 5 DIFFERENT images plus one contact sheet.")
-print("If you only see preview_body_off / preview_body_on, this is an OLD cell.")
-print("Refresh the GitHub notebook, then run THIS cell again.")
+print("Refresh the GitHub notebook if this cell still has the old generic prompt.")
 
 images = []
 paths = []
 for pose in poses:
     prompt = (
         TRIGGER_WORD
+        + ", "
+        + LOOK
         + ", "
         + pose["extra"]
         + ", photorealistic, raw photo, natural lighting, high quality"
@@ -990,7 +996,7 @@ for pose in poses:
         cross_attention_kwargs={"scale": 1.0},
         **gen_kw,
     ).images[0]
-    path = os.path.join(OUTPUT_DIR, "preview_swim_" + pose["name"] + ".png")
+    path = os.path.join(OUTPUT_DIR, "preview_swim_" + pose["name"] + "_id.png")
     image.save(path)
     images.append(image)
     paths.append(path)
@@ -1030,7 +1036,7 @@ for idx, tile in enumerate(labeled):
     x = (idx % 3) * thumb_w
     y = (idx // 3) * thumb_h
     sheet.paste(tile, (x, y))
-sheet_path = os.path.join(OUTPUT_DIR, "preview_swim_SHEET.png")
+sheet_path = os.path.join(OUTPUT_DIR, "preview_swim_SHEET_id.png")
 sheet.save(sheet_path)
 print("CONTACT SHEET (all 5 poses):")
 display(sheet)
@@ -1038,9 +1044,10 @@ print("Saved:", sheet_path)
 upload_project_file(sheet_path)
 for path in paths:
     upload_project_file(path)
-print("Wrote", len(paths), "pose files.")
-print("Judge the face on 1_waist_up. Judge the body on 2-5.")
-print("If none of these look like her, stop. Add full-body swimsuit photos next.")"""
+print("Wrote", len(paths), "pose files (identity prompt, no retrain).")
+print("Judge the FACE on 1_waist_up and on cell 9. Judge the BODY on 2-5.")
+print("Full-body faces stay soft on SD 1.5. That is not a LoRA failure.")
+print("If waist_up is still not her, we need sharper face close-ups, not more epochs.")"""
 )
 
 md(
@@ -1060,27 +1067,27 @@ Quick LoRA (kept, identity was weak):
 
 ### Use in Automatic1111 / ComfyUI / Forge
 1. Load **Realistic Vision V5.1** as the checkpoint (not vanilla SD 1.5)
-2. Copy the Thorough `.safetensors` file to `models/Lora/`
-3. Face: `ohwx woman, portrait, close up face, photorealistic, raw photo`
-4. Waist-up (face + body): `ohwx woman, waist up, swimsuit, looking at camera, photorealistic, raw photo`
-5. Full body poses (512x768). Change only the pose words, keep the rest:
-   - `ohwx woman, standing, full body, front view, swimsuit, photorealistic, raw photo`
-   - `ohwx woman, standing, full body, three quarter view, swimsuit, photorealistic, raw photo`
-   - `ohwx woman, sitting, full body, swimsuit, photorealistic, raw photo`
-   - `ohwx woman, walking, full body, swimsuit, photorealistic, raw photo`
-6. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin, extra people`
-7. CLIP skip: 2. LoRA weight `0.8-1.0`. Full-body face: enable After Detailer if you have it.
+2. Copy `lapetitemilf_body.safetensors` to `models/Lora/` (portraits can still use Thorough)
+3. Always keep these identity words after the trigger:
+   `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman`
+4. Face: `..., portrait, close up face, photorealistic, raw photo`
+5. Waist-up: `..., waist up, swimsuit, looking at camera, photorealistic, raw photo`
+6. Full body poses (512x768). Change only the pose words, keep the identity words:
+   - `..., standing, full body, front view, swimsuit, photorealistic, raw photo`
+   - `..., sitting, full body, swimsuit, photorealistic, raw photo`
+   - `..., walking, full body, swimsuit, photorealistic, raw photo`
+7. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin, extra people, black hair, child, teen, different person`
+8. CLIP skip: 2. LoRA weight `0.8-1.0`. Full-body face: enable After Detailer if you have it.
 
 ### How to read cell 9 and cell 10
-- Cell 9 = face close-up. Cell 10 = swimsuit pose sheet (5 images, ~2 min)
-- `waist_up` should still look like her. Full-body shots often lose the face on SD 1.5
+- Cell 9 = face close-up. Cell 10 = swimsuit pose sheet (5 images, ~2 min, no training)
+- Judge identity on cell 9 and `waist_up`. Poses 2-5 are for the body
 - Same LoRA, no extra training
 
-### Next if body identity is weak (confirmed: cell 10 was not close)
-- 14 new photos are in ADD_BODY_PHOTOS. Skip the mp4.
-- Run cell 6b (copies them as body_*.jpg with per-image captions)
-- Confirm RUN_NAME = "body" in cell 2, rerun cell 2, then cell 7
-- New file: `loras/lapetitemilf_body.safetensors` (Thorough portraits stay)"""
+### Next if the face is still not her
+- Do not retrain on the same photos
+- Add 8-10 sharp face close-ups (original camera files, not WhatsApp)
+- Then we can do a short face-lock run as a new file"""
 )
 
 nb = {
