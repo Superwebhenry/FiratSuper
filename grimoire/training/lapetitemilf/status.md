@@ -8,5 +8,5 @@
 - **Quick / Standard / Thorough**: DONE
 - **User**: face improved on portrait; full-body shot lost the face
 - **Thorough LoRA**: `loras/lapetitemilf_thorough.safetensors`
-- **Next**: run cell 10 pose sheet. Judge face on `waist_up`, body on the full-body poses.
+- **Next**: reopen the GitHub notebook and run cell 10. You should get `preview_swim_SHEET.png` (5 poses). If you only see `preview_body_on.png`, that was the old cell.
 - **Notebook**: https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/SD_LoRA_Training_Colab.ipynb
