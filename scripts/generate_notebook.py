@@ -794,6 +794,7 @@ code(
 import os
 import torch
 from IPython.display import display
+from PIL import Image, ImageDraw
 
 if "pipe" not in globals():
     raise RuntimeError("Run cell 9 first so the model is loaded.")
@@ -808,54 +809,55 @@ except Exception:
     pass
 pipe.load_lora_weights(lora_file)
 
-# Full-body SD 1.5 shrinks the face (few pixels). Waist-up keeps the face readable.
 negative = (
     "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
-    "doll, deformed, extra fingers, extra legs, extra people, cropped head, "
-    "close up face only"
+    "doll, deformed, extra fingers, extra legs, extra people, cropped head"
 )
+# Far-apart seeds + different poses so the sheet cannot collapse to one frame.
 poses = [
     {
-        "name": "waist_up",
-        "extra": "waist up, swimsuit, looking at camera, detailed face",
-        "seed": 42,
+        "name": "1_waist_up",
+        "extra": "waist up, swimsuit, looking at camera, hands on hips, detailed face",
+        "seed": 101,
         "width": 512,
         "height": 640,
     },
     {
-        "name": "stand_front",
-        "extra": "standing, full body, front view, swimsuit, looking at camera, detailed face",
-        "seed": 43,
+        "name": "2_stand_front",
+        "extra": "standing, full body, front view, arms at sides, swimsuit, looking at camera",
+        "seed": 707,
         "width": 512,
         "height": 768,
     },
     {
-        "name": "stand_side",
-        "extra": "standing, full body, three quarter view, swimsuit, looking at camera, detailed face",
-        "seed": 44,
+        "name": "3_stand_side",
+        "extra": "standing, full body, side view, swimsuit, looking over shoulder",
+        "seed": 2024,
         "width": 512,
         "height": 768,
     },
     {
-        "name": "sitting",
-        "extra": "sitting, full body, swimsuit, looking at camera, detailed face",
-        "seed": 45,
+        "name": "4_sitting",
+        "extra": "sitting on a chair, full body, swimsuit, legs visible, looking at camera",
+        "seed": 31415,
         "width": 512,
         "height": 768,
     },
     {
-        "name": "walking",
-        "extra": "walking, full body, swimsuit, fashion photography, detailed face",
-        "seed": 46,
+        "name": "5_walking",
+        "extra": "walking toward camera, full body, swimsuit, one foot forward",
+        "seed": 99991,
         "width": 512,
         "height": 768,
     },
 ]
 
-print("Swimsuit pose sheet. Same LoRA, no extra training.")
-print("WAIST_UP is the one where the face should still look like her.")
-print("FULL BODY shots often lose the face on SD 1.5 - the head is too small.")
+print("This cell must create 5 DIFFERENT images plus one contact sheet.")
+print("If you only see preview_body_off / preview_body_on, this is an OLD cell.")
+print("Refresh the GitHub notebook, then run THIS cell again.")
 
+images = []
+paths = []
 for pose in poses:
     prompt = (
         TRIGGER_WORD
@@ -870,12 +872,13 @@ for pose in poses:
         "guidance_scale": 6.0,
         "width": pose["width"],
         "height": pose["height"],
+        "output_type": "pil",
     }
     if CLIP_SKIP > 1:
         gen_kw["clip_skip"] = CLIP_SKIP
-    print("===", pose["name"], "===")
+    print("===", pose["name"], "seed", pose["seed"], "===")
     print("Prompt:", prompt)
-    gen = torch.Generator(device="cuda").manual_seed(pose["seed"])
+    gen = torch.Generator(device="cpu").manual_seed(pose["seed"])
     image = pipe(
         generator=gen,
         cross_attention_kwargs={"scale": 1.0},
@@ -883,13 +886,54 @@ for pose in poses:
     ).images[0]
     path = os.path.join(OUTPUT_DIR, "preview_swim_" + pose["name"] + ".png")
     image.save(path)
-    display(image)
+    images.append(image)
+    paths.append(path)
     print("Saved:", path)
-    upload_project_file(path)
 
-print("If waist_up looks like her but full body does not, that is the crop, not a broken LoRA.")
-print("In Forge, use After Detailer / face restore on full-body shots.")
-print("If even waist_up body is wrong, add swimsuit full-body photos and retrain.")"""
+# Fail loudly if two frames are almost the same pixels.
+for i in range(len(images)):
+    for j in range(i + 1, len(images)):
+        a = images[i].resize((128, 128)).convert("RGB")
+        b = images[j].resize((128, 128)).convert("RGB")
+        pa = list(a.getdata())
+        pb = list(b.getdata())
+        diff = 0
+        for k in range(len(pa)):
+            diff += abs(pa[k][0] - pb[k][0]) + abs(pa[k][1] - pb[k][1]) + abs(pa[k][2] - pb[k][2])
+        mean = diff / float(len(pa) * 3)
+        if mean < 4.0:
+            print("WARNING: ", poses[i]["name"], "looks almost identical to", poses[j]["name"])
+
+# One contact sheet so Colab cannot hide the extra images.
+thumb_w = 256
+thumb_h = 384
+labeled = []
+for pose, image in zip(poses, images):
+    im = image.copy()
+    im.thumbnail((thumb_w, thumb_h - 28))
+    canvas = Image.new("RGB", (thumb_w, thumb_h), (16, 16, 16))
+    canvas.paste(im, ((thumb_w - im.width) // 2, 28))
+    draw = ImageDraw.Draw(canvas)
+    draw.text((6, 6), pose["name"], fill=(255, 255, 255))
+    labeled.append(canvas)
+
+sheet_w = thumb_w * 3
+sheet_h = thumb_h * 2
+sheet = Image.new("RGB", (sheet_w, sheet_h), (0, 0, 0))
+for idx, tile in enumerate(labeled):
+    x = (idx % 3) * thumb_w
+    y = (idx // 3) * thumb_h
+    sheet.paste(tile, (x, y))
+sheet_path = os.path.join(OUTPUT_DIR, "preview_swim_SHEET.png")
+sheet.save(sheet_path)
+print("CONTACT SHEET (all 5 poses):")
+display(sheet)
+print("Saved:", sheet_path)
+upload_project_file(sheet_path)
+for path in paths:
+    upload_project_file(path)
+print("Wrote", len(paths), "pose files.")
+print("Judge the face on 1_waist_up. Judge the body on 2-5.")"""
 )
 
 md(
