@@ -46,17 +46,20 @@ This notebook trains a character LoRA with **kohya sd-scripts**, stores files on
 3. Approve Google Drive access
 4. **Cell 7:** `DRY_RUN = False` for full training (dry run already passed)
 
-## Current preset: Quick
-- 5 epochs, rank 16 - fast check (~15 min on T4)
-- After a good preview: set `TRAINING_PRESET = "standard"` in cell 2
+## Current preset: Standard (character identity)
+- Quick run already finished. Preview looked like a generic SD 1.5 woman, not the subject.
+- Cause: 5 epochs + UNet-only (text encoder was not trained), so `ohwx woman` did not bind to the face.
+- This notebook trains **UNet + text encoder**, 10 epochs, rank 32 (~30-40 min on T4).
+- Quick LoRA is kept as `loras/lapetitemilf_lora.safetensors` (not overwritten).
 
 ## Drive layout
 ```
 MyDrive/FiratSuper/
 |-- datasets/lapetitemilf/10_ohwx_woman/   # images + captions
-|-- output/lapetitemilf/                   # checkpoints
+|-- output/lapetitemilf/quick/             # Quick checkpoints (done)
+|-- output/lapetitemilf/standard/          # Standard checkpoints
 |-- models/                                # base model
-`-- loras/                                 # final LoRA
+`-- loras/                                 # final LoRA files
 ```"""
 )
 
@@ -89,7 +92,8 @@ SOURCE_FOLDER_ID = "1FOwDPkzqjmOo0LPuNKmgJtK4YuWU9Pmi"
 SOURCE_FOLDER_URL = "https://drive.google.com/drive/folders/1FOwDPkzqjmOo0LPuNKmgJtK4YuWU9Pmi"
 REPEATS = 10                      # how many times each image counts per epoch
 MODEL_TYPE = "sd15"               # "sd15" or "sdxl"
-TRAINING_PRESET = "quick"         # "quick" | "standard" | "thorough"
+TRAINING_PRESET = "standard"      # "quick" | "standard" | "thorough"
+TRAIN_TEXT_ENCODER = True         # required for character identity (trigger -> face)
 DRY_RUN = False                   # True = 5 steps (Gate 4). False = full training
 DATASET_PREPARED = True           # True = images+captions already on Drive
 AUTO_CAPTION = False              # captions already exist
@@ -98,8 +102,8 @@ STYLE_TAGS = "fashion photo, swimsuit, lingerie, high quality"
 
 PRESETS = {
     "quick": {"epochs": 5, "dim": 16, "alpha": 16, "lr": 1e-4, "save_every": 2},
-    "standard": {"epochs": 10, "dim": 32, "alpha": 16, "lr": 1e-4, "save_every": 2},
-    "thorough": {"epochs": 15, "dim": 32, "alpha": 16, "lr": 5e-5, "save_every": 3},
+    "standard": {"epochs": 10, "dim": 32, "alpha": 32, "lr": 1e-4, "save_every": 2},
+    "thorough": {"epochs": 15, "dim": 32, "alpha": 32, "lr": 5e-5, "save_every": 3},
 }
 p = PRESETS.get(TRAINING_PRESET, PRESETS["quick"])
 MAX_TRAIN_EPOCHS = p["epochs"]
@@ -115,10 +119,12 @@ ROOT = "/content/drive/MyDrive/FiratSuper"
 DATASET_DIR = (
     f"{ROOT}/datasets/{PROJECT_NAME}/{REPEATS}_{TRIGGER_WORD.replace(' ', '_')}"
 )
-OUTPUT_DIR = f"{ROOT}/output/{PROJECT_NAME}"
+# Separate output folder so Standard does not overwrite Quick checkpoints
+OUTPUT_DIR = f"{ROOT}/output/{PROJECT_NAME}/{TRAINING_PRESET}"
 MODELS_DIR = f"{ROOT}/models"
 LORAS_DIR = f"{ROOT}/loras"
-LOGS_DIR = f"{ROOT}/logs/{PROJECT_NAME}"
+LOGS_DIR = f"{ROOT}/logs/{PROJECT_NAME}/{TRAINING_PRESET}"
+LORA_BASENAME = PROJECT_NAME + "_" + TRAINING_PRESET
 
 for path in [DATASET_DIR, OUTPUT_DIR, MODELS_DIR, LORAS_DIR, LOGS_DIR]:
     os.makedirs(path, exist_ok=True)
@@ -137,9 +143,11 @@ else:
 print("Project:", PROJECT_NAME)
 print("Trigger:", TRIGGER_WORD)
 print("Preset:", TRAINING_PRESET, p)
+print("Train text encoder:", TRAIN_TEXT_ENCODER)
 print("Dry run:", DRY_RUN)
 print("Dataset:", DATASET_DIR)
 print("Output:", OUTPUT_DIR)
+print("LoRA export name:", LORA_BASENAME + ".safetensors")
 print("Base model file:", BASE_MODEL_FILE)"""
 )
 
@@ -318,7 +326,7 @@ def build_cmd(max_epochs, max_steps=None):
         "--pretrained_model_name_or_path=" + BASE_MODEL_FILE,
         "--train_data_dir=" + parent_dataset,
         "--output_dir=" + OUTPUT_DIR,
-        "--output_name=" + PROJECT_NAME + "_lora",
+        "--output_name=" + LORA_BASENAME,
         "--save_model_as=safetensors",
         "--save_precision=fp16",
         "--save_every_n_epochs=" + str(SAVE_EVERY_N_EPOCHS),
@@ -345,10 +353,16 @@ def build_cmd(max_epochs, max_steps=None):
         "--network_module=networks.lora",
         "--network_dim=" + str(NETWORK_DIM),
         "--network_alpha=" + str(NETWORK_ALPHA),
-        "--network_train_unet_only",
+        "--unet_lr=" + str(LEARNING_RATE),
+        "--max_grad_norm=1.0",
         "--logging_dir=" + LOGS_DIR,
         "--console_log_simple",
     ]
+    # Character LoRA: train CLIP so the trigger word maps to the face.
+    if TRAIN_TEXT_ENCODER:
+        c.append("--text_encoder_lr=5e-5")
+    else:
+        c.append("--network_train_unet_only")
     if max_steps is not None:
         c.append("--max_train_steps=" + str(max_steps))
     return c
@@ -358,6 +372,7 @@ if DRY_RUN:
     cmd = build_cmd(max_epochs=1, max_steps=5)
 else:
     print("=== Full training:", TRAINING_PRESET, "preset ===")
+    print("Train text encoder:", TRAIN_TEXT_ENCODER)
     cmd = build_cmd(max_epochs=MAX_TRAIN_EPOCHS)
 
 print("Command:")
@@ -392,28 +407,41 @@ import glob
 import os
 import shutil
 
-pattern = os.path.join(OUTPUT_DIR, "*.safetensors")
+pattern = os.path.join(OUTPUT_DIR, LORA_BASENAME + ".safetensors")
 files = glob.glob(pattern)
+if len(files) == 0:
+    pattern = os.path.join(OUTPUT_DIR, "*.safetensors")
+    files = glob.glob(pattern)
 files.sort(key=os.path.getmtime)
 if len(files) == 0:
     raise RuntimeError("No LoRA found in " + OUTPUT_DIR)
 
 latest = files[-1]
-final_name = PROJECT_NAME + "_lora.safetensors"
+final_name = LORA_BASENAME + ".safetensors"
 final_path = os.path.join(LORAS_DIR, final_name)
+
+# Keep the Quick LoRA if it still exists under the old name
+quick_path = os.path.join(LORAS_DIR, PROJECT_NAME + "_lora.safetensors")
+quick_bak = os.path.join(LORAS_DIR, PROJECT_NAME + "_quick.safetensors")
+if os.path.exists(quick_path) and not os.path.exists(quick_bak):
+    shutil.copy2(quick_path, quick_bak)
+    print("Kept Quick LoRA as:", quick_bak)
+
 shutil.copy2(latest, final_path)
 size_mb = round(os.path.getsize(final_path) / 1024 / 1024, 2)
+print("Exported from:", latest)
 print("LoRA exported to:", final_path)
 print("Size MB:", size_mb)"""
 )
 
 code(
-    """# @title 9) Quick preview (optional)
+    """# @title 9) Identity check: base model vs LoRA (same seed)
 import gc
 import os
 import torch
 from diffusers import DPMSolverMultistepScheduler, StableDiffusionPipeline
 from IPython.display import display
+from safetensors.torch import safe_open
 
 # Colab torchao is 0.10; peft requires >=0.16 and crashes.
 # Patch the name INSIDE peft.tuners.lora.torchao (from-import copy, not import_utils).
@@ -441,9 +469,19 @@ _disable_peft_torchao()
 if MODEL_TYPE != "sd15":
     print("Preview cell is for SD 1.5 only.")
 else:
-    lora_file = os.path.join(LORAS_DIR, PROJECT_NAME + "_lora.safetensors")
+    lora_file = os.path.join(LORAS_DIR, LORA_BASENAME + ".safetensors")
     if not os.path.exists(lora_file):
         raise RuntimeError("LoRA not found: " + lora_file + " - rerun cell 8.")
+
+    with safe_open(lora_file, framework="pt") as st:
+        keys = list(st.keys())
+    n_te = sum(1 for k in keys if "lora_te" in k or "text_encoder" in k)
+    n_unet = sum(1 for k in keys if "lora_unet" in k or k.startswith("unet"))
+    print("LoRA file:", lora_file)
+    print("LoRA keys:", len(keys), "| unet:", n_unet, "| text_encoder:", n_te)
+    if TRAIN_TEXT_ENCODER and n_te == 0:
+        print("WARNING: no text-encoder keys. Trigger word will not bind to the face.")
+
     if "pipe" in globals():
         try:
             del pipe
@@ -451,6 +489,7 @@ else:
             pass
         gc.collect()
         torch.cuda.empty_cache()
+
     print("Loading base model from Drive...")
     pipe = StableDiffusionPipeline.from_single_file(
         BASE_MODEL_FILE,
@@ -459,33 +498,69 @@ else:
     ).to("cuda")
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
     _disable_peft_torchao()
-    print("Loading LoRA:", lora_file)
+
+    prompt = (
+        TRIGGER_WORD
+        + ", portrait, close up face, looking at camera, fashion photography, high quality"
+    )
+    seed = 42
+    print("Prompt:", prompt)
+    print("Generating OFF (base model only)...")
+    gen0 = torch.Generator(device="cuda").manual_seed(seed)
+    image_off = pipe(
+        prompt,
+        num_inference_steps=25,
+        guidance_scale=7.5,
+        generator=gen0,
+    ).images[0]
+    off_path = os.path.join(OUTPUT_DIR, "preview_off.png")
+    image_off.save(off_path)
+    print("BASE MODEL (no LoRA) - if this already looks like the subject, ignore LoRA:")
+    display(image_off)
+
+    print("Loading LoRA at weight 1.0 (no fuse)...")
     pipe.load_lora_weights(lora_file)
-    pipe.fuse_lora(lora_scale=0.7)
-    prompt = TRIGGER_WORD + ", swimsuit, fashion photography, studio lighting, high quality"
-    image = pipe(prompt, num_inference_steps=25, guidance_scale=7.5).images[0]
-    preview_path = os.path.join(OUTPUT_DIR, "preview.png")
-    image.save(preview_path)
-    display(image)
-    print("Preview saved:", preview_path)
+    gen1 = torch.Generator(device="cuda").manual_seed(seed)
+    image_on = pipe(
+        prompt,
+        num_inference_steps=25,
+        guidance_scale=7.5,
+        generator=gen1,
+        cross_attention_kwargs={"scale": 1.0},
+    ).images[0]
+    on_path = os.path.join(OUTPUT_DIR, "preview_on.png")
+    image_on.save(on_path)
+    print("WITH LORA weight 1.0 - should look closer to the training photos:")
+    display(image_on)
+    print("Saved:", off_path)
+    print("Saved:", on_path)
+    print("If OFF and ON look the same, the LoRA did not apply.")
+    print("If ON is different but still not the subject, train longer (thorough).")
     print("Ignore HF_TOKEN warning - public SD 1.5 does not need a token.")"""
 )
 
 md(
     """## Done
 
-Your LoRA is at:
+Standard LoRA export:
+`MyDrive/FiratSuper/loras/lapetitemilf_standard.safetensors`
+
+Quick LoRA (kept, identity was weak):
 `MyDrive/FiratSuper/loras/lapetitemilf_lora.safetensors`
 
 ### Use in Automatic1111 / ComfyUI / Forge
-1. Copy the `.safetensors` file to `models/Lora/`
-2. Prompt: `ohwx woman, swimsuit, ...` (or lingerie)
-3. Start LoRA weight around `0.6-0.9`
+1. Copy the Standard `.safetensors` file to `models/Lora/`
+2. Prompt: `ohwx woman, portrait, close up face, ...`
+3. Character LoRA weight: start at `0.8-1.0`
 
-### Tips
-- If the result forgets the subject, add more images or raise `MAX_TRAIN_EPOCHS`
-- If it overfits (too close to one photo), lower epochs or add more variety
-- Keep Drive tidy - checkpoints take a lot of space"""
+### How to read cell 9
+- OFF = base SD 1.5 (generic woman)
+- ON = same prompt + LoRA
+- You want ON to look like the training photos, not like OFF
+
+### Next if identity is still weak
+- Set `TRAINING_PRESET = "thorough"` in cell 2 and rerun cell 7
+- Add more face close-ups to the dataset"""
 )
 
 nb = {

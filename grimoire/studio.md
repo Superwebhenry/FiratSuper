@@ -12,7 +12,9 @@
 - **kohya sd-scripts** v0.10.1 (Colab notebook)
 
 ## LoRAs
-- **lapetitemilf** (Quick, rank 16, 5 epochs): `MyDrive/FiratSuper/loras/lapetitemilf_lora.safetensors` (~13.6 MB)
+- **lapetitemilf (Quick, identity fail)**: `MyDrive/FiratSuper/loras/lapetitemilf_lora.safetensors` (~13.6 MB)
   - Trigger: `ohwx woman`
-  - Start weight: 0.6-0.8
+  - 5 epochs, rank 16, UNet only — preview did not match the subject
+- **lapetitemilf (Standard, pending)**: `MyDrive/FiratSuper/loras/lapetitemilf_standard.safetensors`
+  - 10 epochs, rank 32, UNet + text encoder
 

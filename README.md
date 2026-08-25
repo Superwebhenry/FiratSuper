@@ -50,15 +50,16 @@ MyDrive/FiratSuper/
 | `TRIGGER_WORD` | `ohwx woman` | מילת טריגר בפרומפט |
 | `SOURCE_FOLDER_ID` | `1FOwDPkzqjmOo0LPuNKmgJtK4YuWU9Pmi` | תיקיית התמונות ב-Drive |
 | `MODEL_TYPE` | `sd15` | `sd15` או `sdxl` |
-| `MAX_TRAIN_EPOCHS` | `10` | מספר epochs |
+| `TRAINING_PRESET` | `standard` | אחרי ש-Quick לא תפס זהות |
+| `TRAIN_TEXT_ENCODER` | `True` | חובה ל-LoRA של דמות |
 | `STYLE_TAGS` | swimsuit / lingerie | תגיות אופנה ב-captions |
 
 ## שימוש ב-LoRA אחרי האימון
 
-1. הורד את `MyDrive/FiratSuper/loras/lapetitemilf_lora.safetensors`
+1. הורד את `MyDrive/FiratSuper/loras/lapetitemilf_standard.safetensors`
 2. העתק ל-`models/Lora/` ב-Automatic1111, Forge, או ComfyUI
-3. בפרומפט: `ohwx woman, swimsuit, ...` או `ohwx woman, lingerie, ...`
-4. משקל LoRA להתחלה: `0.6–0.9`
+3. בפרומפט: `ohwx woman, portrait, close up face, ...`
+4. משקל LoRA לדמות: `0.8–1.0`
 
 ## דרישות
 
