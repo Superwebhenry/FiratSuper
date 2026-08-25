@@ -7,10 +7,10 @@
 - **Gate 4 (Dry run)**: GO — 5 steps passed on Quick (same env)
 - **Quick training**: DONE — identity FAIL. Generic SD 1.5 woman in `preview.png`.
 - **Quick LoRA**: `MyDrive/FiratSuper/loras/lapetitemilf_lora.safetensors` (keep; do not overwrite)
-- **Blocked**: Colab Drive mount (`credential propagation was unsuccessful`)
-- **TRAIN_V12**: pending upload — cell 2 retries Google login, then copies the dataset via Drive API if FUSE still fails
+- **Blocked**: Colab Drive mount (`credential propagation was unsuccessful`) on TRAIN_V10
+- **TRAIN_V12** (use this): https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/SD_LoRA_Training_Colab.ipynb
+  Cell 2 skips mount if Drive is already connected, retries Google login, then copies the dataset via Drive API if FUSE still fails.
 - **TRAIN_V11**: https://colab.research.google.com/drive/1lXcxkXOl1jUIAgfdg-S4fsFf-4YliK7x
-  Cell 2 skips mount if Drive is already connected via the Files sidebar.
 - **TRAIN_V10**: https://colab.research.google.com/drive/1bPNQfZ5ZNOfUSmmFlWhtW8KDICjehSjW
   Do not use: cell 2 always calls `drive.mount()` and can fail even after a UI mount.
 - **TRAIN_V9** (Quick, do not retrain): https://colab.research.google.com/drive/1CuMqPFjomW-gIt07wf3j45Fx0d-yEyZR
