@@ -409,18 +409,34 @@ print("Size MB:", size_mb)"""
 
 code(
     """# @title 9) Quick preview (optional)
+import gc
 import os
 import torch
 from diffusers import DPMSolverMultistepScheduler, StableDiffusionPipeline
 from IPython.display import display
 
-# Colab ships torchao 0.10. Newer peft requires >=0.16 and crashes in load_lora_weights.
-# SD 1.5 preview does not need torchao. Disable the check.
-try:
-    import peft.import_utils as peft_iu
-    peft_iu.is_torchao_available = lambda: False
-except Exception:
-    pass
+# Colab torchao is 0.10; peft requires >=0.16 and crashes.
+# Patch the name INSIDE peft.tuners.lora.torchao (from-import copy, not import_utils).
+def _disable_peft_torchao():
+    def _no(*args, **kwargs):
+        return False
+
+    def _skip(*args, **kwargs):
+        return None
+
+    try:
+        import peft.import_utils as iu
+        iu.is_torchao_available = _no
+    except Exception:
+        pass
+    try:
+        import peft.tuners.lora.torchao as tao
+        tao.is_torchao_available = _no
+        tao.dispatch_torchao = _skip
+    except Exception:
+        pass
+
+_disable_peft_torchao()
 
 if MODEL_TYPE != "sd15":
     print("Preview cell is for SD 1.5 only.")
@@ -428,6 +444,13 @@ else:
     lora_file = os.path.join(LORAS_DIR, PROJECT_NAME + "_lora.safetensors")
     if not os.path.exists(lora_file):
         raise RuntimeError("LoRA not found: " + lora_file + " - rerun cell 8.")
+    if "pipe" in globals():
+        try:
+            del pipe
+        except Exception:
+            pass
+        gc.collect()
+        torch.cuda.empty_cache()
     print("Loading base model from Drive...")
     pipe = StableDiffusionPipeline.from_single_file(
         BASE_MODEL_FILE,
@@ -435,6 +458,7 @@ else:
         safety_checker=None,
     ).to("cuda")
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+    _disable_peft_torchao()
     print("Loading LoRA:", lora_file)
     pipe.load_lora_weights(lora_file)
     pipe.fuse_lora(lora_scale=0.7)

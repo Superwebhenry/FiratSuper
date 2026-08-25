@@ -6,7 +6,7 @@
 - **Gate 3 (Environment)**: GO — Colab T4 14.6 GB, model + dataset on Drive
 - **Gate 4 (Dry run)**: GO — 5 steps passed
 - **Training**: DONE — Quick LoRA is on Drive (`MyDrive/FiratSuper/loras/lapetitemilf_lora.safetensors`, ~13.6 MB).
-- **Preview (cell 9)**: Failed on TRAIN_V7 — peft vs Colab torchao 0.10 (`ImportError: only versions above 0.16.0`). HF_TOKEN warning is harmless.
-- **Open this for a fixed preview cell**: https://colab.research.google.com/drive/1jtwQF22QNXmrxcBamlAfddVCSUkSNPiG (TRAIN_V8)
-- **Faster on the current runtime**: paste the torchao bypass, then rerun cell 9. Do not retrain.
+- **Preview (cell 9)**: V8 patch missed because peft copies `is_torchao_available` into `peft.tuners.lora.torchao`. TRAIN_V9 patches that module (and `dispatch_torchao`).
+- **On the current runtime**: run a NEW cell with the torchao module patch, then rerun cell 9. Do not add it at the end of cell 9. Do not retrain.
+- **TRAIN_V9**: will be uploaded after generate.
 
