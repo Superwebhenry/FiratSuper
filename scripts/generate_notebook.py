@@ -204,28 +204,21 @@ subprocess.run(
     check=False,
 )
 
-# Fallback if transformers 5 is still active: kohya still imports CLIPFeatureExtractor
+# Fallback: kohya still imports CLIPFeatureExtractor (removed in transformers 5)
 lpw = os.path.join(SD_SCRIPTS, "library", "lpw_stable_diffusion.py")
 if os.path.exists(lpw):
     text = open(lpw, encoding="utf-8").read()
     old = "from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection"
-    new = (
-        "try:\\n"
-        "    from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection\\n"
-        "except ImportError:\\n"
-        "    from transformers import CLIPImageProcessor as CLIPFeatureExtractor\\n"
-        "    from transformers import CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection"
-    )
-    if old in text and "CLIPImageProcessor as CLIPFeatureExtractor" not in text:
+    new = "from transformers import CLIPImageProcessor as CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer, CLIPVisionModelWithProjection"
+    if old in text:
         open(lpw, "w", encoding="utf-8").write(text.replace(old, new, 1))
-        print("Patched CLIPFeatureExtractor import for transformers 5.x")
+        print("Patched CLIPFeatureExtractor -> CLIPImageProcessor")
 
 import transformers
 print("transformers:", transformers.__version__)
 if transformers.__version__.startswith("5"):
     raise RuntimeError(
-        "transformers 5.x is still loaded in this runtime. "
-        "Runtime → Restart session, then run cells 1–4 and 7 again (do not Run all from a dirty kernel)."
+        "transformers 5.x is still loaded. Runtime > Restart session, then run cells 1-4 and 7 again."
     )
 print("sd-scripts ready:", SD_SCRIPTS)
 print("train_network.py exists:", os.path.exists(os.path.join(SD_SCRIPTS, "train_network.py")))"""
@@ -361,10 +354,10 @@ def build_cmd(max_epochs, max_steps=None):
     return c
 
 if DRY_RUN:
-    print("\\n=== Gate 4: Dry Run (5 steps) ===")
+    print("=== Gate 4: Dry Run (5 steps) ===")
     cmd = build_cmd(max_epochs=1, max_steps=5)
 else:
-    print("\\n=== Full training:", TRAINING_PRESET, "preset ===")
+    print("=== Full training:", TRAINING_PRESET, "preset ===")
     cmd = build_cmd(max_epochs=MAX_TRAIN_EPOCHS)
 
 print("Command:")
@@ -385,10 +378,10 @@ print(log)
 if result.returncode != 0:
     tail = log[-4000:] if log else ""
     raise RuntimeError(
-        "Training failed (exit " + str(result.returncode) + "). Last log lines:\\n" + tail
+        "Training failed (exit " + str(result.returncode) + "). Last log lines: " + tail
     )
 if DRY_RUN:
-    print("\\nDry run PASSED. Set DRY_RUN = False in cell 2 and rerun this cell for full training.")
+    print("Dry run PASSED. Set DRY_RUN = False in cell 2 and rerun this cell for full training.")
 else:
     print("Training finished.")"""
 )
@@ -480,6 +473,11 @@ for i, cell in enumerate(notebook.cells):
         cell["id"] = f"cell-{i:04d}"
 
 out = Path("/workspace/notebooks/SD_LoRA_Training_Colab.ipynb")
-nbformat.write(notebook, out)
-json.loads(out.read_text(encoding="utf-8"), strict=True)
-print(f"Wrote {out} ({len(cells)} cells)")
+payload = json.loads(nbformat.writes(notebook))
+# ASCII-only JSON: Colab/Drive corrupt notebooks that contain raw control chars or mixed UTF-8.
+text = json.dumps(payload, ensure_ascii=True, indent=1) + "\n"
+out.write_text(text, encoding="ascii")
+json.loads(out.read_text(encoding="ascii"), strict=True)
+if any(ord(ch) < 32 and ch not in "\n\r\t" for ch in text):
+    raise RuntimeError("notebook contains raw control characters")
+print(f"Wrote {out} ({len(cells)} cells, {out.stat().st_size} bytes)")

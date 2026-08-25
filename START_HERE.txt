@@ -1,18 +1,10 @@
-FiratSuper — TRAIN_V5 (תיקון transformers)
-==========================================
+FiratSuper — TRAIN_V6
+=====================
 
-פתח:
-  https://colab.research.google.com/drive/REPLACE_ME
+Colab JSON error on V5 is fixed. Open TRAIN_V6 only.
 
-מה נשבר: Colab התקין transformers 5.x — CLIPFeatureExtractor הוסר.
-מה תוקן: pin ל-transformers 4.x + תיקון import ב-kohya.
-
-שלבים (חשוב — runtime נקי):
-1. Runtime → Disconnect and delete runtime
-2. Runtime → T4 GPU
-3. פתח TRAIN_V5.ipynb
-4. הרץ תאים 1 → 4, ואז 7
-   DRY_RUN = False כבר מוגדר (ה-dry run עבר)
-5. אחרי Training finished → תאים 8 ו-9
-
-אל תריץ את הנוטבוק הישן (TRAIN_V4).
+Steps:
+1. Runtime -> Disconnect and delete runtime
+2. Runtime -> T4 GPU
+3. Run cells 1-4, then 7 (DRY_RUN = False)
+4. After Training finished: cells 8 and 9
