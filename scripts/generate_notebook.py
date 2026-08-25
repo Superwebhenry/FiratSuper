@@ -42,7 +42,7 @@ This notebook trains a character LoRA with **kohya sd-scripts**, stores files on
 
 ## Before you start
 1. **Runtime > Change runtime type > GPU** (T4 for SD 1.5)
-2. Run cells **in order** (1 to 9)
+2. Run cells **in order** (1 to 10)
 3. Approve Google Drive access. In the popup click Continue, then **Allow ALL permissions** (do not uncheck boxes).
 4. **Cell 7:** `DRY_RUN = False` for full training (dry run already passed)
 
@@ -789,6 +789,77 @@ else:
     print("Ignore HF_TOKEN warning - public checkpoints do not need a token.")"""
 )
 
+code(
+    """# @title 10) Body check (run after cell 9, no retraining)
+import os
+import torch
+from IPython.display import display
+
+if "pipe" not in globals():
+    raise RuntimeError("Run cell 9 first so the model and LoRA are loaded.")
+
+lora_file = os.path.join(LORAS_DIR, LORA_BASENAME + ".safetensors")
+if not os.path.exists(lora_file):
+    raise RuntimeError("LoRA not found: " + lora_file)
+
+body_prompt = (
+    TRIGGER_WORD
+    + ", standing, full body, entire body visible from head to toe, "
+    + "looking at camera, swimsuit, fashion photography, photorealistic, "
+    + "raw photo, natural lighting, high quality"
+)
+negative = (
+    "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
+    + "doll, deformed, extra fingers, extra legs, cropped, close up"
+)
+seed = 42
+gen_kw = {
+    "prompt": body_prompt,
+    "negative_prompt": negative,
+    "num_inference_steps": 28,
+    "guidance_scale": 6.0,
+    "width": 512,
+    "height": 768,
+}
+if CLIP_SKIP > 1:
+    gen_kw["clip_skip"] = CLIP_SKIP
+
+print("Body prompt:", body_prompt)
+print("This tests body identity. Face preview in cell 9 does not cover this.")
+
+try:
+    pipe.unload_lora_weights()
+except Exception:
+    pass
+
+print("Generating BODY OFF (base model only)...")
+gen0 = torch.Generator(device="cuda").manual_seed(seed)
+image_off = pipe(generator=gen0, **gen_kw).images[0]
+off_path = os.path.join(OUTPUT_DIR, "preview_body_off.png")
+image_off.save(off_path)
+print("BODY BASE MODEL (no LoRA) - generic figure is expected:")
+display(image_off)
+
+print("Loading LoRA at weight 1.0...")
+pipe.load_lora_weights(lora_file)
+gen1 = torch.Generator(device="cuda").manual_seed(seed)
+image_on = pipe(
+    generator=gen1,
+    cross_attention_kwargs={"scale": 1.0},
+    **gen_kw,
+).images[0]
+on_path = os.path.join(OUTPUT_DIR, "preview_body_on.png")
+image_on.save(on_path)
+print("BODY WITH LORA - should match her figure from the training photos:")
+display(image_on)
+print("Saved:", off_path)
+print("Saved:", on_path)
+upload_project_file(off_path)
+upload_project_file(on_path)
+print("If BODY ON still looks generic, the dataset is mostly face/upper body.")
+print("Fix: add 10-15 standing head-to-toe photos, then retrain Thorough.")"""
+)
+
 md(
     """## Done
 
@@ -804,18 +875,20 @@ Quick LoRA (kept, identity was weak):
 ### Use in Automatic1111 / ComfyUI / Forge
 1. Load **Realistic Vision V5.1** as the checkpoint (not vanilla SD 1.5)
 2. Copy the Thorough `.safetensors` file to `models/Lora/`
-3. Prompt: `ohwx woman, portrait, close up face, photorealistic, raw photo, ...`
-4. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin`
-5. CLIP skip: 2. Character LoRA weight: start at `0.8-1.0`
+3. Face: `ohwx woman, portrait, close up face, photorealistic, raw photo`
+4. Body: `ohwx woman, standing, full body, swimsuit, photorealistic, raw photo`
+5. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin, cropped`
+6. CLIP skip: 2. Character LoRA weight: start at `0.8-1.0`. Body shots: 512x768
 
-### How to read cell 9
-- OFF = Realistic Vision only (generic photoreal woman)
-- ON = same prompt + LoRA
-- You want ON to look like the training photos, not like OFF
+### How to read cell 9 and cell 10
+- Cell 9 = face. Cell 10 = full body. Same LoRA, no extra training.
+- OFF = Realistic Vision only. ON = LoRA.
+- You want ON to look like the training photos
 
-### Next if identity is still weak
-- Add 10-15 sharper face close-ups (the current set is small phone/social JPGs)
-- Keep Thorough settings and rerun cell 7"""
+### Next if body identity is weak
+- The current 25 captions are mostly hair + top, not head-to-toe
+- Add 10-15 standing full-body photos (different poses, same person)
+- Caption them `ohwx woman, standing, full body, ...` then rerun Thorough"""
 )
 
 nb = {
