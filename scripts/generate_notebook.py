@@ -790,74 +790,106 @@ else:
 )
 
 code(
-    """# @title 10) Body check (run after cell 9, no retraining)
+    """# @title 10) Swimsuit pose sheet (run after cell 9, no retraining)
 import os
 import torch
 from IPython.display import display
 
 if "pipe" not in globals():
-    raise RuntimeError("Run cell 9 first so the model and LoRA are loaded.")
+    raise RuntimeError("Run cell 9 first so the model is loaded.")
 
 lora_file = os.path.join(LORAS_DIR, LORA_BASENAME + ".safetensors")
 if not os.path.exists(lora_file):
     raise RuntimeError("LoRA not found: " + lora_file)
 
-body_prompt = (
-    TRIGGER_WORD
-    + ", standing, full body, entire body visible from head to toe, "
-    + "looking at camera, swimsuit, fashion photography, photorealistic, "
-    + "raw photo, natural lighting, high quality"
-)
-negative = (
-    "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
-    + "doll, deformed, extra fingers, extra legs, cropped, close up"
-)
-seed = 42
-gen_kw = {
-    "prompt": body_prompt,
-    "negative_prompt": negative,
-    "num_inference_steps": 28,
-    "guidance_scale": 6.0,
-    "width": 512,
-    "height": 768,
-}
-if CLIP_SKIP > 1:
-    gen_kw["clip_skip"] = CLIP_SKIP
-
-print("Body prompt:", body_prompt)
-print("This tests body identity. Face preview in cell 9 does not cover this.")
-
 try:
     pipe.unload_lora_weights()
 except Exception:
     pass
-
-print("Generating BODY OFF (base model only)...")
-gen0 = torch.Generator(device="cuda").manual_seed(seed)
-image_off = pipe(generator=gen0, **gen_kw).images[0]
-off_path = os.path.join(OUTPUT_DIR, "preview_body_off.png")
-image_off.save(off_path)
-print("BODY BASE MODEL (no LoRA) - generic figure is expected:")
-display(image_off)
-
-print("Loading LoRA at weight 1.0...")
 pipe.load_lora_weights(lora_file)
-gen1 = torch.Generator(device="cuda").manual_seed(seed)
-image_on = pipe(
-    generator=gen1,
-    cross_attention_kwargs={"scale": 1.0},
-    **gen_kw,
-).images[0]
-on_path = os.path.join(OUTPUT_DIR, "preview_body_on.png")
-image_on.save(on_path)
-print("BODY WITH LORA - should match her figure from the training photos:")
-display(image_on)
-print("Saved:", off_path)
-print("Saved:", on_path)
-upload_project_file(off_path)
-upload_project_file(on_path)
-print("If BODY ON still looks generic, the dataset is mostly face/upper body.")
-print("Fix: add 10-15 standing head-to-toe photos, then retrain Thorough.")"""
+
+# Full-body SD 1.5 shrinks the face (few pixels). Waist-up keeps the face readable.
+negative = (
+    "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
+    "doll, deformed, extra fingers, extra legs, extra people, cropped head, "
+    "close up face only"
+)
+poses = [
+    {
+        "name": "waist_up",
+        "extra": "waist up, swimsuit, looking at camera, detailed face",
+        "seed": 42,
+        "width": 512,
+        "height": 640,
+    },
+    {
+        "name": "stand_front",
+        "extra": "standing, full body, front view, swimsuit, looking at camera, detailed face",
+        "seed": 43,
+        "width": 512,
+        "height": 768,
+    },
+    {
+        "name": "stand_side",
+        "extra": "standing, full body, three quarter view, swimsuit, looking at camera, detailed face",
+        "seed": 44,
+        "width": 512,
+        "height": 768,
+    },
+    {
+        "name": "sitting",
+        "extra": "sitting, full body, swimsuit, looking at camera, detailed face",
+        "seed": 45,
+        "width": 512,
+        "height": 768,
+    },
+    {
+        "name": "walking",
+        "extra": "walking, full body, swimsuit, fashion photography, detailed face",
+        "seed": 46,
+        "width": 512,
+        "height": 768,
+    },
+]
+
+print("Swimsuit pose sheet. Same LoRA, no extra training.")
+print("WAIST_UP is the one where the face should still look like her.")
+print("FULL BODY shots often lose the face on SD 1.5 - the head is too small.")
+
+for pose in poses:
+    prompt = (
+        TRIGGER_WORD
+        + ", "
+        + pose["extra"]
+        + ", photorealistic, raw photo, natural lighting, high quality"
+    )
+    gen_kw = {
+        "prompt": prompt,
+        "negative_prompt": negative,
+        "num_inference_steps": 28,
+        "guidance_scale": 6.0,
+        "width": pose["width"],
+        "height": pose["height"],
+    }
+    if CLIP_SKIP > 1:
+        gen_kw["clip_skip"] = CLIP_SKIP
+    print("===", pose["name"], "===")
+    print("Prompt:", prompt)
+    gen = torch.Generator(device="cuda").manual_seed(pose["seed"])
+    image = pipe(
+        generator=gen,
+        cross_attention_kwargs={"scale": 1.0},
+        **gen_kw,
+    ).images[0]
+    path = os.path.join(OUTPUT_DIR, "preview_swim_" + pose["name"] + ".png")
+    image.save(path)
+    display(image)
+    print("Saved:", path)
+    upload_project_file(path)
+
+print("If waist_up looks like her but full body does not, that is the crop, not a broken LoRA.")
+print("In Forge, use After Detailer / face restore on full-body shots.")
+print("If even waist_up body is wrong, add swimsuit full-body photos and retrain.")"""
 )
 
 md(
@@ -876,19 +908,24 @@ Quick LoRA (kept, identity was weak):
 1. Load **Realistic Vision V5.1** as the checkpoint (not vanilla SD 1.5)
 2. Copy the Thorough `.safetensors` file to `models/Lora/`
 3. Face: `ohwx woman, portrait, close up face, photorealistic, raw photo`
-4. Body: `ohwx woman, standing, full body, swimsuit, photorealistic, raw photo`
-5. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin, cropped`
-6. CLIP skip: 2. Character LoRA weight: start at `0.8-1.0`. Body shots: 512x768
+4. Waist-up (face + body): `ohwx woman, waist up, swimsuit, looking at camera, photorealistic, raw photo`
+5. Full body poses (512x768). Change only the pose words, keep the rest:
+   - `ohwx woman, standing, full body, front view, swimsuit, photorealistic, raw photo`
+   - `ohwx woman, standing, full body, three quarter view, swimsuit, photorealistic, raw photo`
+   - `ohwx woman, sitting, full body, swimsuit, photorealistic, raw photo`
+   - `ohwx woman, walking, full body, swimsuit, photorealistic, raw photo`
+6. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin, extra people`
+7. CLIP skip: 2. LoRA weight `0.8-1.0`. Full-body face: enable After Detailer if you have it.
 
 ### How to read cell 9 and cell 10
-- Cell 9 = face. Cell 10 = full body. Same LoRA, no extra training.
-- OFF = Realistic Vision only. ON = LoRA.
-- You want ON to look like the training photos
+- Cell 9 = face close-up. Cell 10 = swimsuit pose sheet (5 images, ~2 min)
+- `waist_up` should still look like her. Full-body shots often lose the face on SD 1.5
+- Same LoRA, no extra training
 
 ### Next if body identity is weak
 - The current 25 captions are mostly hair + top, not head-to-toe
-- Add 10-15 standing full-body photos (different poses, same person)
-- Caption them `ohwx woman, standing, full body, ...` then rerun Thorough"""
+- Add 10-15 standing full-body swimsuit photos (different poses, same person)
+- Caption them `ohwx woman, standing, full body, swimsuit, ...` then rerun Thorough"""
 )
 
 nb = {

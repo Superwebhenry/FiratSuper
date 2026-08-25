@@ -31,8 +31,12 @@ Retrain **Thorough** on **Realistic Vision V5.1** (photoreal SD 1.5):
 - Face preview looked better than Standard (user: "looks better").
 - Body was **not** tested in cell 9 (portrait close-up only).
 
-## Body (pending eval, no retrain yet)
+## Body (user: face did not match on the full-body shot)
 
-Cell 10 generates full-body OFF vs ON from the existing Thorough file.
+Expected on SD 1.5: at 512x768 the face is a tiny patch, so identity drops even when a portrait LoRA is good.
 
-Captions are mostly hair + top. If BODY ON is still generic, add 10-15 standing head-to-toe photos and retrain. Do not raise LoRA weight to fake a body that was not in the set.
+Cell 10 now generates a **swimsuit pose sheet** (no retraining):
+- waist_up (face should still match)
+- stand_front, stand_side, sitting, walking
+
+If waist_up looks like her and full-body does not, use After Detailer in Forge for full-body, or add head-to-toe swimsuit photos and retrain. Do not raise LoRA weight to fake a body/face that the crop cannot hold.
