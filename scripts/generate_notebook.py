@@ -53,11 +53,10 @@ This is a Colab Drive-login popup issue, not the training code.
 3. In the popup: Continue, then **Allow ALL permissions** (do not uncheck boxes)
 4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
-## Current preset: body LoRA is trained - tighten identity with prompts (no retrain)
-- File: `loras/lapetitemilf_body.safetensors`
-- Body poses are closer than Thorough. Face is still not locked.
-- Do not run cell 7 again. Reopen this notebook, run cell 9 then cell 10.
-- Judge the face on cell 9 and `1_waist_up`. Full-body faces stay soft on SD 1.5.
+## Current preset: face-lock run (new close-ups are in Drive)
+- Keep Thorough for portraits and Body for figure. This run writes `lapetitemilf_face.safetensors`.
+- Run cells 1-6, then **cell 6b** (imports new face photos, skips ones already copied), then cell 7.
+- Do not overwrite `lapetitemilf_body.safetensors`.
 
 ## Drive layout
 ```
@@ -293,7 +292,7 @@ REPEATS = 10                      # how many times each image counts per epoch
 MODEL_TYPE = "sd15"               # "sd15" or "sdxl"
 BASE_CHECKPOINT = "realistic_vision"  # "sd15" or "realistic_vision"
 TRAINING_PRESET = "thorough"      # "quick" | "standard" | "thorough"
-RUN_NAME = "body"                 # new file; does not overwrite Thorough portraits
+RUN_NAME = "face"                 # new file; does not overwrite body or Thorough
 TRAIN_TEXT_ENCODER = True         # required for character identity (trigger -> face)
 DRY_RUN = False                   # True = 5 steps (Gate 4). False = full training
 DATASET_PREPARED = True           # True = images+captions already on Drive
@@ -384,11 +383,24 @@ if os.path.isdir(DATASET_DIR):
         ]
     )
 print("Full-body photos imported (body_*):", n_body)
-if n_body < 10:
-    print("Next: run cell 6b to copy ADD_BODY_PHOTOS into the training folder.")
+n_face = 0
+if os.path.isdir(DATASET_DIR):
+    n_face = len(
+        [
+            f
+            for f in os.listdir(DATASET_DIR)
+            if f.startswith("face_") and f.lower().endswith(IMAGE_EXT)
+        ]
+    )
+print("Face close-ups imported (face_*):", n_face)
+print("This run writes:", LORA_BASENAME + ".safetensors")
+if RUN_TAG == "face" and n_face < 8:
+    print("Next: run cell 6b to import new close-ups from ADD_BODY_PHOTOS.")
     print("Inbox: https://drive.google.com/drive/folders/1YK-nUV4ihzqpDhxZICwM9YFngFbS34LP")
+elif RUN_TAG == "body" and n_body < 10:
+    print("Next: run cell 6b to copy full-body photos into the training folder.")
 else:
-    print("Body photos are in the dataset. Next: cell 7 writes", LORA_BASENAME + ".safetensors")"""
+    print("Imported photos look ready. Next after 6b: cell 7.")"""
 )
 
 code(
@@ -545,7 +557,7 @@ print("Captions ready")"""
 )
 
 code(
-    """# @title 6b) Import full-body photos (run after you upload them)
+    """# @title 6b) Import inbox photos (skips ones already copied)
 import os
 import shutil
 
@@ -559,47 +571,59 @@ skipped = [
     if (not f.lower().endswith(IMAGE_EXT)) and (not f.lower().endswith(".txt"))
 ]
 print("Inbox:", BODY_INBOX)
-print("Photos waiting:", len(incoming))
+print("Photos in inbox:", len(incoming))
 if skipped:
     print("Skipped (not images):", ", ".join(skipped))
 print("Upload folder: https://drive.google.com/drive/folders/1YK-nUV4ihzqpDhxZICwM9YFngFbS34LP")
 if len(incoming) == 0:
-    print("Empty. Add 10-15 head-to-toe swimsuit photos, then rerun THIS cell.")
-    print("Do not run cell 7 until this count is 10 or more.")
+    print("Empty inbox.")
 else:
     copied = 0
+    skipped_exist = 0
+    skipped_nocap = 0
     for name in sorted(incoming):
         src = os.path.join(BODY_INBOX, name)
         stem = os.path.splitext(name)[0].replace(" ", "_")
         ext = os.path.splitext(name)[1].lower()
         if ext == ".jpeg":
             ext = ".jpg"
-        dst = os.path.join(DATASET_DIR, "body_" + stem + ext)
-        shutil.copy2(src, dst)
-        cap = os.path.splitext(dst)[0] + ".txt"
+        already = os.path.join(DATASET_DIR, "body_" + stem + ext)
+        dst = os.path.join(DATASET_DIR, "face_" + stem + ext)
+        if os.path.isfile(already) or os.path.isfile(dst):
+            skipped_exist += 1
+            continue
         inbox_txt = os.path.splitext(src)[0] + ".txt"
-        if os.path.isfile(inbox_txt):
-            text = open(inbox_txt, encoding="utf-8").read().strip()
-            if not text.lower().startswith(TRIGGER_WORD.lower()):
-                text = TRIGGER_WORD + ", " + text
-        else:
-            text = (
-                TRIGGER_WORD
-                + ", full body, swimsuit, looking at camera, "
-                + "photorealistic, raw photo, natural skin, high quality"
-            )
+        if not os.path.isfile(inbox_txt):
+            print(" skip (no caption, not used):", name)
+            skipped_nocap += 1
+            continue
+        shutil.copy2(src, dst)
+        text = open(inbox_txt, encoding="utf-8").read().strip()
+        if not text.lower().startswith(TRIGGER_WORD.lower()):
+            text = TRIGGER_WORD + ", " + text
+        cap = os.path.splitext(dst)[0] + ".txt"
         open(cap, "w", encoding="utf-8").write(text)
         copied += 1
         print(" ", os.path.basename(dst))
         print("   ", text[:140])
     n_img = len([f for f in os.listdir(DATASET_DIR) if f.lower().endswith(IMAGE_EXT)])
-    print("Copied into training folder:", copied)
+    n_face = len(
+        [
+            f
+            for f in os.listdir(DATASET_DIR)
+            if f.startswith("face_") and f.lower().endswith(IMAGE_EXT)
+        ]
+    )
+    print("Already in dataset, skipped:", skipped_exist)
+    print("No caption, skipped:", skipped_nocap)
+    print("Copied new face photos:", copied)
+    print("Face photos in dataset:", n_face)
     print("Dataset images now:", n_img)
-    if copied < 10:
-        print("Still under 10 body photos. Add more before cell 7.")
+    if n_face < 8:
+        print("Still under 8 face photos. Add more close-ups before cell 7.")
     else:
-        print("Ready. Confirm RUN_NAME = 'body' in cell 2, rerun cell 2, then run cell 7.")
-        print("That writes lapetitemilf_body.safetensors and keeps Thorough portraits.")"""
+        print("Ready. Confirm RUN_NAME = 'face' in cell 2, then run cell 7.")
+        print("That writes lapetitemilf_face.safetensors and keeps body + Thorough.")"""
 )
 
 code(
@@ -629,21 +653,31 @@ body_files = [
     for f in os.listdir(DATASET_DIR)
     if f.startswith("body_") and f.lower().endswith(IMAGE_EXT)
 ]
+face_files = [
+    f
+    for f in os.listdir(DATASET_DIR)
+    if f.startswith("face_") and f.lower().endswith(IMAGE_EXT)
+]
 print("Imported full-body photos (body_*):", len(body_files))
+print("Imported face photos (face_*):", len(face_files))
 print("This run would write:", LORA_BASENAME + ".safetensors")
 if not DRY_RUN:
-    if len(body_files) < 10:
+    if RUN_TAG == "face":
+        if len(face_files) < 8:
+            raise RuntimeError(
+                "Stopped. Need 8+ face close-ups. Run cell 6b after adding "
+                "captioned photos to ADD_BODY_PHOTOS. Do not overwrite "
+                "lapetitemilf_body.safetensors."
+            )
+    elif RUN_TAG == "body":
+        if len(body_files) < 10:
+            raise RuntimeError(
+                "Stopped. Need 10+ body_* photos. Run cell 6b, then this cell."
+            )
+    else:
         raise RuntimeError(
-            "Stopped. Cell 10 swimsuit poses were not the subject because the "
-            "25 training photos are not head-to-toe. Upload 10-15 full-body "
-            "swimsuit photos to ADD_BODY_PHOTOS, run cell 6b, set RUN_NAME = "
-            "'body' in cell 2, rerun cell 2, then this cell. Do not overwrite "
-            "lapetitemilf_thorough.safetensors."
-        )
-    if RUN_TAG != "body":
-        raise RuntimeError(
-            "Stopped. Set RUN_NAME = 'body' in cell 2 so Thorough portraits "
-            "are not overwritten. Then rerun cell 2 and this cell."
+            "Stopped. Set RUN_NAME to 'face' or 'body' so Thorough and body "
+            "files are not overwritten."
         )
 
 parent_dataset = os.path.dirname(DATASET_DIR)
@@ -1056,8 +1090,11 @@ md(
 Thorough LoRA export (portraits, keep this file):
 `MyDrive/FiratSuper/loras/lapetitemilf_thorough.safetensors`
 
-Body LoRA export (this run, after cell 6b + cell 7):
+Body LoRA export (keep this file):
 `MyDrive/FiratSuper/loras/lapetitemilf_body.safetensors`
+
+Face LoRA export (this run, after cell 6b + cell 7):
+`MyDrive/FiratSuper/loras/lapetitemilf_face.safetensors`
 
 Standard LoRA (kept, identity was close):
 `MyDrive/FiratSuper/loras/lapetitemilf_standard.safetensors`
@@ -1067,7 +1104,7 @@ Quick LoRA (kept, identity was weak):
 
 ### Use in Automatic1111 / ComfyUI / Forge
 1. Load **Realistic Vision V5.1** as the checkpoint (not vanilla SD 1.5)
-2. Copy `lapetitemilf_body.safetensors` to `models/Lora/` (portraits can still use Thorough)
+2. Copy `lapetitemilf_face.safetensors` to `models/Lora/` after this run (body file still exists)
 3. Always keep these identity words after the trigger:
    `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman`
 4. Face: `..., portrait, close up face, photorealistic, raw photo`
@@ -1084,10 +1121,9 @@ Quick LoRA (kept, identity was weak):
 - Judge identity on cell 9 and `waist_up`. Poses 2-5 are for the body
 - Same LoRA, no extra training
 
-### Next if the face is still not her
-- Do not retrain on the same photos
-- Add 8-10 sharp face close-ups (original camera files, not WhatsApp)
-- Then we can do a short face-lock run as a new file"""
+### Next after this face run
+- Run cell 9 then cell 10. Judge identity on cell 9 and waist_up
+- Keep body + Thorough files. Do not overwrite them"""
 )
 
 nb = {

@@ -20,3 +20,11 @@
 - Cause mix: SD 1.5 full-body faces are tiny; eval prompts were only `ohwx woman + swimsuit` so Realistic Vision pulled a generic bikini woman; original photos are still small social JPGs.
 - Next: **prompt lock, no retrain** (hair/eyes/adult woman in cell 9-10). Judge face on cell 9 and `1_waist_up`.
 - If waist_up is still not her: add sharp camera close-ups, not more epochs.
+
+## Face close-ups uploaded (2026-08-25 evening)
+
+- Inbox now has a new batch mixed with the old body photos.
+- **Keep ~15**: 9 face close-ups (looking at camera / smile / side glance) plus full-body shots that still show the face.
+- **Skip**: mp4, 3 blurry night Santa frames (one with extra people), 2 re-uploads of photos already in the body set.
+- Instagram screenshot is usable as a face crop but is smoothed; one of many, not the only face source.
+- Next file: `lapetitemilf_face` (do not overwrite body).
