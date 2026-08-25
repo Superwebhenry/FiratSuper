@@ -1,7 +1,7 @@
 # Training Intent: lapetitemilf
 
 - **Type**: character
-- **Base model**: Stable Diffusion 1.5
+- **Base model**: Realistic Vision V5.1 (SD 1.5 photoreal)
 - **Description**: Train a character LoRA for a specific woman — fashion/swimwear/lingerie style photos
 - **Dataset target**: 25 images (within 15–40 recommended range)
 - **Trigger word**: `ohwx woman`

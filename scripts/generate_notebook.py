@@ -53,19 +53,21 @@ This is a Colab Drive-login popup issue, not the training code.
 3. In the popup: Continue, then **Allow ALL permissions** (do not uncheck boxes)
 4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
-## Current preset: Standard (character identity)
-- Quick run already finished. Preview looked like a generic SD 1.5 woman, not the subject.
-- Cause: 5 epochs + UNet-only (text encoder was not trained), so `ohwx woman` did not bind to the face.
-- This notebook trains **UNet + text encoder**, 10 epochs, rank 32 (~30-40 min on T4).
-- Quick LoRA is kept as `loras/lapetitemilf_lora.safetensors` (not overwritten).
+## Current preset: Thorough on Realistic Vision
+- Standard run finished: OFF (base SD 1.5) is a generic face. ON is closer to the subject. Identity is working.
+- Vanilla SD 1.5 still looks plastic / airbrushed. That is the base model, not a broken LoRA.
+- This notebook retrains on **Realistic Vision V5.1** (photoreal SD 1.5), 15 epochs, text encoder on.
+- Standard LoRA is kept as `loras/lapetitemilf_standard.safetensors` (not overwritten).
+- New file: `loras/lapetitemilf_thorough.safetensors` (~45-60 min on T4).
 
 ## Drive layout
 ```
 MyDrive/FiratSuper/
 |-- datasets/lapetitemilf/10_ohwx_woman/   # images + captions
 |-- output/lapetitemilf/quick/             # Quick checkpoints (done)
-|-- output/lapetitemilf/standard/          # Standard checkpoints
-|-- models/                                # base model
+|-- output/lapetitemilf/standard/          # Standard checkpoints (done)
+|-- output/lapetitemilf/thorough/          # Thorough checkpoints
+|-- models/                                # base models
 `-- loras/                                 # final LoRA files
 ```"""
 )
@@ -283,7 +285,8 @@ SOURCE_FOLDER_ID = "1FOwDPkzqjmOo0LPuNKmgJtK4YuWU9Pmi"
 SOURCE_FOLDER_URL = "https://drive.google.com/drive/folders/1FOwDPkzqjmOo0LPuNKmgJtK4YuWU9Pmi"
 REPEATS = 10                      # how many times each image counts per epoch
 MODEL_TYPE = "sd15"               # "sd15" or "sdxl"
-TRAINING_PRESET = "standard"      # "quick" | "standard" | "thorough"
+BASE_CHECKPOINT = "realistic_vision"  # "sd15" or "realistic_vision"
+TRAINING_PRESET = "thorough"      # "quick" | "standard" | "thorough"
 TRAIN_TEXT_ENCODER = True         # required for character identity (trigger -> face)
 DRY_RUN = False                   # True = 5 steps (Gate 4). False = full training
 DATASET_PREPARED = True           # True = images+captions already on Drive
@@ -323,20 +326,38 @@ LORA_BASENAME = PROJECT_NAME + "_" + TRAINING_PRESET
 for path in [DATASET_DIR, OUTPUT_DIR, MODELS_DIR, LORAS_DIR, LOGS_DIR]:
     os.makedirs(path, exist_ok=True)
 
-if MODEL_TYPE == "sd15":
+if MODEL_TYPE == "sd15" and BASE_CHECKPOINT == "realistic_vision":
+    BASE_MODEL_FILE = MODELS_DIR + "/Realistic_Vision_V5.1_fp16-no-ema.safetensors"
+    BASE_MODEL_REPO = "SG161222/Realistic_Vision_V5.1_noVAE"
+    BASE_MODEL_NAME = "Realistic_Vision_V5.1_fp16-no-ema.safetensors"
+    VAE_FILE = MODELS_DIR + "/vae-ft-mse-840000-ema-pruned.safetensors"
+    VAE_REPO = "stabilityai/sd-vae-ft-mse-original"
+    VAE_NAME = "vae-ft-mse-840000-ema-pruned.safetensors"
+    CLIP_SKIP = 2
+elif MODEL_TYPE == "sd15":
     BASE_MODEL_FILE = MODELS_DIR + "/v1-5-pruned-emaonly.safetensors"
     BASE_MODEL_REPO = "stable-diffusion-v1-5/stable-diffusion-v1-5"
     BASE_MODEL_NAME = "v1-5-pruned-emaonly.safetensors"
+    VAE_FILE = ""
+    VAE_REPO = ""
+    VAE_NAME = ""
+    CLIP_SKIP = 1
 elif MODEL_TYPE == "sdxl":
     BASE_MODEL_FILE = MODELS_DIR + "/sd_xl_base_1.0.safetensors"
     BASE_MODEL_REPO = "stabilityai/stable-diffusion-xl-base-1.0"
     BASE_MODEL_NAME = "sd_xl_base_1.0.safetensors"
+    VAE_FILE = ""
+    VAE_REPO = ""
+    VAE_NAME = ""
+    CLIP_SKIP = 1
 else:
     raise ValueError("MODEL_TYPE must be sd15 or sdxl")
 
 print("Project:", PROJECT_NAME)
 print("Trigger:", TRIGGER_WORD)
 print("Preset:", TRAINING_PRESET, p)
+print("Base checkpoint:", BASE_CHECKPOINT)
+print("CLIP skip:", CLIP_SKIP)
 print("Train text encoder:", TRAIN_TEXT_ENCODER)
 print("Dry run:", DRY_RUN)
 print("Drive mode:", "API fallback (local copy)" if USE_DRIVE_API else "FUSE mount")
@@ -428,25 +449,26 @@ print("train_network.py exists:", os.path.exists(os.path.join(SD_SCRIPTS, "train
 )
 
 code(
-    """# @title 4) Download SD 1.5 (single safetensors file)
+    """# @title 4) Download base checkpoint (+ VAE if needed)
 from huggingface_hub import hf_hub_download
 import os
 import shutil
 
-if os.path.exists(BASE_MODEL_FILE) and os.path.getsize(BASE_MODEL_FILE) > 1000000000:
-    print("Base model already on Drive:", BASE_MODEL_FILE)
-    print("Size GB:", round(os.path.getsize(BASE_MODEL_FILE) / 1024 / 1024 / 1024, 2))
-else:
-    print("Downloading base model to Drive. This takes several minutes...")
-    downloaded = hf_hub_download(
-        repo_id=BASE_MODEL_REPO,
-        filename=BASE_MODEL_NAME,
-        local_dir=MODELS_DIR,
-    )
-    if os.path.abspath(downloaded) != os.path.abspath(BASE_MODEL_FILE):
-        shutil.copy2(downloaded, BASE_MODEL_FILE)
-    print("Saved:", BASE_MODEL_FILE)
-    print("Size GB:", round(os.path.getsize(BASE_MODEL_FILE) / 1024 / 1024 / 1024, 2))"""
+def _download_weight(repo, name, dest):
+    if os.path.exists(dest) and os.path.getsize(dest) > 100000000:
+        print("Already on disk:", dest)
+        print("Size GB:", round(os.path.getsize(dest) / 1024 / 1024 / 1024, 2))
+        return
+    print("Downloading", name, "...")
+    downloaded = hf_hub_download(repo_id=repo, filename=name, local_dir=os.path.dirname(dest))
+    if os.path.abspath(downloaded) != os.path.abspath(dest):
+        shutil.copy2(downloaded, dest)
+    print("Saved:", dest)
+    print("Size GB:", round(os.path.getsize(dest) / 1024 / 1024 / 1024, 2))
+
+_download_weight(BASE_MODEL_REPO, BASE_MODEL_NAME, BASE_MODEL_FILE)
+if VAE_FILE:
+    _download_weight(VAE_REPO, VAE_NAME, VAE_FILE)"""
 )
 
 md(
@@ -470,20 +492,29 @@ print("OK")"""
 )
 
 code(
-    """# @title 6) Check captions
+    """# @title 6) Check captions + photo tags
 import os
 
 IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp", ".bmp")
 images = [f for f in os.listdir(DATASET_DIR) if f.lower().endswith(IMAGE_EXT)]
 missing = []
+PHOTO_TAGS = "photorealistic, raw photo, natural skin"
+updated = 0
 for name in images:
     stem = os.path.splitext(name)[0]
     txt = os.path.join(DATASET_DIR, stem + ".txt")
     if not os.path.exists(txt):
         missing.append(name)
+        continue
+    cap = open(txt, encoding="utf-8").read().strip()
+    if "photorealistic" not in cap.lower():
+        cap = cap + ", " + PHOTO_TAGS
+        open(txt, "w", encoding="utf-8").write(cap)
+        updated += 1
 
 print("Images:", len(images))
 print("Missing captions:", len(missing))
+print("Captions tagged photorealistic:", updated)
 if missing:
     raise RuntimeError("Missing caption files: " + ", ".join(missing[:5]))
 print("Captions ready")"""
@@ -552,7 +583,10 @@ def build_cmd(max_epochs, max_steps=None):
         "--max_grad_norm=1.0",
         "--logging_dir=" + LOGS_DIR,
         "--console_log_simple",
+        "--noise_offset=0.1",
     ]
+    if CLIP_SKIP > 1:
+        c.append("--clip_skip=" + str(CLIP_SKIP))
     # Character LoRA: train CLIP so the trigger word maps to the face.
     if TRAIN_TEXT_ENCODER:
         c.append("--text_encoder_lr=5e-5")
@@ -568,6 +602,8 @@ if DRY_RUN:
 else:
     print("=== Full training:", TRAINING_PRESET, "preset ===")
     print("Train text encoder:", TRAIN_TEXT_ENCODER)
+    print("Base checkpoint:", BASE_CHECKPOINT)
+    print("CLIP skip:", CLIP_SKIP)
     cmd = build_cmd(max_epochs=MAX_TRAIN_EPOCHS)
 
 print("Command:")
@@ -635,7 +671,7 @@ code(
 import gc
 import os
 import torch
-from diffusers import DPMSolverMultistepScheduler, StableDiffusionPipeline
+from diffusers import AutoencoderKL, DPMSolverMultistepScheduler, StableDiffusionPipeline
 from IPython.display import display
 from safetensors.torch import safe_open
 
@@ -686,79 +722,100 @@ else:
         gc.collect()
         torch.cuda.empty_cache()
 
-    print("Loading base model from Drive...")
-    pipe = StableDiffusionPipeline.from_single_file(
-        BASE_MODEL_FILE,
-        torch_dtype=torch.float16,
-        safety_checker=None,
-    ).to("cuda")
-    pipe.scheduler = DPMSolverMultistepScheduler.from_config(pipe.scheduler.config)
+    print("Loading base model...")
+    vae = None
+    if VAE_FILE and os.path.exists(VAE_FILE):
+        print("Loading VAE:", VAE_FILE)
+        vae = AutoencoderKL.from_single_file(VAE_FILE, torch_dtype=torch.float16)
+    pipe_kw = {
+        "torch_dtype": torch.float16,
+        "safety_checker": None,
+    }
+    if vae is not None:
+        pipe_kw["vae"] = vae
+    pipe = StableDiffusionPipeline.from_single_file(BASE_MODEL_FILE, **pipe_kw).to("cuda")
+    pipe.scheduler = DPMSolverMultistepScheduler.from_config(
+        pipe.scheduler.config, use_karras_sigmas=True
+    )
     _disable_peft_torchao()
 
     prompt = (
         TRIGGER_WORD
-        + ", portrait, close up face, looking at camera, fashion photography, high quality"
+        + ", portrait, close up face, looking at camera, photorealistic, "
+        + "raw photo, natural skin texture, natural lighting, high quality"
+    )
+    negative = (
+        "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
+        "doll, deformed, extra fingers, blurry"
     )
     seed = 42
+    gen_kw = {
+        "prompt": prompt,
+        "negative_prompt": negative,
+        "num_inference_steps": 28,
+        "guidance_scale": 6.0,
+    }
+    if CLIP_SKIP > 1:
+        gen_kw["clip_skip"] = CLIP_SKIP
     print("Prompt:", prompt)
+    print("Negative:", negative)
+    print("CLIP skip:", CLIP_SKIP)
     print("Generating OFF (base model only)...")
     gen0 = torch.Generator(device="cuda").manual_seed(seed)
-    image_off = pipe(
-        prompt,
-        num_inference_steps=25,
-        guidance_scale=7.5,
-        generator=gen0,
-    ).images[0]
+    image_off = pipe(generator=gen0, **gen_kw).images[0]
     off_path = os.path.join(OUTPUT_DIR, "preview_off.png")
     image_off.save(off_path)
-    print("BASE MODEL (no LoRA) - if this already looks like the subject, ignore LoRA:")
+    print("BASE MODEL (no LoRA) - generic face is expected. Identity comes from the LoRA:")
     display(image_off)
 
     print("Loading LoRA at weight 1.0 (no fuse)...")
     pipe.load_lora_weights(lora_file)
     gen1 = torch.Generator(device="cuda").manual_seed(seed)
     image_on = pipe(
-        prompt,
-        num_inference_steps=25,
-        guidance_scale=7.5,
         generator=gen1,
         cross_attention_kwargs={"scale": 1.0},
+        **gen_kw,
     ).images[0]
     on_path = os.path.join(OUTPUT_DIR, "preview_on.png")
     image_on.save(on_path)
-    print("WITH LORA weight 1.0 - should look closer to the training photos:")
+    print("WITH LORA weight 1.0 - should look like the training photos, more photographic:")
     display(image_on)
     print("Saved:", off_path)
     print("Saved:", on_path)
     upload_project_file(off_path)
     upload_project_file(on_path)
     print("If OFF and ON look the same, the LoRA did not apply.")
-    print("If ON is different but still not the subject, train longer (thorough).")
-    print("Ignore HF_TOKEN warning - public SD 1.5 does not need a token.")"""
+    print("If ON is closer but still plastic, add sharper face close-ups and retrain.")
+    print("Ignore HF_TOKEN warning - public checkpoints do not need a token.")"""
 )
 
 md(
     """## Done
 
-Standard LoRA export:
+Thorough LoRA export (this run):
+`MyDrive/FiratSuper/loras/lapetitemilf_thorough.safetensors`
+
+Standard LoRA (kept, identity was close):
 `MyDrive/FiratSuper/loras/lapetitemilf_standard.safetensors`
 
 Quick LoRA (kept, identity was weak):
 `MyDrive/FiratSuper/loras/lapetitemilf_lora.safetensors`
 
 ### Use in Automatic1111 / ComfyUI / Forge
-1. Copy the Standard `.safetensors` file to `models/Lora/`
-2. Prompt: `ohwx woman, portrait, close up face, ...`
-3. Character LoRA weight: start at `0.8-1.0`
+1. Load **Realistic Vision V5.1** as the checkpoint (not vanilla SD 1.5)
+2. Copy the Thorough `.safetensors` file to `models/Lora/`
+3. Prompt: `ohwx woman, portrait, close up face, photorealistic, raw photo, ...`
+4. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin`
+5. CLIP skip: 2. Character LoRA weight: start at `0.8-1.0`
 
 ### How to read cell 9
-- OFF = base SD 1.5 (generic woman)
+- OFF = Realistic Vision only (generic photoreal woman)
 - ON = same prompt + LoRA
 - You want ON to look like the training photos, not like OFF
 
 ### Next if identity is still weak
-- Set `TRAINING_PRESET = "thorough"` in cell 2 and rerun cell 7
-- Add more face close-ups to the dataset"""
+- Add 10-15 sharper face close-ups (the current set is small phone/social JPGs)
+- Keep Thorough settings and rerun cell 7"""
 )
 
 nb = {

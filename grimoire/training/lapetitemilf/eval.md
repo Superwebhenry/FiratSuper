@@ -1,28 +1,28 @@
-# Evaluation: lapetitemilf (Quick)
+# Evaluation: lapetitemilf
 
-- **Checkpoint**: Quick final (`lapetitemilf_lora.safetensors`, rank 16, 5 epochs, UNet only)
-- **Preview file**: `MyDrive/FiratSuper/output/lapetitemilf/preview.png`
-- **Prompt**: `ohwx woman, swimsuit, fashion photography, studio lighting, high quality`
-- **Weight**: 0.7 (`fuse_lora`)
+## Quick (done)
 
-## Result
+- **Checkpoint**: `lapetitemilf_lora.safetensors` (rank 16, 5 epochs, UNet only)
+- Identity **failed**. Generic SD 1.5 woman.
 
-Identity **failed**. The preview is a generic SD 1.5 fashion woman (studio, swimsuit, smooth face). It does not match the training photos.
+## Standard (done)
 
-This matches "trigger ignored / identity absent" in the training failure-modes guide, not overfit.
-
-## Causes (stacked)
-
-1. **Text encoder was not trained** (`--network_train_unet_only`). For a character LoRA the trigger `ohwx woman` must be learned by CLIP. UNet-only usually keeps a generic "woman".
-2. **Quick preset is too short** for a face: 5 epochs, rank 16, ~1250 steps.
-3. Preview used weight 0.7 and `fuse_lora`, which can hide a weak signal. Raising weight will not create identity that was never trained.
+- **Checkpoint**: `lapetitemilf_standard.safetensors` (rank 32, 10 epochs, UNet + text encoder)
+- **Preview**: OFF vs ON, weight 1.0, portrait prompt
+- **OFF**: generic SD 1.5 face (smooth, airbrushed). Does not look like the subject. Expected.
+- **ON**: closer to the subject (hair/eye color, face structure). Identity is working.
+- **Gap**: still not photographic. Vanilla SD 1.5 produces plastic skin even when identity is present.
 
 ## Decision
 
-Do **not** keep iterating on the Quick file. Retrain with **Standard**:
+Do **not** raise LoRA weight on the Standard file to fake realism.
 
-- 10 epochs, rank/alpha 32
-- train UNet **and** text encoder (`text_encoder_lr=5e-5`)
-- preview OFF vs ON at weight 1.0, same seed, close-up portrait prompt
+Retrain **Thorough** on **Realistic Vision V5.1** (photoreal SD 1.5):
 
-Quick file is kept on Drive as `lapetitemilf_lora.safetensors` / `lapetitemilf_quick.safetensors`.
+- 15 epochs, rank/alpha 32, lr 5e-5, text encoder on
+- `--clip_skip=2`, `--noise_offset=0.1`
+- MSE VAE at preview
+- Captions append `photorealistic, raw photo, natural skin`
+- New file: `loras/lapetitemilf_thorough.safetensors` (does not overwrite Standard)
+
+Standard file is kept.

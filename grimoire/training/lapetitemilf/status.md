@@ -1,16 +1,14 @@
 # Status: lapetitemilf
 
-- **Phase**: Standard retraining (character identity)
+- **Phase**: Thorough retraining on Realistic Vision (photorealism)
 - **Gate 1 (Dataset)**: GO
-- **Gate 2 (Config)**: GO — Standard preset + text encoder
-- **Gate 3 (Environment)**: GO — Colab T4 14.6 GB, model + dataset on Drive
+- **Gate 2 (Config)**: GO — Thorough + Realistic Vision V5.1 + text encoder
+- **Gate 3 (Environment)**: GO — Colab T4 14.6 GB
 - **Gate 4 (Dry run)**: GO — 5 steps passed on Quick (same env)
-- **Quick training**: DONE — identity FAIL. Generic SD 1.5 woman in `preview.png`.
-- **Quick LoRA**: `MyDrive/FiratSuper/loras/lapetitemilf_lora.safetensors` (keep; do not overwrite)
-- **Blocked**: Colab Drive mount (`credential propagation was unsuccessful`) on TRAIN_V10
-- **TRAIN_V12** (use this): https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/SD_LoRA_Training_Colab.ipynb
-  Cell 2 skips mount if Drive is already connected, retries Google login, then copies the dataset via Drive API if FUSE still fails.
-- **TRAIN_V11**: https://colab.research.google.com/drive/1lXcxkXOl1jUIAgfdg-S4fsFf-4YliK7x
-- **TRAIN_V10**: https://colab.research.google.com/drive/1bPNQfZ5ZNOfUSmmFlWhtW8KDICjehSjW
-  Do not use: cell 2 always calls `drive.mount()` and can fail even after a UI mount.
-- **TRAIN_V9** (Quick, do not retrain): https://colab.research.google.com/drive/1CuMqPFjomW-gIt07wf3j45Fx0d-yEyZR
+- **Quick training**: DONE — identity FAIL
+- **Standard training**: DONE — identity closer, look still plastic (vanilla SD 1.5)
+- **Quick LoRA**: `loras/lapetitemilf_lora.safetensors` (keep)
+- **Standard LoRA**: `loras/lapetitemilf_standard.safetensors` (keep)
+- **Next LoRA**: `loras/lapetitemilf_thorough.safetensors`
+- **Notebook**: https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/SD_LoRA_Training_Colab.ipynb
+  Run cells 1-9. Cell 4 downloads Realistic Vision (~2 GB) if missing. Cell 7 is Thorough (~45-60 min).
