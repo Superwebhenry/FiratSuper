@@ -35,8 +35,6 @@ Long side **1024px or more**. Keep the trigger `ohwx woman`.
 
 ## After photos are in Drive
 
-2026-08-26 pass 5: folder clean, 31 keepers. Photos GO. Caption samples: `grimoire/training/lapetitemilf/caption-samples.md`.
+2026-08-26: **Gate 1 GO.** 31 keepers + 31 captions in `ADD_FLUX_PHOTOS/`. Copies in `grimoire/training/lapetitemilf/captions/`.
 
-**Gate 1 = HOLD for caption approval.** Then zip / Flux train. Do not train yet.
-
-Build a Flux Colab (ai-toolkit) **or** zip the set and train on fal.ai. New file only: `lapetitemilf_flux`. Do not overwrite `lapetitemilf_face`.
+Next: zip or Flux Colab (ai-toolkit) / fal.ai / Replicate. New file only: `lapetitemilf_flux`. Do not overwrite `lapetitemilf_face`.

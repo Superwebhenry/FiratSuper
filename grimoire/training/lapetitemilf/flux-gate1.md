@@ -1,13 +1,13 @@
-# Flux Gate 1: ADD_FLUX_PHOTOS audit (2026-08-26, pass 5)
+# Flux Gate 1: ADD_FLUX_PHOTOS audit (2026-08-26)
 
 Folder: `MyDrive/FiratSuper/ADD_FLUX_PHOTOS/` (`1oLtTmwg2kt-Jn6zuci06ipRQoK6AOFVZ`)
 
-## Pass 5
+## Decision: **GO**
 
-The 3 leftovers are gone (`birthday.jpg`, `1787749775444.jpg`, `1787749805307.jpg`). **31 keepers.** No WhatsApp, no Photoroom, no exact dups.
+- 31 keeper images
+- 31 matching `.txt` captions on Drive and in `grimoire/training/lapetitemilf/captions/`
+- Trigger: `ohwx woman`
+- Mix: face close-ups, waist-up, standing full body, sitting full body
+- No WhatsApp, no Photoroom, no extra people, no video
 
-Photo mix: GO. Captions: 5 samples waiting on user approval, then batch `.txt` next to each image.
-
-Trigger: `ohwx woman`. Format: Flux natural language.
-
-Do not start Flux training. Do not overwrite `lapetitemilf_face`. New file only: `lapetitemilf_flux`.
+Do not start until a trainer is chosen. New file only: `lapetitemilf_flux`. Do not overwrite `lapetitemilf_face`.
