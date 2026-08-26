@@ -29,7 +29,11 @@ These are the old social / Photoroom images again, just re-exported at 3480px:
 
 Sitting camera originals from pass 2 still carry the set. Photo mix remains a GO after the drops above. About 30 keepers.
 
-Captions: still none.
+## Pass 3 note: bigger file is not a sharper original
+
+The 3480px re-uploads of `lapetitemilf (5)/(14)/(20)/(25)` match those 1024px social crops (PSNR ~34-37 dB). Extra detail vs a Lanczos upscale of the old file is **0.97x-1.09x**. So the pixels are larger; the real face detail is not.
+
+Optional extra: keep `1787749977324.jpg` (hair pulled back) and maybe `1787749724307.jpg` (dramatic lighting). Drop Photoroom, WhatsApp, the duplicate car selfie, and the other social re-exports.
 
 ## Gate 1 Decision: **HOLD for captions only**
 
