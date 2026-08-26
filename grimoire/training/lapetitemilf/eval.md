@@ -62,7 +62,7 @@ Do **not** use `lapetitemilf_body` for identity. Do **not** stack two LoRAs.
 
 Cell 11b (waist-up keepers): user **fine**. This is the production recipe.
 
-Cell 13 (2026-08-26): user wants **full body**, not waist-up. Cell 13 presets switched to full body 512x768. Face will be softer; that is the known SD 1.5 limit.
+Cell 13 full-body (2026-08-26): user **not even close**. Missing hands, arm fused into leg, cross-eyed, identity miss. SD 1.5 anatomy ceiling. Do not retrain this stack. Next: Flux + new sharp photos (`next-flux.md`).
 
 ### Winning waist-up prompt
 

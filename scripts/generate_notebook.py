@@ -34,20 +34,21 @@ def code(source: str) -> None:
 
 
 md(
-    """# FiratSuper - make pictures in Google Colab
+    """# FiratSuper - STOP for full-body quality
 
-Training is done. You do **not** need Forge or Automatic1111. Those are programs for a home PC. This Colab is the app.
+SD 1.5 is the wrong tool for high-end lingerie/bikini of a real person.
+Cell 13 full-body output: missing hands, fused limbs, cross-eyes, not her.
+**Do not retrain this notebook. Do not delete the old LoRA files.**
 
-## Make pictures now
-1. Open this notebook from GitHub (use the latest link).
-2. Sign in with **one** Google account (the Drive owner).
-3. **Runtime > Change runtime type > GPU**. T4 is enough. A100 or L4 is faster. Do not pick TPU.
-4. Run **cell 1**, then **2**, then **3**, then **4**. Wait for each green check.
-5. Run **cell 13**. Default makes **20 full-body scenes** (1 picture each).
-6. Face will be softer than waist-up. That is expected on SD 1.5.
-7. To remake ONE scene 8 times: `MODE = "one"` and `SCENE_ID = 2` (jacuzzi).
+Next: Flux character LoRA + 20-30 sharp original camera photos.
+Drop them in Drive: `MyDrive/FiratSuper/ADD_FLUX_PHOTOS/`
 
-Do **not** run cell 7 (that is training). Do **not** run cell 12.
+Paid options: fal.ai Flux LoRA trainer, or Replicate Flux LoRA trainer.
+Colab Pro A100 can train Flux. T4 is not enough for a good Flux train.
+
+## Old SD 1.5 notebook
+Waist-up face LoRA still exists: `loras/lapetitemilf_face.safetensors`
+Do **not** run cell 7 or cell 13 for quality. Those paths already failed.
 
 ## If cell 2 fails: credential propagation
 1. Left sidebar: folder icon, then **Mount Drive**, then rerun cell 2
@@ -58,6 +59,7 @@ Do **not** run cell 7 (that is training). Do **not** run cell 12.
 ## Drive layout
 ```
 MyDrive/FiratSuper/
+|-- ADD_FLUX_PHOTOS/                       # NEW sharp camera photos for Flux
 |-- ADD_BODY_PHOTOS/
 |-- datasets/lapetitemilf/10_ohwx_woman/
 |-- output/lapetitemilf/face/               # all pictures from cell 13

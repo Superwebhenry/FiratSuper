@@ -30,8 +30,8 @@
   - **Good for**: portraits and **waist-up**. User: cell 11b fine; frames 1-3 similar.
   - Not for: full-body identity (cell 12 failed). Do not stack with the body LoRA.
   - Waist-up prompt: `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman, waist up, swimsuit, looking at camera, detailed face, photorealistic, raw photo`
-- **Face+body together**
-  - Hit: face LoRA only, waist-up, weight 0.9. Seeds 707, 2025, 1301.
-  - Generate in Colab **cell 13** (no Forge / Automatic1111 required).
+## Current ceiling (2026-08-26)
+SD 1.5 full-body generation failed (missing limbs, cross-eyes, identity miss).
+**Do not train another SD 1.5 LoRA.** Next model: Flux. See `grimoire/training/lapetitemilf/next-flux.md`.
 
 
