@@ -60,7 +60,9 @@ Winning together recipe: **face LoRA only, waist-up, looking at camera, weight 0
 
 Do **not** use `lapetitemilf_body` for identity. Do **not** stack two LoRAs.
 
-Full-body identity is a second pass (cell 12 / Forge After Detailer), not more training on the same photos.
+Cell 11b (waist-up keepers): user **fine**. This is the production recipe.
+
+Cell 12 (full-body then paste a redrawn face): user **not close**. Naive crop+img2img is not After Detailer. Do not rerun. Do not chase full-body identity on this SD 1.5 Colab setup.
 
 ### Winning waist-up prompt
 

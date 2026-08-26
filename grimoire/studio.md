@@ -25,16 +25,13 @@
   - Face preview improved. Cell 10 swimsuit pose sheet: 5 poses, **not the subject**.
 - **lapetitemilf (Body)**: `MyDrive/FiratSuper/loras/lapetitemilf_body.safetensors`
   - Same Thorough recipe + 14 full-body photos. Figure closer. Face generic. Not for portraits.
-- **lapetitemilf (Face, ~60% similar)**: `MyDrive/FiratSuper/loras/lapetitemilf_face.safetensors`
-  - Same Thorough recipe + ~15 face keepers. Trigger: `ohwx woman`
-  - Weight: 0.8-1.0. CLIP skip 2. Base: Realistic Vision V5.1
-  - User (2026-08-26): faces look OK, about 60% similar. Not a lock.
-  - Winning prompt: `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman, portrait, close up face, looking at camera, serious, detailed face, photorealistic, raw photo`
-  - Do not overwrite.
+- **lapetitemilf (Face, use this)**: `MyDrive/FiratSuper/loras/lapetitemilf_face.safetensors`
+  - Trigger: `ohwx woman`. Weight: 0.9. CLIP skip 2. Base: Realistic Vision V5.1
+  - **Good for**: portraits and **waist-up**. User: cell 11b fine; frames 1-3 similar.
+  - Not for: full-body identity (cell 12 failed). Do not stack with the body LoRA.
+  - Waist-up prompt: `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman, waist up, swimsuit, looking at camera, detailed face, photorealistic, raw photo`
 - **Face+body together**
-  - Hit: face LoRA only, **waist-up**, weight 0.9. User: cell 11 frames 1-3 similar.
-  - Seeds: 707, 2025, 1301
-  - Do **not** stack face + body LoRAs. Do **not** use the body LoRA for identity.
-  - Full-body faces: After Detailer (cell 12 / Forge ADetailer) with the face LoRA.
+  - Hit: face LoRA only, waist-up, weight 0.9. Seeds 707, 2025, 1301.
+  - Cell 12 full-body face redraw: **not close**. Skip.
 
 

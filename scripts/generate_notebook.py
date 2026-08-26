@@ -42,7 +42,7 @@ This notebook trains a character LoRA with **kohya sd-scripts**, stores files on
 
 ## Before you start
 1. **Runtime > Change runtime type > GPU**. T4 is enough. A100 or L4 is faster (Colab Pro). Do not pick TPU.
-2. Run cells **in order** (1 to 12)
+2. Run cells **in order** (1 to 11, then 11b). Skip cell 12.
 3. Approve Google Drive access. In the popup click Continue, then **Allow ALL permissions** (do not uncheck boxes).
 4. **Cell 7:** `DRY_RUN = False` for full training (dry run already passed)
 
@@ -53,11 +53,10 @@ This is a Colab Drive-login popup issue, not the training code.
 3. In the popup: Continue, then **Allow ALL permissions** (do not uncheck boxes)
 4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
-## Current preset: waist-up with face LoRA is the hit. Full body is not
-- User: frames 1-3 similar. Frame 4 (full body) and 5 (body LoRA) are not.
-- Use ONLY `lapetitemilf_face` on waist-up. Do not stack. Do not use the body LoRA for identity.
-- Run **cell 12** to redraw the face on a full-body shot (After Detailer style). No cell 7.
-- Optional **cell 11b**: more waist-up keepers to pick from.
+## Current preset: 11b is the hit. Cell 12 failed. Stop there
+- User: 11b is fine. Cell 12 full-body face was not close. Do not rerun 12.
+- Use ONLY `lapetitemilf_face` on waist-up. Do not stack. Do not retrain.
+- Skip cell 7. Skip cell 12. Keep generating from cell 11b.
 
 ## Drive layout
 ```
@@ -1765,180 +1764,17 @@ print("Saved:", sheet_path)
 upload_project_file(sheet_path)
 for path in paths:
     upload_project_file(path)
-print("Keep the similar files. This is the together recipe for now.")
-print("Full-body identity is cell 12, not more epochs.")"""
+print("Keep the similar files. This is the together recipe.")
+print("Cell 12 failed. Do not chase full-body identity on SD 1.5 here.")"""
 )
 
 code(
-    """# @title 12) Full-body then redraw the face (no stacking, no retraining)
-import gc
-import os
-import torch
-from diffusers import (
-    AutoencoderKL,
-    DPMSolverMultistepScheduler,
-    StableDiffusionImg2ImgPipeline,
-    StableDiffusionPipeline,
-)
-from IPython.display import display
-from PIL import Image, ImageDraw
-
-FACE_LORA = os.path.join(LORAS_DIR, "lapetitemilf_face.safetensors")
-if not os.path.isfile(FACE_LORA):
-    raise RuntimeError("Missing face LoRA: " + FACE_LORA)
-
-print("This cell does NOT retrain.")
-print("Full-body faces are tiny on SD 1.5. This redraws the face after, like After Detailer.")
-print("One LoRA only:", os.path.basename(FACE_LORA))
-
-
-def _disable_peft_torchao():
-    def _no(*args, **kwargs):
-        return False
-
-    def _skip(*args, **kwargs):
-        return None
-
-    try:
-        import peft.import_utils as iu
-        iu.is_torchao_available = _no
-    except Exception:
-        pass
-    try:
-        import peft.tuners.lora.torchao as tao
-        tao.is_torchao_available = _no
-        tao.dispatch_torchao = _skip
-    except Exception:
-        pass
-
-
-_disable_peft_torchao()
-
-if "pipe" in globals():
-    try:
-        del pipe
-    except Exception:
-        pass
-    gc.collect()
-    torch.cuda.empty_cache()
-
-print("Reloading a clean base model...")
-vae = None
-if VAE_FILE and os.path.exists(VAE_FILE):
-    vae = AutoencoderKL.from_single_file(VAE_FILE, torch_dtype=torch.float16)
-pipe_kw = {"torch_dtype": torch.float16, "safety_checker": None}
-if vae is not None:
-    pipe_kw["vae"] = vae
-pipe = StableDiffusionPipeline.from_single_file(BASE_MODEL_FILE, **pipe_kw).to("cuda")
-pipe.scheduler = DPMSolverMultistepScheduler.from_config(
-    pipe.scheduler.config, use_karras_sigmas=True
-)
-_disable_peft_torchao()
-pipe.load_lora_weights(FACE_LORA)
-
-LOOK = "long wavy highlighted blonde hair, brown eyes, adult woman"
-negative = (
-    "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
-    "doll, deformed, extra fingers, extra legs, extra people, cropped head, "
-    "black hair, child, teen, different person, extra faces"
-)
-body_prompt = (
-    TRIGGER_WORD
-    + ", "
-    + LOOK
-    + ", standing, full body, front view, swimsuit, looking at camera, "
-    + "photorealistic, raw photo, natural lighting, high quality"
-)
-face_prompt = (
-    TRIGGER_WORD
-    + ", "
-    + LOOK
-    + ", portrait, close up face, looking at camera, detailed face, "
-    + "photorealistic, raw photo, natural skin texture, natural lighting, high quality"
-)
-seed = 707
-gen_kw = {
-    "prompt": body_prompt,
-    "negative_prompt": negative,
-    "num_inference_steps": 28,
-    "guidance_scale": 6.0,
-    "width": 512,
-    "height": 768,
-    "output_type": "pil",
-}
-if CLIP_SKIP > 1:
-    gen_kw["clip_skip"] = CLIP_SKIP
-print("=== full body seed", seed, "===")
-print("Prompt:", body_prompt)
-gen = torch.Generator(device="cpu").manual_seed(seed)
-body = pipe(
-    generator=gen,
-    cross_attention_kwargs={"scale": 0.9},
-    **gen_kw,
-).images[0]
-before_path = os.path.join(OUTPUT_DIR, "preview_ad_before.png")
-body.save(before_path)
-print("BEFORE (tiny face, expected):")
-display(body)
-
-w, h = body.size
-box = (int(w * 0.20), 0, int(w * 0.80), int(h * 0.32))
-crop = body.crop(box)
-face_in = crop.resize((512, 512), Image.LANCZOS)
-
-i2i = StableDiffusionImg2ImgPipeline(**pipe.components).to("cuda")
-i2i_kw = {
-    "prompt": face_prompt,
-    "negative_prompt": negative,
-    "image": face_in,
-    "strength": 0.40,
-    "guidance_scale": 6.0,
-    "num_inference_steps": 28,
-}
-if CLIP_SKIP > 1:
-    i2i_kw["clip_skip"] = CLIP_SKIP
-print("=== redraw face, strength 0.40 ===")
-print("Prompt:", face_prompt)
-gen2 = torch.Generator(device="cpu").manual_seed(seed + 1)
-face_out = i2i(generator=gen2, **i2i_kw).images[0]
-face_fit = face_out.resize((box[2] - box[0], box[3] - box[1]), Image.LANCZOS)
-after = body.copy()
-after.paste(face_fit, (box[0], box[1]))
-after_path = os.path.join(OUTPUT_DIR, "preview_ad_after.png")
-after.save(after_path)
-crop_path = os.path.join(OUTPUT_DIR, "preview_ad_face.png")
-face_out.save(crop_path)
-print("FACE CROP after redraw:")
-display(face_out)
-print("AFTER (face pasted back onto the full body):")
-display(after)
-
-thumb_w = 256
-thumb_h = 384
-labels = ["1_before", "2_face_crop", "3_after"]
-tiles_src = [body, face_out, after]
-labeled = []
-for name, im0 in zip(labels, tiles_src):
-    im = im0.copy()
-    im.thumbnail((thumb_w, thumb_h - 28))
-    canvas = Image.new("RGB", (thumb_w, thumb_h), (16, 16, 16))
-    canvas.paste(im, ((thumb_w - im.width) // 2, 28))
-    draw = ImageDraw.Draw(canvas)
-    draw.text((6, 6), name, fill=(255, 255, 255))
-    labeled.append(canvas)
-sheet = Image.new("RGB", (thumb_w * 3, thumb_h), (0, 0, 0))
-for idx, tile in enumerate(labeled):
-    sheet.paste(tile, (idx * thumb_w, 0))
-sheet_path = os.path.join(OUTPUT_DIR, "preview_ad_SHEET.png")
-sheet.save(sheet_path)
-print("CONTACT SHEET (before / face crop / after):")
-display(sheet)
-print("Saved:", sheet_path)
-for path in [before_path, crop_path, after_path, sheet_path]:
-    upload_project_file(path)
-print("Judge the AFTER face against frames 1-3 from cell 11.")
-print("If AFTER is closer, this is the full-body recipe in Forge (After Detailer).")
-print("If AFTER is still not her: waist-up is the working format. Do not retrain yet.")"""
+    """# @title 12) SKIP - full-body face was not close (do not run)
+raise RuntimeError(
+    "Stopped. Cell 12 failed: full-body face was not close. "
+    "Do not rerun this cell. Do not retrain. "
+    "Working recipe: cell 11b, lapetitemilf_face, waist-up."
+)"""
 )
 
 md(
@@ -1970,20 +1806,20 @@ Quick LoRA (kept, identity was weak):
    `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman`
 5. Face: `..., portrait, close up face, looking at camera, serious, detailed face, photorealistic, raw photo, natural skin texture`
 6. Face+body: waist-up first, face LoRA only: `..., waist up, swimsuit, looking at camera, detailed face, photorealistic, raw photo`
-7. Full body (512x768): face LoRA only, then After Detailer (ADetailer) on the face. Do not stack two LoRAs.
+7. Full body on this SD 1.5 setup does not keep her face. Stay on waist-up. Do not stack two LoRAs.
 8. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin, extra people, black hair, child, teen, different person`
 9. CLIP skip: 2
 
 ### How to read the preview cells
 - Cell 9 / 9b / 9c / 9d = face close-ups. User: about 60% similar
 - Cell 11: frames **1-3 similar** (face LoRA waist-up). Frame 4 full body not her. Frame 5 body LoRA not her
-- Cell 11b = more waist-up keepers from that hit
-- Cell 12 = full body, then redraw the face (After Detailer style)
+- Cell 11b = waist-up keepers. User: **fine**
+- Cell 12 = full-body face redraw. User: **not close**. Skipped
 
 ### Next
-- Reopen the GitHub notebook. Run **cell 12** for full-body face, or **cell 11b** for more waist-up. No cell 7
+- Use cell 11b / Forge with face LoRA, waist-up. No cell 7. No cell 12
 - Keep lapetitemilf_face. Do not use the body LoRA for identity. Do not stack
-- Waist-up with face LoRA is the working together recipe"""
+- Waist-up with face LoRA is the working together recipe. Full body is out of scope on this setup"""
 )
 
 nb = {
