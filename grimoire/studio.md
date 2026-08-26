@@ -31,9 +31,10 @@
   - User (2026-08-26): faces look OK, about 60% similar. Not a lock.
   - Winning prompt: `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman, portrait, close up face, looking at camera, serious, detailed face, photorealistic, raw photo`
   - Do not overwrite.
-- **Face+body together (inference, no new file yet)**
-  - Stack: face 0.8-0.9 + body 0.4-0.6 on **waist-up** prompts
-  - Full-body faces: After Detailer (ADetailer) with the face LoRA
+- **Face+body together**
+  - Do **not** stack face + body LoRAs in one generate (fried RGB on cell 11).
+  - Use face LoRA only on **waist-up** prompts (weight 0.8-1.0).
+  - Full-body faces: After Detailer (ADetailer) with the face LoRA.
   - A `together` train waits on 8-12 NEW waist-up photos (head ~1/4 of the frame)
 
 

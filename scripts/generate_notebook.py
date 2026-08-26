@@ -53,10 +53,10 @@ This is a Colab Drive-login popup issue, not the training code.
 3. In the popup: Continue, then **Allow ALL permissions** (do not uncheck boxes)
 4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
-## Current preset: faces ~60% similar. Next is face AND body together
-- Do not retrain on the same photos. Do not overwrite `lapetitemilf_face`.
-- Full-body SD 1.5 faces stay tiny/soft. Judge togetherness on **waist-up**.
-- Run cell 9 then **cell 11** (face LoRA vs face+body stack). No cell 7.
+## Current preset: stacking two LoRAs fried the sheet. Use face LoRA only
+- Frame 1 (face LoRA, waist-up) was usable. Frames 2-5 were a bad stack. Do not stack.
+- Reloads a clean model. One LoRA at a time. Judge togetherness on waist-up.
+- Run **cell 11** (no cell 7). If the old stack ran, this cell rebuilds the pipeline.
 - Later lock: 8-12 new waist-up photos (head about 1/4 of the frame), then `together`.
 
 ## Drive layout
@@ -1461,14 +1461,16 @@ print("If waist_up is still not her, we need sharper face close-ups, not more ep
 )
 
 code(
-    """# @title 11) Face + body together (stack, no retraining)
+    """# @title 11) Waist-up with ONE LoRA (do not stack two files)
+import gc
 import os
 import torch
+from diffusers import AutoencoderKL, DPMSolverMultistepScheduler, StableDiffusionPipeline
 from IPython.display import display
 from PIL import Image, ImageDraw
 
-if "pipe" not in globals():
-    raise RuntimeError("Run cell 9 first so the model is loaded.")
+# Stacking face+body in one generate fried the last sheet (RGB noise).
+# Reload a clean pipeline, then use ONE LoRA at a time.
 
 FACE_LORA = os.path.join(LORAS_DIR, "lapetitemilf_face.safetensors")
 BODY_LORA = os.path.join(LORAS_DIR, "lapetitemilf_body.safetensors")
@@ -1477,12 +1479,53 @@ if not os.path.isfile(FACE_LORA):
 if not os.path.isfile(BODY_LORA):
     raise RuntimeError("Missing body LoRA: " + BODY_LORA)
 
-FACE_W = 0.85
-BODY_W = 0.55
 print("This cell does NOT retrain.")
-print("Face LoRA:", FACE_LORA, "weight", FACE_W)
-print("Body LoRA:", BODY_LORA, "weight", BODY_W)
-print("Judge FACE+BODY on waist-up frames. Full-body faces stay small on SD 1.5.")
+print("Do NOT load face + body LoRAs in the same generate. That caused the fried sheet.")
+print("Together test = face LoRA on waist-up (head large enough).")
+
+
+def _disable_peft_torchao():
+    def _no(*args, **kwargs):
+        return False
+
+    def _skip(*args, **kwargs):
+        return None
+
+    try:
+        import peft.import_utils as iu
+        iu.is_torchao_available = _no
+    except Exception:
+        pass
+    try:
+        import peft.tuners.lora.torchao as tao
+        tao.is_torchao_available = _no
+        tao.dispatch_torchao = _skip
+    except Exception:
+        pass
+
+
+_disable_peft_torchao()
+
+if "pipe" in globals():
+    try:
+        del pipe
+    except Exception:
+        pass
+    gc.collect()
+    torch.cuda.empty_cache()
+
+print("Reloading a clean base model (old stack may have poisoned the previous pipe)...")
+vae = None
+if VAE_FILE and os.path.exists(VAE_FILE):
+    vae = AutoencoderKL.from_single_file(VAE_FILE, torch_dtype=torch.float16)
+pipe_kw = {"torch_dtype": torch.float16, "safety_checker": None}
+if vae is not None:
+    pipe_kw["vae"] = vae
+pipe = StableDiffusionPipeline.from_single_file(BASE_MODEL_FILE, **pipe_kw).to("cuda")
+pipe.scheduler = DPMSolverMultistepScheduler.from_config(
+    pipe.scheduler.config, use_karras_sigmas=True
+)
+_disable_peft_torchao()
 
 LOOK = "long wavy highlighted blonde hair, brown eyes, adult woman"
 negative = (
@@ -1490,55 +1533,20 @@ negative = (
     "doll, deformed, extra fingers, extra legs, extra people, cropped head, "
     "black hair, child, teen, different person, extra faces"
 )
+loaded = None
 
 
-def clear_loras():
+def load_one(path):
+    global loaded
+    if loaded == path:
+        return
     try:
         pipe.unload_lora_weights()
     except Exception:
         pass
-    try:
-        pipe.unfuse_lora()
-    except Exception:
-        pass
-
-
-stack_mode = None
-
-
-def ensure_stack():
-    global stack_mode
-    if stack_mode == "adapters" or stack_mode == "fuse":
-        return stack_mode
-    clear_loras()
-    try:
-        pipe.load_lora_weights(FACE_LORA, adapter_name="face")
-        pipe.load_lora_weights(BODY_LORA, adapter_name="body")
-        pipe.set_adapters(["face", "body"], adapter_weights=[FACE_W, BODY_W])
-        stack_mode = "adapters"
-        print("Stacked with adapters (face", FACE_W, "+ body", BODY_W, ").")
-        return stack_mode
-    except Exception as err:
-        print("adapter stack failed:", err)
-    clear_loras()
-    try:
-        pipe.load_lora_weights(FACE_LORA)
-        pipe.fuse_lora(lora_scale=FACE_W)
-        try:
-            pipe.unload_lora_weights()
-        except Exception:
-            pass
-        pipe.load_lora_weights(BODY_LORA)
-        stack_mode = "fuse"
-        print("Stacked with fuse face then body LoRA.")
-        return stack_mode
-    except Exception as err:
-        print("fuse stack failed:", err)
-    clear_loras()
-    pipe.load_lora_weights(FACE_LORA)
-    stack_mode = "face_only"
-    print("Could not stack. Waist-up will use face LoRA only.")
-    return stack_mode
+    pipe.load_lora_weights(path)
+    loaded = path
+    print("Loaded ONE LoRA:", os.path.basename(path))
 
 
 def run_shot(shot):
@@ -1561,73 +1569,70 @@ def run_shot(shot):
     }
     if CLIP_SKIP > 1:
         gen_kw["clip_skip"] = CLIP_SKIP
-    extra = {}
-    if shot["mode"] == "face":
-        extra["cross_attention_kwargs"] = {"scale": 1.0}
-    elif stack_mode == "fuse":
-        extra["cross_attention_kwargs"] = {"scale": BODY_W}
-    elif stack_mode == "face_only":
-        extra["cross_attention_kwargs"] = {"scale": 1.0}
-    print("===", shot["name"], "seed", shot["seed"], "mode", shot["mode"], "===")
+    print("===", shot["name"], "seed", shot["seed"], "===")
     print("Prompt:", prompt)
     gen = torch.Generator(device="cpu").manual_seed(shot["seed"])
-    return pipe(generator=gen, **extra, **gen_kw).images[0]
+    return pipe(
+        generator=gen,
+        cross_attention_kwargs={"scale": shot["scale"]},
+        **gen_kw,
+    ).images[0]
 
 
 shots = [
     {
-        "name": "1_face_only_waist",
-        "mode": "face",
+        "name": "1_face_waist",
+        "lora": FACE_LORA,
+        "scale": 0.9,
         "extra": "waist up, swimsuit, looking at camera, detailed face",
         "seed": 707,
         "width": 512,
         "height": 640,
     },
     {
-        "name": "2_stack_waist",
-        "mode": "stack",
-        "extra": "waist up, swimsuit, looking at camera, detailed face",
-        "seed": 707,
-        "width": 512,
-        "height": 640,
-    },
-    {
-        "name": "3_stack_waist_b",
-        "mode": "stack",
+        "name": "2_face_waist_b",
+        "lora": FACE_LORA,
+        "scale": 0.9,
         "extra": "waist up, swimsuit, looking at camera, detailed face",
         "seed": 2025,
         "width": 512,
         "height": 640,
     },
     {
-        "name": "4_stack_stand",
-        "mode": "stack",
+        "name": "3_face_waist_side",
+        "lora": FACE_LORA,
+        "scale": 0.9,
+        "extra": "waist up, three quarter view, swimsuit, looking at camera, detailed face",
+        "seed": 1301,
+        "width": 512,
+        "height": 640,
+    },
+    {
+        "name": "4_face_stand",
+        "lora": FACE_LORA,
+        "scale": 0.9,
         "extra": "standing, full body, front view, swimsuit, looking at camera",
         "seed": 707,
         "width": 512,
         "height": 768,
     },
     {
-        "name": "5_stack_sit",
-        "mode": "stack",
-        "extra": "sitting, full body, swimsuit, looking at camera, detailed face",
-        "seed": 31415,
+        "name": "5_body_waist",
+        "lora": BODY_LORA,
+        "scale": 0.8,
+        "extra": "waist up, swimsuit, looking at camera, detailed face",
+        "seed": 707,
         "width": 512,
-        "height": 768,
+        "height": 640,
     },
 ]
 
 images = []
 paths = []
 for shot in shots:
-    if shot["mode"] == "face":
-        clear_loras()
-        pipe.load_lora_weights(FACE_LORA)
-        print("Loaded face LoRA only.")
-    else:
-        ensure_stack()
+    load_one(shot["lora"])
     image = run_shot(shot)
-    path = os.path.join(OUTPUT_DIR, "preview_stack_" + shot["name"] + ".png")
+    path = os.path.join(OUTPUT_DIR, "preview_together_" + shot["name"] + ".png")
     image.save(path)
     images.append(image)
     paths.append(path)
@@ -1652,18 +1657,19 @@ for idx, tile in enumerate(labeled):
     x = (idx % 3) * thumb_w
     y = (idx // 3) * thumb_h
     sheet.paste(tile, (x, y))
-sheet_path = os.path.join(OUTPUT_DIR, "preview_stack_SHEET.png")
+sheet_path = os.path.join(OUTPUT_DIR, "preview_together_SHEET.png")
 sheet.save(sheet_path)
-print("CONTACT SHEET (1=face only waist, 2-3=stack waist, 4-5=stack full body):")
+print("CONTACT SHEET (1-3 face LoRA waist-up, 4 face LoRA full body, 5 body LoRA waist-up):")
 display(sheet)
 print("Saved:", sheet_path)
 upload_project_file(sheet_path)
 for path in paths:
     upload_project_file(path)
-print("Judge 1 vs 2 (same seed). If 2 has her face AND a closer body, stacking works.")
-print("Judge 3 the same way (second seed). Ignore soft faces on 4 and 5.")
-print("Forge: load both LoRAs (face 0.8-0.9, body 0.4-0.6) + After Detailer for full body.")
-print("If waist-up body is still not her: add 8-12 waist-up photos, then RUN_NAME=together.")"""
+print("Judge FACE+BODY on 1-3. That is the together test.")
+print("Frame 4 full-body face stays soft on SD 1.5. Use After Detailer in Forge.")
+print("Frame 5 is body LoRA only: body reference, generic face is expected.")
+print("Do not stack the two LoRA files in one generate.")
+print("If 1-3 miss her body: add 8-12 waist-up photos, then RUN_NAME=together.")"""
 )
 
 md(
@@ -1689,26 +1695,24 @@ Quick LoRA (kept, identity was weak):
 
 ### Use in Automatic1111 / ComfyUI / Forge
 1. Load **Realistic Vision V5.1** as the checkpoint (not vanilla SD 1.5)
-2. Copy BOTH `lapetitemilf_face.safetensors` AND `lapetitemilf_body.safetensors` to `models/Lora/`
-3. Always keep these identity words after the trigger:
+2. For portraits and waist-up: load ONLY `lapetitemilf_face.safetensors` at `0.8-1.0`
+3. Do **not** enable face LoRA and body LoRA in the same txt2img. That fried cell 11.
+4. Always keep these identity words after the trigger:
    `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman`
-4. Face (winning prompt): `..., portrait, close up face, looking at camera, serious, detailed face, photorealistic, raw photo, natural skin texture`
-5. Face+body together: waist-up first, not full body. Face LoRA `0.8-0.9` + body LoRA `0.4-0.6`
-6. Full body poses (512x768). Change only the pose words, keep the identity words:
-   - `..., standing, full body, front view, swimsuit, photorealistic, raw photo`
-   - `..., sitting, full body, swimsuit, photorealistic, raw photo`
-   - `..., walking, full body, swimsuit, photorealistic, raw photo`
-7. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin, extra people, black hair, child, teen, different person`
-8. CLIP skip: 2. Full-body face: enable After Detailer (ADetailer) with the face LoRA
+5. Face: `..., portrait, close up face, looking at camera, serious, detailed face, photorealistic, raw photo, natural skin texture`
+6. Face+body: waist-up first, face LoRA only: `..., waist up, swimsuit, looking at camera, detailed face, photorealistic, raw photo`
+7. Full body (512x768): face LoRA only, then After Detailer (ADetailer) on the face. Do not stack two LoRAs.
+8. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin, extra people, black hair, child, teen, different person`
+9. CLIP skip: 2
 
 ### How to read the preview cells
-- Cell 9 = one seed, OFF vs ON
-- Cell 9b / 9c / 9d = face only. User: about 60% similar
+- Cell 9 / 9b / 9c / 9d = face close-ups. User: about 60% similar
 - Cell 10 = swimsuit body (one LoRA)
-- Cell 11 = face only waist-up vs face+body stack. Judge 1 vs 2
+- Cell 11 old stack = fried RGB (do not use)
+- Cell 11 new = one LoRA at a time. Judge 1-3 (face LoRA waist-up)
 
 ### Next
-- Reopen the GitHub notebook, run cell 9 then **cell 11** (no cell 7)
+- Reopen the GitHub notebook and run **cell 11** (it reloads a clean model; no cell 7)
 - Keep lapetitemilf_face and lapetitemilf_body. Do not overwrite them
 - If waist-up still misses the body: 8-12 new waist-up photos (head about 1/4 of the frame), IMPORT_AS=both, RUN_NAME=together"""
 )

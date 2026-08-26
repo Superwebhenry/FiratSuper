@@ -46,19 +46,15 @@ ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman, portrait
 - Seed that already hit: **707**. Keep it when generating.
 - Sweet spot: LoRA weight 0.8-1.0, CLIP skip 2, Realistic Vision V5.1.
 
-## Face + body together (next, no retrain yet)
+## Face + body together
 
-SD 1.5 full-body images have a tiny face. The face LoRA cannot lock identity on a 40px head. Judge togetherness on **waist-up** (head about 1/4 of the frame).
+Cell 11 stack **failed**. Loading face LoRA + body LoRA in one generate fried frames 2-3 (RGB noise / glitch). Frame 1 (face LoRA only, waist-up) was the only usable image.
 
-Do **not** train a combined LoRA on the same photos. The face run already mixed that folder. More epochs will not join face and body.
+Do **not** stack two character LoRAs in one txt2img (Colab or Forge).
 
-### Today (cell 11)
+Together test = **face LoRA only on waist-up**. Full-body faces stay soft; use After Detailer in Forge.
 
-1. Face LoRA only, waist-up, seed 707.
-2. Face LoRA 0.85 + body LoRA 0.55, same prompt/seed.
-3. One more stacked waist-up seed, plus two full-body frames (expect soft faces).
-
-If frame 2 keeps her face and the body gets closer, stacking is the Forge workflow: face 0.8-0.9 + body 0.4-0.6 + After Detailer on full body.
+Cell 11 now reloads a clean pipeline and uses one LoRA at a time (1-3 face waist-up, 4 face full-body, 5 body LoRA waist-up as a body reference).
 
 ### Photos for a later `together` run (Gate 1 currently FAIL)
 
