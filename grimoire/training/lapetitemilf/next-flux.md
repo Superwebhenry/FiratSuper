@@ -35,4 +35,8 @@ Long side **1024px or more**. Keep the trigger `ohwx woman`.
 
 ## After photos are in Drive
 
+2026-08-26: 28 JPEGs landed in `ADD_FLUX_PHOTOS`. Audit: `grimoire/training/lapetitemilf/flux-gate1.md`.
+
+**Gate 1 = HOLD.** Drop 4 near-dups, add sitting full-body, then caption. Do not train yet.
+
 Build a Flux Colab (ai-toolkit) **or** zip the set and train on fal.ai. New file only: `lapetitemilf_flux`. Do not overwrite `lapetitemilf_face`.
