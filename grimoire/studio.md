@@ -2,7 +2,7 @@
 
 ## GPU (Colab)
 - **Provider**: Google Colab
-- **GPU**: T4 (15 GB VRAM typical)
+- **GPU**: Colab Pro — T4 is enough; **A100 or L4** is faster. Do not use TPU.
 - **Runtime**: Python 3.10 + PyTorch (Colab preinstalled)
 
 ## Base Models

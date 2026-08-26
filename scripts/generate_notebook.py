@@ -41,7 +41,7 @@ This notebook trains a character LoRA with **kohya sd-scripts**, stores files on
 **Dataset:** Drive folder `Lapetitemilf Model / dataset` - 25 JPG images.
 
 ## Before you start
-1. **Runtime > Change runtime type > GPU** (T4 for SD 1.5)
+1. **Runtime > Change runtime type > GPU**. T4 is enough. A100 or L4 is faster (Colab Pro). Do not pick TPU.
 2. Run cells **in order** (1 to 10)
 3. Approve Google Drive access. In the popup click Continue, then **Allow ALL permissions** (do not uncheck boxes).
 4. **Cell 7:** `DRY_RUN = False` for full training (dry run already passed)
@@ -77,7 +77,7 @@ import torch
 
 if not torch.cuda.is_available():
     raise RuntimeError(
-        "No GPU. Runtime > Change runtime type > T4 GPU, then rerun."
+        "No GPU. Runtime > Change runtime type > GPU (T4, L4, or A100). Do not pick TPU, then rerun."
     )
 
 gpu = torch.cuda.get_device_name(0)
@@ -277,7 +277,7 @@ else:
         print("1. Left sidebar: folder icon -> Mount Drive, then rerun this cell")
         print("2. Chrome, one Google account only (the account that owns the photos)")
         print("3. Allow ALL permissions. Do not close extra popups")
-        print("4. Runtime > Disconnect and delete runtime, reconnect T4 GPU")
+        print("4. Runtime > Disconnect and delete runtime, reconnect GPU (T4, L4, or A100)")
         raise RuntimeError("Drive is not connected. See the steps printed above.")
 
 if (not USE_DRIVE_API) and (not _drive_ok()):
@@ -413,7 +413,7 @@ import torch
 print("Torch:", torch.__version__)
 print("CUDA:", torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else "NO GPU")
 if not torch.cuda.is_available():
-    raise RuntimeError("CUDA is not available. Runtime -> Change runtime type -> T4 GPU")
+    raise RuntimeError("CUDA is not available. Runtime -> Change runtime type -> GPU (not TPU)")
 
 SD_SCRIPTS = "/content/sd-scripts"
 if not os.path.exists(os.path.join(SD_SCRIPTS, "train_network.py")):
@@ -644,7 +644,7 @@ print("sd-scripts:", os.path.exists("/content/sd-scripts/train_network.py"))
 if not os.path.exists(BASE_MODEL_FILE):
     raise RuntimeError("Base model missing - rerun cell 4.")
 if not torch.cuda.is_available():
-    raise RuntimeError("No GPU - Runtime -> Change runtime type -> T4 GPU")
+    raise RuntimeError("No GPU - Runtime -> Change runtime type -> GPU (T4, L4, or A100)")
 
 # Body identity already failed on the current 25 cropped photos. Do not retrain them.
 IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp")
