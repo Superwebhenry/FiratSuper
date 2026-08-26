@@ -35,8 +35,8 @@ Long side **1024px or more**. Keep the trigger `ohwx woman`.
 
 ## After photos are in Drive
 
-2026-08-26 pass 3: latest batch is mostly old social/Photoroom re-exports. Keep one pulled-back hair close-up. Audit: `grimoire/training/lapetitemilf/flux-gate1.md`.
+2026-08-26 pass 5: folder clean, 31 keepers. Photos GO. Caption samples: `grimoire/training/lapetitemilf/caption-samples.md`.
 
-**Gate 1 = HOLD for captions.** Then zip / Flux train. Do not train yet.
+**Gate 1 = HOLD for caption approval.** Then zip / Flux train. Do not train yet.
 
 Build a Flux Colab (ai-toolkit) **or** zip the set and train on fal.ai. New file only: `lapetitemilf_flux`. Do not overwrite `lapetitemilf_face`.
