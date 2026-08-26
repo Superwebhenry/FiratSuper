@@ -1,7 +1,6 @@
 # Status: lapetitemilf
 
-- **Phase**: Face LoRA trained — judge with a 5-crop face sheet (no retrain)
-- **Face LoRA**: `loras/lapetitemilf_face.safetensors` — one close-up was somewhat similar, not locked
-- **Body LoRA cell 9**: face unrelated — expected; do not use body for portraits
-- **Next**: reopen Colab, run cell 9 then **cell 9b** (5 face crops). Do not run cell 7.
+- **Phase**: Face LoRA — one hit (`2_front_neutral`), others so-so. Repeat that prompt.
+- **Face LoRA**: `loras/lapetitemilf_face.safetensors`
+- **Next**: reopen Colab, cell 9 then **cell 9c** (same serious close-up prompt, 5 seeds). Do not run cell 7.
 - **Notebook**: https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/SD_LoRA_Training_Colab.ipynb

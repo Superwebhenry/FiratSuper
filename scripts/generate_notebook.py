@@ -53,11 +53,10 @@ This is a Colab Drive-login popup issue, not the training code.
 3. In the popup: Continue, then **Allow ALL permissions** (do not uncheck boxes)
 4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
-## Current preset: face LoRA is trained - judge with a face sheet, no retrain
-- File: `loras/lapetitemilf_face.safetensors`
-- One close-up is not enough. Run cell 9 (OFF vs ON), then **cell 9b** (5 face crops).
-- Do not judge the face on the body LoRA. Body cell 9 being unrelated is expected.
-- Cell 10 is still the swimsuit body test.
+## Current preset: face LoRA hit on one crop - repeat that prompt
+- `2_front_neutral` (serious, looking at camera) was similar. The other 4 were so-so.
+- Do not retrain. Run **cell 9c** (same prompt, 5 seeds).
+- Portraits: use `lapetitemilf_face` only. Body LoRA is not for faces.
 
 ## Drive layout
 ```
@@ -1051,7 +1050,104 @@ upload_project_file(sheet_path)
 for path in paths:
     upload_project_file(path)
 print("Wrote", len(paths), "face files.")
-print("Judge identity on this sheet, not on the body LoRA.")"""
+print("Judge identity on this sheet, not on the body LoRA.")
+print("If ONE crop is her and the others are not, run cell 9c with that same prompt.")"""
+)
+
+code(
+    """# @title 9c) Repeat the hit face prompt (5 seeds, no retraining)
+import os
+import torch
+from IPython.display import display
+from PIL import Image, ImageDraw
+
+if "pipe" not in globals():
+    raise RuntimeError("Run cell 9 first so the model is loaded.")
+
+lora_file = os.path.join(LORAS_DIR, LORA_BASENAME + ".safetensors")
+if not os.path.exists(lora_file):
+    raise RuntimeError("LoRA not found: " + lora_file)
+
+try:
+    pipe.unload_lora_weights()
+except Exception:
+    pass
+pipe.load_lora_weights(lora_file)
+print("This cell does NOT retrain.")
+print("Same prompt as 2_front_neutral (the crop that looked similar).")
+
+LOOK = "long wavy highlighted blonde hair, brown eyes, adult woman"
+prompt = (
+    TRIGGER_WORD
+    + ", "
+    + LOOK
+    + ", portrait, close up face, looking at camera, serious, detailed face, "
+    + "photorealistic, raw photo, natural skin texture, natural lighting, high quality"
+)
+negative = (
+    "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
+    "doll, deformed, extra fingers, blurry, black hair, child, teen, "
+    "different person, extra people, extra faces"
+)
+seeds = [707, 1301, 4096, 7777, 24680]
+print("Prompt:", prompt)
+print("Seeds:", seeds)
+
+images = []
+paths = []
+for seed in seeds:
+    gen_kw = {
+        "prompt": prompt,
+        "negative_prompt": negative,
+        "num_inference_steps": 28,
+        "guidance_scale": 6.0,
+        "width": 512,
+        "height": 512,
+        "output_type": "pil",
+    }
+    if CLIP_SKIP > 1:
+        gen_kw["clip_skip"] = CLIP_SKIP
+    print("=== seed", seed, "===")
+    gen = torch.Generator(device="cpu").manual_seed(seed)
+    image = pipe(
+        generator=gen,
+        cross_attention_kwargs={"scale": 1.0},
+        **gen_kw,
+    ).images[0]
+    path = os.path.join(OUTPUT_DIR, "preview_face_hit_" + str(seed) + ".png")
+    image.save(path)
+    images.append(image)
+    paths.append(path)
+    print("Saved:", path)
+
+thumb = 256
+labeled = []
+for seed, image in zip(seeds, images):
+    im = image.copy()
+    im.thumbnail((thumb, thumb - 28))
+    canvas = Image.new("RGB", (thumb, thumb), (16, 16, 16))
+    canvas.paste(im, ((thumb - im.width) // 2, 28))
+    draw = ImageDraw.Draw(canvas)
+    draw.text((6, 6), "seed " + str(seed), fill=(255, 255, 255))
+    labeled.append(canvas)
+
+sheet_w = thumb * 3
+sheet_h = thumb * 2
+sheet = Image.new("RGB", (sheet_w, sheet_h), (0, 0, 0))
+for idx, tile in enumerate(labeled):
+    x = (idx % 3) * thumb
+    y = (idx // 3) * thumb
+    sheet.paste(tile, (x, y))
+sheet_path = os.path.join(OUTPUT_DIR, "preview_face_HIT_SHEET.png")
+sheet.save(sheet_path)
+print("CONTACT SHEET (same prompt, 5 seeds):")
+display(sheet)
+print("Saved:", sheet_path)
+upload_project_file(sheet_path)
+for path in paths:
+    upload_project_file(path)
+print("If most of these look like the red box, use this prompt from now on.")
+print("If only seed 707 looks like her, identity is not locked yet.")"""
 )
 
 code(
@@ -1239,14 +1335,14 @@ Quick LoRA (kept, identity was weak):
 7. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin, extra people, black hair, child, teen, different person`
 8. CLIP skip: 2. LoRA weight `0.8-1.0`. Full-body face: enable After Detailer if you have it.
 
-### How to read cell 9, 9b, and cell 10
-- Cell 9 = one seed, OFF vs ON (did the LoRA apply)
-- Cell 9b = 5 face close-ups. Judge identity here
-- Cell 10 = swimsuit body. Full-body faces stay soft on SD 1.5
-- Use `lapetitemilf_face` for portraits. Body LoRA cell 9 is not a face test
+### How to read cell 9, 9b, 9c, and cell 10
+- Cell 9 = one seed, OFF vs ON
+- Cell 9b = 5 face close-ups. User: 2_front_neutral was similar, others so-so
+- Cell 9c = same prompt as that hit, 5 seeds
+- Cell 10 = swimsuit body. Use face LoRA for portraits, not body
 
 ### Next after this face run
-- Reopen the GitHub notebook, run cell 9 then cell 9b (no cell 7)
+- Reopen the GitHub notebook, run cell 9 then cell 9c (no cell 7)
 - Keep body + Thorough files. Do not overwrite them"""
 )
 

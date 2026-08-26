@@ -32,5 +32,5 @@
 ## Face LoRA (`lapetitemilf_face`) — somewhat similar, not locked
 
 - User: close-up is a bit similar, still not her. Body LoRA cell 9 face is unrelated (expected).
-- One seed is not a verdict. Next: cell 9b face sheet (5 crops), no retrain.
-- Judge portraits on `lapetitemilf_face` only.
+- Face sheet: **`2_front_neutral` similar**, other four so-so.
+- Next: cell 9c repeats that serious close-up prompt on 5 seeds. No retrain.
