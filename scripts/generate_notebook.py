@@ -53,10 +53,11 @@ This is a Colab Drive-login popup issue, not the training code.
 3. In the popup: Continue, then **Allow ALL permissions** (do not uncheck boxes)
 4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
-## Current preset: face-lock run (new close-ups are in Drive)
-- Keep Thorough for portraits and Body for figure. This run writes `lapetitemilf_face.safetensors`.
-- Run cells 1-6, then **cell 6b** (imports new face photos, skips ones already copied), then cell 7.
-- Do not overwrite `lapetitemilf_body.safetensors`.
+## Current preset: face LoRA is trained - judge with a face sheet, no retrain
+- File: `loras/lapetitemilf_face.safetensors`
+- One close-up is not enough. Run cell 9 (OFF vs ON), then **cell 9b** (5 face crops).
+- Do not judge the face on the body LoRA. Body cell 9 being unrelated is expected.
+- Cell 10 is still the swimsuit body test.
 
 ## Drive layout
 ```
@@ -927,8 +928,130 @@ else:
     upload_project_file(off_path)
     upload_project_file(on_path)
     print("If OFF and ON look the same, the LoRA did not apply.")
-    print("Judge identity HERE (close-up). Cell 10 full-body faces will look softer.")
+    print("This is ONE seed. Run cell 9b for 5 different face crops.")
     print("Ignore HF_TOKEN warning - public checkpoints do not need a token.")"""
+)
+
+code(
+    """# @title 9b) Face close-up sheet (5 crops, no retraining)
+import os
+import torch
+from IPython.display import display
+from PIL import Image, ImageDraw
+
+if "pipe" not in globals():
+    raise RuntimeError("Run cell 9 first so the model is loaded.")
+
+lora_file = os.path.join(LORAS_DIR, LORA_BASENAME + ".safetensors")
+if not os.path.exists(lora_file):
+    raise RuntimeError("LoRA not found: " + lora_file)
+
+try:
+    pipe.unload_lora_weights()
+except Exception:
+    pass
+pipe.load_lora_weights(lora_file)
+print("Face sheet LoRA:", os.path.basename(lora_file))
+print("This cell does NOT retrain. 5 close-ups, different seeds.")
+
+LOOK = "long wavy highlighted blonde hair, brown eyes, adult woman"
+negative = (
+    "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
+    "doll, deformed, extra fingers, blurry, black hair, child, teen, "
+    "different person, extra people, extra faces"
+)
+faces = [
+    {
+        "name": "1_front_smile",
+        "extra": "portrait, close up face, looking at camera, slight smile, detailed face",
+        "seed": 101,
+    },
+    {
+        "name": "2_front_neutral",
+        "extra": "portrait, close up face, looking at camera, serious, detailed face",
+        "seed": 707,
+    },
+    {
+        "name": "3_three_quarter",
+        "extra": "portrait, close up face, three quarter view, looking at camera, detailed face",
+        "seed": 2024,
+    },
+    {
+        "name": "4_head_tilt",
+        "extra": "portrait, close up face, looking at camera, head tilted, detailed face",
+        "seed": 31415,
+    },
+    {
+        "name": "5_wide_smile",
+        "extra": "portrait, close up face, looking at camera, smiling, teeth, detailed face",
+        "seed": 99991,
+    },
+]
+
+images = []
+paths = []
+for face in faces:
+    prompt = (
+        TRIGGER_WORD
+        + ", "
+        + LOOK
+        + ", "
+        + face["extra"]
+        + ", photorealistic, raw photo, natural skin texture, natural lighting, high quality"
+    )
+    gen_kw = {
+        "prompt": prompt,
+        "negative_prompt": negative,
+        "num_inference_steps": 28,
+        "guidance_scale": 6.0,
+        "width": 512,
+        "height": 512,
+        "output_type": "pil",
+    }
+    if CLIP_SKIP > 1:
+        gen_kw["clip_skip"] = CLIP_SKIP
+    print("===", face["name"], "seed", face["seed"], "===")
+    print("Prompt:", prompt)
+    gen = torch.Generator(device="cpu").manual_seed(face["seed"])
+    image = pipe(
+        generator=gen,
+        cross_attention_kwargs={"scale": 1.0},
+        **gen_kw,
+    ).images[0]
+    path = os.path.join(OUTPUT_DIR, "preview_face_" + face["name"] + ".png")
+    image.save(path)
+    images.append(image)
+    paths.append(path)
+    print("Saved:", path)
+
+thumb = 256
+labeled = []
+for face, image in zip(faces, images):
+    im = image.copy()
+    im.thumbnail((thumb, thumb - 28))
+    canvas = Image.new("RGB", (thumb, thumb), (16, 16, 16))
+    canvas.paste(im, ((thumb - im.width) // 2, 28))
+    draw = ImageDraw.Draw(canvas)
+    draw.text((6, 6), face["name"], fill=(255, 255, 255))
+    labeled.append(canvas)
+
+sheet_w = thumb * 3
+sheet_h = thumb * 2
+sheet = Image.new("RGB", (sheet_w, sheet_h), (0, 0, 0))
+for idx, tile in enumerate(labeled):
+    x = (idx % 3) * thumb
+    y = (idx // 3) * thumb
+    sheet.paste(tile, (x, y))
+sheet_path = os.path.join(OUTPUT_DIR, "preview_face_SHEET.png")
+sheet.save(sheet_path)
+print("CONTACT SHEET (all 5 faces):")
+display(sheet)
+print("Saved:", sheet_path)
+upload_project_file(sheet_path)
+for path in paths:
+    upload_project_file(path)
+print("Wrote", len(paths), "face files.")
+print("Judge identity on this sheet, not on the body LoRA.")"""
 )
 
 code(
@@ -1116,13 +1239,14 @@ Quick LoRA (kept, identity was weak):
 7. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin, extra people, black hair, child, teen, different person`
 8. CLIP skip: 2. LoRA weight `0.8-1.0`. Full-body face: enable After Detailer if you have it.
 
-### How to read cell 9 and cell 10
-- Cell 9 = face close-up. Cell 10 = swimsuit pose sheet (5 images, ~2 min, no training)
-- Judge identity on cell 9 and `waist_up`. Poses 2-5 are for the body
-- Same LoRA, no extra training
+### How to read cell 9, 9b, and cell 10
+- Cell 9 = one seed, OFF vs ON (did the LoRA apply)
+- Cell 9b = 5 face close-ups. Judge identity here
+- Cell 10 = swimsuit body. Full-body faces stay soft on SD 1.5
+- Use `lapetitemilf_face` for portraits. Body LoRA cell 9 is not a face test
 
 ### Next after this face run
-- Run cell 9 then cell 10. Judge identity on cell 9 and waist_up
+- Reopen the GitHub notebook, run cell 9 then cell 9b (no cell 7)
 - Keep body + Thorough files. Do not overwrite them"""
 )
 

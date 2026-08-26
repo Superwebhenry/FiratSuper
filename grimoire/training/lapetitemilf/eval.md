@@ -28,3 +28,9 @@
 - **Skip**: mp4, 3 blurry night Santa frames (one with extra people), 2 re-uploads of photos already in the body set.
 - Instagram screenshot is usable as a face crop but is smoothed; one of many, not the only face source.
 - Next file: `lapetitemilf_face` (do not overwrite body).
+
+## Face LoRA (`lapetitemilf_face`) — somewhat similar, not locked
+
+- User: close-up is a bit similar, still not her. Body LoRA cell 9 face is unrelated (expected).
+- One seed is not a verdict. Next: cell 9b face sheet (5 crops), no retrain.
+- Judge portraits on `lapetitemilf_face` only.
