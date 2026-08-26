@@ -43,10 +43,10 @@ Training is done. You do **not** need Forge or Automatic1111. Those are programs
 2. Sign in with **one** Google account (the Drive owner).
 3. **Runtime > Change runtime type > GPU**. T4 is enough. A100 or L4 is faster. Do not pick TPU.
 4. Run **cell 1**, then **2**, then **3**, then **4**. Wait for each green check.
-5. Run **cell 13**. 8 waist-up pictures appear under the cell.
+5. Run **cell 13**. To change the situation, edit the `SCENE` line in cell 13 (keep "waist up").
 6. Files also go to Drive: `MyDrive/FiratSuper/output/lapetitemilf/face/`
-7. Copy the similar ones into `MyDrive/FiratSuper/keepers/` (cell 2 creates this folder). Do not put them in the training dataset.
-8. Want 8 more? In cell 13 set `BATCH = 1` (then 2, 3...) and run cell 13 again.
+7. Copy the similar ones into `MyDrive/FiratSuper/keepers/`
+8. Want 8 more of the same scene? Set `BATCH = 1` and run cell 13 again.
 
 Do **not** run cell 7 (that is training). Do **not** run cell 12.
 
@@ -1785,9 +1785,18 @@ from diffusers import AutoencoderKL, DPMSolverMultistepScheduler, StableDiffusio
 from IPython.display import display
 from PIL import Image, ImageDraw
 
-# Raise BATCH by 1 each time you want 8 NEW pictures.
+# Raise BATCH by 1 each time you want 8 NEW pictures of the SAME scene.
 BATCH = 0
 HOW_MANY = 8
+# Short name for the files (bed, sofa, beach, ...).
+SCENE_TAG = "bed"
+# Change only this line for a new situation. Keep "waist up" so the face stays hers.
+# Other examples:
+#   waist up, swimsuit, looking at camera, detailed face
+#   waist up, sitting on a sofa, lingerie, looking at camera, detailed face
+SCENE = "waist up, sitting on a bed, swimsuit, looking at camera, detailed face"
+WIDTH = 512
+HEIGHT = 640
 
 FACE_LORA = os.path.join(LORAS_DIR, "lapetitemilf_face.safetensors")
 if not os.path.isfile(FACE_LORA):
@@ -1798,6 +1807,8 @@ if not os.path.isfile(BASE_MODEL_FILE):
 print("This cell does NOT train. It only makes pictures.")
 print("LoRA:", FACE_LORA)
 print("BATCH:", BATCH, "HOW_MANY:", HOW_MANY)
+print("SCENE_TAG:", SCENE_TAG)
+print("SCENE:", SCENE)
 
 
 def _disable_peft_torchao():
@@ -1850,8 +1861,9 @@ prompt = (
     TRIGGER_WORD
     + ", "
     + LOOK
-    + ", waist up, swimsuit, looking at camera, detailed face, "
-    + "photorealistic, raw photo, natural lighting, high quality"
+    + ", "
+    + SCENE
+    + ", photorealistic, raw photo, natural lighting, high quality"
 )
 negative = (
     "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
@@ -1871,8 +1883,8 @@ for seed in seeds:
         "negative_prompt": negative,
         "num_inference_steps": 28,
         "guidance_scale": 6.0,
-        "width": 512,
-        "height": 640,
+        "width": WIDTH,
+        "height": HEIGHT,
         "output_type": "pil",
     }
     if CLIP_SKIP > 1:
@@ -1884,7 +1896,7 @@ for seed in seeds:
         cross_attention_kwargs={"scale": 0.9},
         **gen_kw,
     ).images[0]
-    name = "gen_b" + str(BATCH) + "_s" + str(seed) + ".png"
+    name = "gen_" + SCENE_TAG + "_b" + str(BATCH) + "_s" + str(seed) + ".png"
     path = os.path.join(OUTPUT_DIR, name)
     image.save(path)
     images.append(image)
@@ -1908,7 +1920,7 @@ rows = 2
 sheet = Image.new("RGB", (thumb_w * cols, thumb_h * rows), (0, 0, 0))
 for idx, tile in enumerate(labeled):
     sheet.paste(tile, ((idx % cols) * thumb_w, (idx // cols) * thumb_h))
-sheet_path = os.path.join(OUTPUT_DIR, "gen_BATCH_" + str(BATCH) + "_SHEET.png")
+sheet_path = os.path.join(OUTPUT_DIR, "gen_" + SCENE_TAG + "_BATCH_" + str(BATCH) + "_SHEET.png")
 sheet.save(sheet_path)
 print("SHEET:")
 display(sheet)
@@ -1919,7 +1931,8 @@ print("Do not copy them into the training dataset.")
 upload_project_file(sheet_path)
 for path in paths:
     upload_project_file(path)
-print("Done. To make 8 more: set BATCH =", BATCH + 1, "and run this cell again.")
+print("Done. Same scene, 8 more: set BATCH =", BATCH + 1, "and run this cell again.")
+print("New scene: edit SCENE and SCENE_TAG, set BATCH = 0, run this cell.")
 print("Do not run cell 7.")"""
 )
 
@@ -1949,8 +1962,9 @@ Quick LoRA (kept, identity was weak):
 2. Run cells 1, 2, 3, 4, then **cell 13**
 3. Pictures: `MyDrive/FiratSuper/output/lapetitemilf/face/`
 4. Copy similar pictures to `MyDrive/FiratSuper/keepers/`
-5. More pictures: in cell 13 set `BATCH = 1` and run cell 13 again
-6. Never run cell 7 or cell 12. Do not put keepers in the training folder
+5. New situation: edit `SCENE` in cell 13 (keep waist up), set `SCENE_TAG`, run cell 13
+6. More of the same scene: set `BATCH = 1` and run cell 13 again
+7. Never run cell 7 or cell 12. Do not put keepers in the training folder
 
 ### How to read the old preview cells
 - Cell 11: frames 1-3 similar (face LoRA waist-up)
