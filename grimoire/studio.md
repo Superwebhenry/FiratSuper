@@ -32,9 +32,9 @@
   - Winning prompt: `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman, portrait, close up face, looking at camera, serious, detailed face, photorealistic, raw photo`
   - Do not overwrite.
 - **Face+body together**
-  - Do **not** stack face + body LoRAs in one generate (fried RGB on cell 11).
-  - Use face LoRA only on **waist-up** prompts (weight 0.8-1.0).
-  - Full-body faces: After Detailer (ADetailer) with the face LoRA.
-  - A `together` train waits on 8-12 NEW waist-up photos (head ~1/4 of the frame)
+  - Hit: face LoRA only, **waist-up**, weight 0.9. User: cell 11 frames 1-3 similar.
+  - Seeds: 707, 2025, 1301
+  - Do **not** stack face + body LoRAs. Do **not** use the body LoRA for identity.
+  - Full-body faces: After Detailer (cell 12 / Forge ADetailer) with the face LoRA.
 
 

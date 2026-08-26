@@ -54,7 +54,19 @@ Do **not** stack two character LoRAs in one txt2img (Colab or Forge).
 
 Together test = **face LoRA only on waist-up**. Full-body faces stay soft; use After Detailer in Forge.
 
-Cell 11 now reloads a clean pipeline and uses one LoRA at a time (1-3 face waist-up, 4 face full-body, 5 body LoRA waist-up as a body reference).
+Cell 11 (clean, one LoRA): user marked **frames 1-3 similar** (`1_face_waist`, `2_face_waist_b`, `3_face_waist_side`). Frame 4 full-body stand is not. Frame 5 body-LoRA waist-up is not.
+
+Winning together recipe: **face LoRA only, waist-up, looking at camera, weight 0.9**. Seeds that hit: **707, 2025, 1301**.
+
+Do **not** use `lapetitemilf_body` for identity. Do **not** stack two LoRAs.
+
+Full-body identity is a second pass (cell 12 / Forge After Detailer), not more training on the same photos.
+
+### Winning waist-up prompt
+
+```
+ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman, waist up, swimsuit, looking at camera, detailed face, photorealistic, raw photo, natural lighting, high quality
+```
 
 ### Photos for a later `together` run (Gate 1 currently FAIL)
 
