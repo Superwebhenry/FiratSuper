@@ -43,10 +43,9 @@ Training is done. You do **not** need Forge or Automatic1111. Those are programs
 2. Sign in with **one** Google account (the Drive owner).
 3. **Runtime > Change runtime type > GPU**. T4 is enough. A100 or L4 is faster. Do not pick TPU.
 4. Run **cell 1**, then **2**, then **3**, then **4**. Wait for each green check.
-5. Run **cell 13**. To change the situation, edit the `SCENE` line in cell 13 (keep "waist up").
-6. Files also go to Drive: `MyDrive/FiratSuper/output/lapetitemilf/face/`
-7. Copy the similar ones into `MyDrive/FiratSuper/keepers/`
-8. Want 8 more of the same scene? Set `BATCH = 1` and run cell 13 again.
+5. Run **cell 13**. Default makes **20 scenes** (1 picture each) from the moodboard.
+6. To remake ONE scene 8 times: set `MODE = "one"` and `SCENE_ID = 2` (jacuzzi), then run cell 13.
+7. Copy similar pictures to `MyDrive/FiratSuper/keepers/`
 
 Do **not** run cell 7 (that is training). Do **not** run cell 12.
 
@@ -1785,18 +1784,38 @@ from diffusers import AutoencoderKL, DPMSolverMultistepScheduler, StableDiffusio
 from IPython.display import display
 from PIL import Image, ImageDraw
 
-# Raise BATCH by 1 each time you want 8 NEW pictures of the SAME scene.
+# "all20" = 1 picture of each moodboard scene (about 20 images).
+# "one" = 8 pictures of ONE scene (set SCENE_ID).
+MODE = "all20"
+SCENE_ID = 1
 BATCH = 0
 HOW_MANY = 8
-# Short name for the files (bed, sofa, beach, ...).
-SCENE_TAG = "bed"
-# Change only this line for a new situation. Keep "waist up" so the face stays hers.
-# Other examples:
-#   waist up, swimsuit, looking at camera, detailed face
-#   waist up, sitting on a sofa, lingerie, looking at camera, detailed face
-SCENE = "waist up, sitting on a bed, swimsuit, looking at camera, detailed face"
 WIDTH = 512
 HEIGHT = 640
+
+# Keep "waist up" so the face stays hers. Change clothes/place only.
+PRESETS = [
+    ("bed_swim", "waist up, sitting on a bed, swimsuit, looking at camera, detailed face"),
+    ("jacuzzi", "waist up, sitting in a jacuzzi, swimsuit, wet hair, looking at camera, detailed face"),
+    ("bed_white_lace", "waist up, sitting on a bed, white lace lingerie, looking at camera, detailed face"),
+    ("bed_black", "waist up, sitting on white pillows, black lingerie, bedroom, looking at camera, detailed face"),
+    ("bed_green", "waist up, sitting on a bed, emerald green lingerie, looking at camera, detailed face"),
+    ("bed_red", "waist up, sitting on a bed, red lingerie, looking at camera, detailed face"),
+    ("armchair", "waist up, sitting on a luxury armchair, black lingerie, looking at camera, detailed face"),
+    ("studio_teal", "waist up, studio, teal backdrop, white lingerie, looking at camera, detailed face"),
+    ("gold_room", "waist up, ornate room, gold mirror, lingerie, looking at camera, detailed face"),
+    ("garden", "waist up, garden path, red sheer robe, looking at camera, detailed face"),
+    ("stone_wall", "waist up, sunlit stone wall, lingerie, looking at camera, detailed face"),
+    ("beach_white", "waist up, beach, white bikini, looking at camera, detailed face"),
+    ("beach_black", "waist up, sandy beach, black bikini, looking at camera, detailed face"),
+    ("pool_edge", "waist up, sitting on a pool edge, swimsuit, looking at camera, detailed face"),
+    ("palms", "waist up, tropical palm leaves, floral bikini, looking at camera, detailed face"),
+    ("sunset_pool", "waist up, infinity pool, sunset, black swimsuit, looking at camera, detailed face"),
+    ("straw_hat", "waist up, beach, white bikini, wide brim straw hat, looking at camera, detailed face"),
+    ("ocean_rocks", "waist up, sitting on coastal rocks, swimsuit, looking at camera, detailed face"),
+    ("gazebo", "waist up, wooden gazebo, swimsuit, looking at camera, detailed face"),
+    ("villa", "waist up, sunlit villa patio, olive green bikini, looking at camera, detailed face"),
+]
 
 FACE_LORA = os.path.join(LORAS_DIR, "lapetitemilf_face.safetensors")
 if not os.path.isfile(FACE_LORA):
@@ -1806,9 +1825,9 @@ if not os.path.isfile(BASE_MODEL_FILE):
 
 print("This cell does NOT train. It only makes pictures.")
 print("LoRA:", FACE_LORA)
-print("BATCH:", BATCH, "HOW_MANY:", HOW_MANY)
-print("SCENE_TAG:", SCENE_TAG)
-print("SCENE:", SCENE)
+print("MODE:", MODE)
+for i, (tag, scene) in enumerate(PRESETS, start=1):
+    print(str(i) + ".", tag, "-", scene)
 
 
 def _disable_peft_torchao():
@@ -1857,27 +1876,41 @@ pipe.load_lora_weights(FACE_LORA)
 print("Loaded face LoRA only.")
 
 LOOK = "long wavy highlighted blonde hair, brown eyes, adult woman"
-prompt = (
-    TRIGGER_WORD
-    + ", "
-    + LOOK
-    + ", "
-    + SCENE
-    + ", photorealistic, raw photo, natural lighting, high quality"
-)
 negative = (
     "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
     "doll, deformed, extra fingers, extra legs, extra people, cropped head, "
-    "black hair, child, teen, different person, extra faces"
+    "black hair, child, teen, different person, extra faces, horse"
 )
-base_seeds = [707, 2025, 1301, 42, 314, 8192, 12345, 33333]
-seeds = [s + BATCH * 100000 for s in base_seeds[:HOW_MANY]]
-print("Prompt:", prompt)
-print("Seeds:", seeds)
+
+jobs = []
+if MODE == "all20":
+    for i, (tag, scene) in enumerate(PRESETS, start=1):
+        jobs.append({"tag": tag, "scene": scene, "seed": 707, "idx": i})
+elif MODE == "one":
+    if SCENE_ID < 1 or SCENE_ID > len(PRESETS):
+        raise RuntimeError("SCENE_ID must be 1 to " + str(len(PRESETS)))
+    tag, scene = PRESETS[SCENE_ID - 1]
+    base_seeds = [707, 2025, 1301, 42, 314, 8192, 12345, 33333]
+    seeds = [s + BATCH * 100000 for s in base_seeds[:HOW_MANY]]
+    for seed in seeds:
+        jobs.append({"tag": tag, "scene": scene, "seed": seed, "idx": SCENE_ID})
+else:
+    raise RuntimeError("MODE must be 'all20' or 'one'")
+
+print("Will make", len(jobs), "pictures.")
 
 images = []
 paths = []
-for seed in seeds:
+labels = []
+for job in jobs:
+    prompt = (
+        TRIGGER_WORD
+        + ", "
+        + LOOK
+        + ", "
+        + job["scene"]
+        + ", photorealistic, raw photo, natural lighting, high quality"
+    )
     gen_kw = {
         "prompt": prompt,
         "negative_prompt": negative,
@@ -1889,38 +1922,51 @@ for seed in seeds:
     }
     if CLIP_SKIP > 1:
         gen_kw["clip_skip"] = CLIP_SKIP
-    print("=== seed", seed, "===")
-    gen = torch.Generator(device="cpu").manual_seed(seed)
+    print("===", job["idx"], job["tag"], "seed", job["seed"], "===")
+    print("Prompt:", prompt)
+    gen = torch.Generator(device="cpu").manual_seed(job["seed"])
     image = pipe(
         generator=gen,
         cross_attention_kwargs={"scale": 0.9},
         **gen_kw,
     ).images[0]
-    name = "gen_" + SCENE_TAG + "_b" + str(BATCH) + "_s" + str(seed) + ".png"
+    name = (
+        "gen_"
+        + job["tag"]
+        + "_b"
+        + str(BATCH)
+        + "_s"
+        + str(job["seed"])
+        + ".png"
+    )
     path = os.path.join(OUTPUT_DIR, name)
     image.save(path)
     images.append(image)
     paths.append(path)
+    labels.append(str(job["idx"]) + "_" + job["tag"])
     print("Saved:", path)
     display(image)
 
-thumb_w = 200
-thumb_h = 260
+thumb_w = 180
+thumb_h = 230
 labeled = []
-for seed, image in zip(seeds, images):
+for name, image in zip(labels, images):
     im = image.copy()
     im.thumbnail((thumb_w, thumb_h - 28))
     canvas = Image.new("RGB", (thumb_w, thumb_h), (16, 16, 16))
     canvas.paste(im, ((thumb_w - im.width) // 2, 28))
     draw = ImageDraw.Draw(canvas)
-    draw.text((6, 6), "seed " + str(seed), fill=(255, 255, 255))
+    draw.text((4, 6), name[:22], fill=(255, 255, 255))
     labeled.append(canvas)
-cols = 4
-rows = 2
+cols = 5
+rows = (len(labeled) + cols - 1) // cols
 sheet = Image.new("RGB", (thumb_w * cols, thumb_h * rows), (0, 0, 0))
 for idx, tile in enumerate(labeled):
     sheet.paste(tile, ((idx % cols) * thumb_w, (idx // cols) * thumb_h))
-sheet_path = os.path.join(OUTPUT_DIR, "gen_" + SCENE_TAG + "_BATCH_" + str(BATCH) + "_SHEET.png")
+sheet_name = "gen_moodboard_SHEET.png" if MODE == "all20" else (
+    "gen_" + jobs[0]["tag"] + "_BATCH_" + str(BATCH) + "_SHEET.png"
+)
+sheet_path = os.path.join(OUTPUT_DIR, sheet_name)
 sheet.save(sheet_path)
 print("SHEET:")
 display(sheet)
@@ -1931,11 +1977,10 @@ print("Do not copy them into the training dataset.")
 upload_project_file(sheet_path)
 for path in paths:
     upload_project_file(path)
-print("Done. Same scene, 8 more: set BATCH =", BATCH + 1, "and run this cell again.")
-print("New scene: edit SCENE and SCENE_TAG, set BATCH = 0, run this cell.")
+print("Done.", len(paths), "pictures.")
+print("One scene 8 times: MODE = 'one', SCENE_ID = 1 to 20, run this cell.")
 print("Do not run cell 7.")"""
 )
-
 md(
     """## Done
 
@@ -1960,11 +2005,10 @@ Quick LoRA (kept, identity was weak):
 ### Make more pictures
 1. This Colab is the app. You do not need Forge or Automatic1111.
 2. Run cells 1, 2, 3, 4, then **cell 13**
-3. Pictures: `MyDrive/FiratSuper/output/lapetitemilf/face/`
-4. Copy similar pictures to `MyDrive/FiratSuper/keepers/`
-5. New situation: edit `SCENE` in cell 13 (keep waist up), set `SCENE_TAG`, run cell 13
-6. More of the same scene: set `BATCH = 1` and run cell 13 again
-7. Never run cell 7 or cell 12. Do not put keepers in the training folder
+3. Default MODE all20 = 20 moodboard scenes, 1 picture each
+4. One scene 8 times: MODE = "one", SCENE_ID = 1 to 20
+5. Copy similar pictures to `MyDrive/FiratSuper/keepers/`
+6. Never run cell 7 or cell 12. Do not put keepers in the training folder
 
 ### How to read the old preview cells
 - Cell 11: frames 1-3 similar (face LoRA waist-up)
