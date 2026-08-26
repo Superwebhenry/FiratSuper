@@ -1,8 +1,8 @@
 # Status: lapetitemilf
 
 - **Phase**: SD 1.5 full-body is a dead end. Next is **Flux**, not another SD 1.5 train.
-- **Flux Gate 1 (2026-08-26)**: 28 photos in `ADD_FLUX_PHOTOS`. **HOLD** — drop 4 near-dups, add sitting full-body, then caption. Report: `flux-gate1.md`.
+- **Flux Gate 1 (2026-08-26 pass 2)**: sitting shots arrived (Canon + Galaxy S25+ originals). **HOLD for captions.** Drop the old social / WhatsApp / Photoroom files listed in `flux-gate1.md`.
 - **Do not**: delete existing LoRAs, retrain SD 1.5, start Flux training yet.
-- **Do**: drop the 4 near-dups listed in `flux-gate1.md`, add 3-4 sitting full-body shots with face visible, then caption with `ohwx woman`.
+- **Do**: trash the 8 drop files, then caption keepers with `ohwx woman`.
 - **Plan**: `grimoire/training/lapetitemilf/next-flux.md`
 - **Notebook (old SD 1.5)**: https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/SD_LoRA_Training_Colab.ipynb
