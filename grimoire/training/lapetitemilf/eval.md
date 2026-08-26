@@ -35,7 +35,7 @@
 - Hit-prompt sheet (cell 9c, 2026-08-26): **2 of 5 similar**. Same serious close-up prompt, 5 seeds.
 - Diagnosis: identity is in the weights. Seed lottery is still too high (usable ~40%, not a lock).
 - Failure mode: insufficient unique sharp NEUTRAL close-ups looking at camera. Smiles / head-tilt / beauty-filter frames pull a generic woman.
-- Do **not** retrain on the same photos. Do **not** raise LoRA weight to fake a lock. Do **not** overwrite `lapetitemilf_face`.
+- User (2026-08-26): faces look OK, **about 60% similar**. Ready for face AND body together.
 
 ### Winning portrait prompt
 
@@ -46,8 +46,28 @@ ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman, portrait
 - Seed that already hit: **707**. Keep it when generating.
 - Sweet spot: LoRA weight 0.8-1.0, CLIP skip 2, Realistic Vision V5.1.
 
-### Next (no retrain)
+## Face + body together (next, no retrain yet)
 
-1. Cell **9d**: 10 more portraits of that prompt. Keep the similar files.
-2. If they want **4/5 instead of 2/5**: unique sharp NEUTRAL face close-ups looking at camera (original camera files, not WhatsApp/Instagram smiles). Then `RUN_NAME = "face2"`.
-3. Full-body face on SD 1.5 stays soft. Forge: After Detailer for full-body faces.
+SD 1.5 full-body images have a tiny face. The face LoRA cannot lock identity on a 40px head. Judge togetherness on **waist-up** (head about 1/4 of the frame).
+
+Do **not** train a combined LoRA on the same photos. The face run already mixed that folder. More epochs will not join face and body.
+
+### Today (cell 11)
+
+1. Face LoRA only, waist-up, seed 707.
+2. Face LoRA 0.85 + body LoRA 0.55, same prompt/seed.
+3. One more stacked waist-up seed, plus two full-body frames (expect soft faces).
+
+If frame 2 keeps her face and the body gets closer, stacking is the Forge workflow: face 0.8-0.9 + body 0.4-0.6 + After Detailer on full body.
+
+### Photos for a later `together` run (Gate 1 currently FAIL)
+
+Need **8-12 new waist-up** shots, not more close-ups and not more distant full-body:
+
+- Head sharp and large (about 1/4 of the frame)
+- Shoulders + chest + waist visible
+- Looking at camera, original camera files
+- Caption: `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman, waist up, [outfit], looking at camera`
+
+Then `IMPORT_AS = "both"`, `RUN_NAME = "together"` (writes `lapetitemilf_together`, does not overwrite face/body).
+

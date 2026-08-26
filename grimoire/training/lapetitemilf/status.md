@@ -1,7 +1,8 @@
 # Status: lapetitemilf
 
-- **Phase**: Face LoRA usable but unstable. Cell 9c: **2 of 5 similar** on the serious close-up prompt.
-- **Face LoRA**: `loras/lapetitemilf_face.safetensors` (keep; do not overwrite)
-- **Next**: reopen Colab, cell 9 then **cell 9d** (10 keeper portraits). Do not run cell 7.
-- **To lock identity later**: unique sharp NEUTRAL close-ups looking at camera, then `RUN_NAME = "face2"`.
+- **Phase**: Face ~60% similar. Next is face AND body together. No retrain yet.
+- **Face LoRA**: `loras/lapetitemilf_face.safetensors` (keep)
+- **Body LoRA**: `loras/lapetitemilf_body.safetensors` (keep)
+- **Next**: reopen Colab, cell 9 then **cell 11** (face-only waist-up vs face+body stack). Do not run cell 7.
+- **Later together run**: 8-12 new waist-up photos (`both_*`), then `RUN_NAME = "together"`.
 - **Notebook**: https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/SD_LoRA_Training_Colab.ipynb

@@ -42,7 +42,7 @@ This notebook trains a character LoRA with **kohya sd-scripts**, stores files on
 
 ## Before you start
 1. **Runtime > Change runtime type > GPU**. T4 is enough. A100 or L4 is faster (Colab Pro). Do not pick TPU.
-2. Run cells **in order** (1 to 10)
+2. Run cells **in order** (1 to 11)
 3. Approve Google Drive access. In the popup click Continue, then **Allow ALL permissions** (do not uncheck boxes).
 4. **Cell 7:** `DRY_RUN = False` for full training (dry run already passed)
 
@@ -53,16 +53,16 @@ This is a Colab Drive-login popup issue, not the training code.
 3. In the popup: Continue, then **Allow ALL permissions** (do not uncheck boxes)
 4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
-## Current preset: face LoRA hits sometimes (2 of 5 on the hit prompt)
-- Winning look: serious close-up, looking at camera (`2_front_neutral`).
-- Identity can hit. It is not locked. Do not retrain on the same photos.
-- Run **cell 9d** to generate 10 more portraits and keep the similar ones.
-- Portraits: use `lapetitemilf_face` only. Body LoRA is not for faces.
+## Current preset: faces ~60% similar. Next is face AND body together
+- Do not retrain on the same photos. Do not overwrite `lapetitemilf_face`.
+- Full-body SD 1.5 faces stay tiny/soft. Judge togetherness on **waist-up**.
+- Run cell 9 then **cell 11** (face LoRA vs face+body stack). No cell 7.
+- Later lock: 8-12 new waist-up photos (head about 1/4 of the frame), then `together`.
 
 ## Drive layout
 ```
 MyDrive/FiratSuper/
-|-- ADD_BODY_PHOTOS/                       # drop 10-15 full-body swimsuit photos here
+|-- ADD_BODY_PHOTOS/                       # next: waist-up photos (face LARGE + body)
 |-- datasets/lapetitemilf/10_ohwx_woman/   # images + captions
 |-- output/lapetitemilf/quick/             # Quick checkpoints (done)
 |-- output/lapetitemilf/standard/          # Standard checkpoints (done)
@@ -293,7 +293,8 @@ REPEATS = 10                      # how many times each image counts per epoch
 MODEL_TYPE = "sd15"               # "sd15" or "sdxl"
 BASE_CHECKPOINT = "realistic_vision"  # "sd15" or "realistic_vision"
 TRAINING_PRESET = "thorough"      # "quick" | "standard" | "thorough"
-RUN_NAME = "face"                 # lapetitemilf_face. Use "face2" only after NEW unique close-ups
+RUN_NAME = "face"                 # keep face file. together = only after NEW waist-up photos
+IMPORT_AS = "both"                # new inbox photos: "body" | "face" | "both" (waist-up)
 TRAIN_TEXT_ENCODER = True         # required for character identity (trigger -> face)
 DRY_RUN = False                   # True = 5 steps (Gate 4). False = full training
 DATASET_PREPARED = True           # True = images+captions already on Drive
@@ -330,6 +331,8 @@ MODELS_DIR = f"{ROOT}/models"
 LORAS_DIR = f"{ROOT}/loras"
 LOGS_DIR = f"{ROOT}/logs/{PROJECT_NAME}/{TRAINING_PRESET}"
 LORA_BASENAME = PROJECT_NAME + "_" + RUN_TAG
+if IMPORT_AS not in ("body", "face", "both"):
+    raise RuntimeError("IMPORT_AS must be 'body', 'face', or 'both'.")
 
 for path in [DATASET_DIR, OUTPUT_DIR, MODELS_DIR, LORAS_DIR, LOGS_DIR]:
     os.makedirs(path, exist_ok=True)
@@ -394,14 +397,29 @@ if os.path.isdir(DATASET_DIR):
         ]
     )
 print("Face close-ups imported (face_*):", n_face)
+n_both = 0
+if os.path.isdir(DATASET_DIR):
+    n_both = len(
+        [
+            f
+            for f in os.listdir(DATASET_DIR)
+            if f.startswith("both_") and f.lower().endswith(IMAGE_EXT)
+        ]
+    )
+print("Waist-up photos imported (both_*):", n_both)
+print("IMPORT_AS (new inbox files):", IMPORT_AS)
 print("This run writes:", LORA_BASENAME + ".safetensors")
-if RUN_TAG == "face" and n_face < 8:
+if RUN_TAG == "together" and n_both < 8:
+    print("Need 8+ waist-up photos. Drop them in ADD_BODY_PHOTOS, then cell 6b.")
+    print("Inbox: https://drive.google.com/drive/folders/1YK-nUV4ihzqpDhxZICwM9YFngFbS34LP")
+elif RUN_TAG.startswith("face") and n_face < 8:
     print("Next: run cell 6b to import new close-ups from ADD_BODY_PHOTOS.")
     print("Inbox: https://drive.google.com/drive/folders/1YK-nUV4ihzqpDhxZICwM9YFngFbS34LP")
 elif RUN_TAG == "body" and n_body < 10:
     print("Next: run cell 6b to copy full-body photos into the training folder.")
 else:
-    print("Imported photos look ready. Next after 6b: cell 7.")"""
+    print("Do not run cell 7 unless you added NEW photos and changed RUN_NAME.")
+    print("Face+body test: cell 9 then cell 11 (no retrain).")"""
 )
 
 code(
@@ -576,8 +594,13 @@ print("Photos in inbox:", len(incoming))
 if skipped:
     print("Skipped (not images):", ", ".join(skipped))
 print("Upload folder: https://drive.google.com/drive/folders/1YK-nUV4ihzqpDhxZICwM9YFngFbS34LP")
+print("New files will be imported as:", IMPORT_AS + "_*")
 if len(incoming) == 0:
     print("Empty inbox.")
+    print("For face+body together: 8-12 waist-up photos, head about 1/4 of the frame,")
+    print("looking at camera, original camera files. Caption example:")
+    print(" ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman,")
+    print(" waist up, swimsuit, looking at camera")
 else:
     copied = 0
     skipped_exist = 0
@@ -588,9 +611,11 @@ else:
         ext = os.path.splitext(name)[1].lower()
         if ext == ".jpeg":
             ext = ".jpg"
-        already = os.path.join(DATASET_DIR, "body_" + stem + ext)
-        dst = os.path.join(DATASET_DIR, "face_" + stem + ext)
-        if os.path.isfile(already) or os.path.isfile(dst):
+        already_body = os.path.join(DATASET_DIR, "body_" + stem + ext)
+        already_face = os.path.join(DATASET_DIR, "face_" + stem + ext)
+        already_both = os.path.join(DATASET_DIR, "both_" + stem + ext)
+        dst = os.path.join(DATASET_DIR, IMPORT_AS + "_" + stem + ext)
+        if os.path.isfile(already_body) or os.path.isfile(already_face) or os.path.isfile(already_both):
             skipped_exist += 1
             continue
         inbox_txt = os.path.splitext(src)[0] + ".txt"
@@ -615,16 +640,25 @@ else:
             if f.startswith("face_") and f.lower().endswith(IMAGE_EXT)
         ]
     )
+    n_both = len(
+        [
+            f
+            for f in os.listdir(DATASET_DIR)
+            if f.startswith("both_") and f.lower().endswith(IMAGE_EXT)
+        ]
+    )
     print("Already in dataset, skipped:", skipped_exist)
     print("No caption, skipped:", skipped_nocap)
-    print("Copied new face photos:", copied)
+    print("Copied new", IMPORT_AS, "photos:", copied)
     print("Face photos in dataset:", n_face)
+    print("Waist-up photos in dataset (both_*):", n_both)
     print("Dataset images now:", n_img)
-    if n_face < 8:
-        print("Still under 8 face photos. Add more close-ups before cell 7.")
+    if IMPORT_AS == "both" and n_both < 8:
+        print("Still under 8 waist-up photos. Add more before a together run.")
+    elif IMPORT_AS == "both" and n_both >= 8:
+        print("Ready for a together run. Set RUN_NAME = 'together' in cell 2, then cell 7.")
+        print("That writes lapetitemilf_together and keeps face + body files.")
     else:
-        print("Ready. Confirm RUN_NAME in cell 2, then run cell 7.")
-        print("If lapetitemilf_face already exists, set RUN_NAME = 'face2'.")
         print("Do not overwrite lapetitemilf_face, body, or Thorough.")"""
 )
 
@@ -660,8 +694,14 @@ face_files = [
     for f in os.listdir(DATASET_DIR)
     if f.startswith("face_") and f.lower().endswith(IMAGE_EXT)
 ]
+both_files = [
+    f
+    for f in os.listdir(DATASET_DIR)
+    if f.startswith("both_") and f.lower().endswith(IMAGE_EXT)
+]
 print("Imported full-body photos (body_*):", len(body_files))
 print("Imported face photos (face_*):", len(face_files))
+print("Imported waist-up photos (both_*):", len(both_files))
 print("This run would write:", LORA_BASENAME + ".safetensors")
 if not DRY_RUN:
     if RUN_TAG.startswith("face"):
@@ -675,19 +715,27 @@ if not DRY_RUN:
             existing = os.path.join(LORAS_DIR, "lapetitemilf_face.safetensors")
             if os.path.isfile(existing):
                 raise RuntimeError(
-                    "Stopped. lapetitemilf_face already exists (2/5 similar). "
-                    "Do not overwrite it. After NEW unique close-ups, set "
-                    "RUN_NAME = 'face2'."
+                    "Stopped. lapetitemilf_face already exists. Do not overwrite "
+                    "it. For face+body, run cell 11. After NEW waist-up photos, "
+                    "set RUN_NAME = 'together'."
                 )
     elif RUN_TAG == "body":
         if len(body_files) < 10:
             raise RuntimeError(
                 "Stopped. Need 10+ body_* photos. Run cell 6b, then this cell."
             )
+    elif RUN_TAG == "together":
+        if len(both_files) < 8:
+            raise RuntimeError(
+                "Stopped. A together run needs 8+ NEW waist-up photos "
+                "(both_*). Do not retrain on the same face+body set. Drop "
+                "waist-up shots in ADD_BODY_PHOTOS (IMPORT_AS='both'), cell 6b, "
+                "then this cell."
+            )
     else:
         raise RuntimeError(
-            "Stopped. Set RUN_NAME to 'face', 'face2', or 'body' so Thorough "
-            "and body files are not overwritten."
+            "Stopped. Set RUN_NAME to 'face', 'face2', 'body', or 'together' "
+            "so Thorough, body, and face files are not overwritten."
         )
 
 parent_dataset = os.path.dirname(DATASET_DIR)
@@ -1412,6 +1460,212 @@ print("Full-body faces stay soft on SD 1.5. That is not a LoRA failure.")
 print("If waist_up is still not her, we need sharper face close-ups, not more epochs.")"""
 )
 
+code(
+    """# @title 11) Face + body together (stack, no retraining)
+import os
+import torch
+from IPython.display import display
+from PIL import Image, ImageDraw
+
+if "pipe" not in globals():
+    raise RuntimeError("Run cell 9 first so the model is loaded.")
+
+FACE_LORA = os.path.join(LORAS_DIR, "lapetitemilf_face.safetensors")
+BODY_LORA = os.path.join(LORAS_DIR, "lapetitemilf_body.safetensors")
+if not os.path.isfile(FACE_LORA):
+    raise RuntimeError("Missing face LoRA: " + FACE_LORA)
+if not os.path.isfile(BODY_LORA):
+    raise RuntimeError("Missing body LoRA: " + BODY_LORA)
+
+FACE_W = 0.85
+BODY_W = 0.55
+print("This cell does NOT retrain.")
+print("Face LoRA:", FACE_LORA, "weight", FACE_W)
+print("Body LoRA:", BODY_LORA, "weight", BODY_W)
+print("Judge FACE+BODY on waist-up frames. Full-body faces stay small on SD 1.5.")
+
+LOOK = "long wavy highlighted blonde hair, brown eyes, adult woman"
+negative = (
+    "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
+    "doll, deformed, extra fingers, extra legs, extra people, cropped head, "
+    "black hair, child, teen, different person, extra faces"
+)
+
+
+def clear_loras():
+    try:
+        pipe.unload_lora_weights()
+    except Exception:
+        pass
+    try:
+        pipe.unfuse_lora()
+    except Exception:
+        pass
+
+
+stack_mode = None
+
+
+def ensure_stack():
+    global stack_mode
+    if stack_mode == "adapters" or stack_mode == "fuse":
+        return stack_mode
+    clear_loras()
+    try:
+        pipe.load_lora_weights(FACE_LORA, adapter_name="face")
+        pipe.load_lora_weights(BODY_LORA, adapter_name="body")
+        pipe.set_adapters(["face", "body"], adapter_weights=[FACE_W, BODY_W])
+        stack_mode = "adapters"
+        print("Stacked with adapters (face", FACE_W, "+ body", BODY_W, ").")
+        return stack_mode
+    except Exception as err:
+        print("adapter stack failed:", err)
+    clear_loras()
+    try:
+        pipe.load_lora_weights(FACE_LORA)
+        pipe.fuse_lora(lora_scale=FACE_W)
+        try:
+            pipe.unload_lora_weights()
+        except Exception:
+            pass
+        pipe.load_lora_weights(BODY_LORA)
+        stack_mode = "fuse"
+        print("Stacked with fuse face then body LoRA.")
+        return stack_mode
+    except Exception as err:
+        print("fuse stack failed:", err)
+    clear_loras()
+    pipe.load_lora_weights(FACE_LORA)
+    stack_mode = "face_only"
+    print("Could not stack. Waist-up will use face LoRA only.")
+    return stack_mode
+
+
+def run_shot(shot):
+    prompt = (
+        TRIGGER_WORD
+        + ", "
+        + LOOK
+        + ", "
+        + shot["extra"]
+        + ", photorealistic, raw photo, natural lighting, high quality"
+    )
+    gen_kw = {
+        "prompt": prompt,
+        "negative_prompt": negative,
+        "num_inference_steps": 28,
+        "guidance_scale": 6.0,
+        "width": shot["width"],
+        "height": shot["height"],
+        "output_type": "pil",
+    }
+    if CLIP_SKIP > 1:
+        gen_kw["clip_skip"] = CLIP_SKIP
+    extra = {}
+    if shot["mode"] == "face":
+        extra["cross_attention_kwargs"] = {"scale": 1.0}
+    elif stack_mode == "fuse":
+        extra["cross_attention_kwargs"] = {"scale": BODY_W}
+    elif stack_mode == "face_only":
+        extra["cross_attention_kwargs"] = {"scale": 1.0}
+    print("===", shot["name"], "seed", shot["seed"], "mode", shot["mode"], "===")
+    print("Prompt:", prompt)
+    gen = torch.Generator(device="cpu").manual_seed(shot["seed"])
+    return pipe(generator=gen, **extra, **gen_kw).images[0]
+
+
+shots = [
+    {
+        "name": "1_face_only_waist",
+        "mode": "face",
+        "extra": "waist up, swimsuit, looking at camera, detailed face",
+        "seed": 707,
+        "width": 512,
+        "height": 640,
+    },
+    {
+        "name": "2_stack_waist",
+        "mode": "stack",
+        "extra": "waist up, swimsuit, looking at camera, detailed face",
+        "seed": 707,
+        "width": 512,
+        "height": 640,
+    },
+    {
+        "name": "3_stack_waist_b",
+        "mode": "stack",
+        "extra": "waist up, swimsuit, looking at camera, detailed face",
+        "seed": 2025,
+        "width": 512,
+        "height": 640,
+    },
+    {
+        "name": "4_stack_stand",
+        "mode": "stack",
+        "extra": "standing, full body, front view, swimsuit, looking at camera",
+        "seed": 707,
+        "width": 512,
+        "height": 768,
+    },
+    {
+        "name": "5_stack_sit",
+        "mode": "stack",
+        "extra": "sitting, full body, swimsuit, looking at camera, detailed face",
+        "seed": 31415,
+        "width": 512,
+        "height": 768,
+    },
+]
+
+images = []
+paths = []
+for shot in shots:
+    if shot["mode"] == "face":
+        clear_loras()
+        pipe.load_lora_weights(FACE_LORA)
+        print("Loaded face LoRA only.")
+    else:
+        ensure_stack()
+    image = run_shot(shot)
+    path = os.path.join(OUTPUT_DIR, "preview_stack_" + shot["name"] + ".png")
+    image.save(path)
+    images.append(image)
+    paths.append(path)
+    print("Saved:", path)
+
+thumb_w = 256
+thumb_h = 384
+labeled = []
+for shot, image in zip(shots, images):
+    im = image.copy()
+    im.thumbnail((thumb_w, thumb_h - 28))
+    canvas = Image.new("RGB", (thumb_w, thumb_h), (16, 16, 16))
+    canvas.paste(im, ((thumb_w - im.width) // 2, 28))
+    draw = ImageDraw.Draw(canvas)
+    draw.text((6, 6), shot["name"], fill=(255, 255, 255))
+    labeled.append(canvas)
+
+sheet_w = thumb_w * 3
+sheet_h = thumb_h * 2
+sheet = Image.new("RGB", (sheet_w, sheet_h), (0, 0, 0))
+for idx, tile in enumerate(labeled):
+    x = (idx % 3) * thumb_w
+    y = (idx // 3) * thumb_h
+    sheet.paste(tile, (x, y))
+sheet_path = os.path.join(OUTPUT_DIR, "preview_stack_SHEET.png")
+sheet.save(sheet_path)
+print("CONTACT SHEET (1=face only waist, 2-3=stack waist, 4-5=stack full body):")
+display(sheet)
+print("Saved:", sheet_path)
+upload_project_file(sheet_path)
+for path in paths:
+    upload_project_file(path)
+print("Judge 1 vs 2 (same seed). If 2 has her face AND a closer body, stacking works.")
+print("Judge 3 the same way (second seed). Ignore soft faces on 4 and 5.")
+print("Forge: load both LoRAs (face 0.8-0.9, body 0.4-0.6) + After Detailer for full body.")
+print("If waist-up body is still not her: add 8-12 waist-up photos, then RUN_NAME=together.")"""
+)
+
 md(
     """## Done
 
@@ -1421,8 +1675,11 @@ Thorough LoRA export (portraits, keep this file):
 Body LoRA export (keep this file):
 `MyDrive/FiratSuper/loras/lapetitemilf_body.safetensors`
 
-Face LoRA export (this run, after cell 6b + cell 7):
+Face LoRA export (keep this file):
 `MyDrive/FiratSuper/loras/lapetitemilf_face.safetensors`
+
+Together LoRA export (only after NEW waist-up photos):
+`MyDrive/FiratSuper/loras/lapetitemilf_together.safetensors`
 
 Standard LoRA (kept, identity was close):
 `MyDrive/FiratSuper/loras/lapetitemilf_standard.safetensors`
@@ -1432,29 +1689,28 @@ Quick LoRA (kept, identity was weak):
 
 ### Use in Automatic1111 / ComfyUI / Forge
 1. Load **Realistic Vision V5.1** as the checkpoint (not vanilla SD 1.5)
-2. Copy `lapetitemilf_face.safetensors` to `models/Lora/` after this run (body file still exists)
+2. Copy BOTH `lapetitemilf_face.safetensors` AND `lapetitemilf_body.safetensors` to `models/Lora/`
 3. Always keep these identity words after the trigger:
    `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman`
 4. Face (winning prompt): `..., portrait, close up face, looking at camera, serious, detailed face, photorealistic, raw photo, natural skin texture`
-5. Waist-up: `..., waist up, swimsuit, looking at camera, photorealistic, raw photo`
+5. Face+body together: waist-up first, not full body. Face LoRA `0.8-0.9` + body LoRA `0.4-0.6`
 6. Full body poses (512x768). Change only the pose words, keep the identity words:
    - `..., standing, full body, front view, swimsuit, photorealistic, raw photo`
    - `..., sitting, full body, swimsuit, photorealistic, raw photo`
    - `..., walking, full body, swimsuit, photorealistic, raw photo`
 7. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin, extra people, black hair, child, teen, different person`
-8. CLIP skip: 2. LoRA weight `0.8-1.0`. Full-body face: enable After Detailer if you have it.
+8. CLIP skip: 2. Full-body face: enable After Detailer (ADetailer) with the face LoRA
 
-### How to read cell 9, 9b, 9c, 9d, and cell 10
+### How to read the preview cells
 - Cell 9 = one seed, OFF vs ON
-- Cell 9b = 5 face close-ups. User: 2_front_neutral was similar, others so-so
-- Cell 9c = same prompt, 5 seeds. User: **2 of 5 similar**
-- Cell 9d = same prompt, 10 seeds. Keep the similar files
-- Cell 10 = swimsuit body. Use face LoRA for portraits, not body
+- Cell 9b / 9c / 9d = face only. User: about 60% similar
+- Cell 10 = swimsuit body (one LoRA)
+- Cell 11 = face only waist-up vs face+body stack. Judge 1 vs 2
 
 ### Next
-- Reopen the GitHub notebook, run cell 9 then **cell 9d** (no cell 7)
-- Keep lapetitemilf_face. Do not overwrite it
-- For a lock: unique sharp NEUTRAL close-ups looking at camera, then RUN_NAME = face2"""
+- Reopen the GitHub notebook, run cell 9 then **cell 11** (no cell 7)
+- Keep lapetitemilf_face and lapetitemilf_body. Do not overwrite them
+- If waist-up still misses the body: 8-12 new waist-up photos (head about 1/4 of the frame), IMPORT_AS=both, RUN_NAME=together"""
 )
 
 nb = {

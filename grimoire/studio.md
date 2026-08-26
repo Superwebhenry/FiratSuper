@@ -25,10 +25,15 @@
   - Face preview improved. Cell 10 swimsuit pose sheet: 5 poses, **not the subject**.
 - **lapetitemilf (Body)**: `MyDrive/FiratSuper/loras/lapetitemilf_body.safetensors`
   - Same Thorough recipe + 14 full-body photos. Figure closer. Face generic. Not for portraits.
-- **lapetitemilf (Face, hits sometimes)**: `MyDrive/FiratSuper/loras/lapetitemilf_face.safetensors`
+- **lapetitemilf (Face, ~60% similar)**: `MyDrive/FiratSuper/loras/lapetitemilf_face.safetensors`
   - Same Thorough recipe + ~15 face keepers. Trigger: `ohwx woman`
   - Weight: 0.8-1.0. CLIP skip 2. Base: Realistic Vision V5.1
-  - Cell 9c: **2 of 5 similar** on serious close-up looking at camera. Not locked.
+  - User (2026-08-26): faces look OK, about 60% similar. Not a lock.
   - Winning prompt: `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman, portrait, close up face, looking at camera, serious, detailed face, photorealistic, raw photo`
-  - Do not overwrite. Next lock file would be `lapetitemilf_face2` after NEW unique close-ups.
+  - Do not overwrite.
+- **Face+body together (inference, no new file yet)**
+  - Stack: face 0.8-0.9 + body 0.4-0.6 on **waist-up** prompts
+  - Full-body faces: After Detailer (ADetailer) with the face LoRA
+  - A `together` train waits on 8-12 NEW waist-up photos (head ~1/4 of the frame)
+
 

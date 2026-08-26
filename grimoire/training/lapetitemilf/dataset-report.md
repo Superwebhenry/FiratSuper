@@ -17,5 +17,6 @@
 - Trigger word `ohwx woman` present in all captions
 - Lingerie is **not** labeled as swimsuit
 
-## Gate 1 Decision: **GO for body run**
-Import via cell 6b, train as `lapetitemilf_body`. Do not overwrite Thorough portraits.
+## Gate 1 Decision: **GO for body run** (done). **FAIL for together run** until 8-12 new waist-up photos exist.
+
+Face close-ups (~15) and full-body (~14) are already trained as separate files. The missing slice is **waist-up**: head about 1/4 of the frame, shoulders-to-waist visible, looking at camera, original camera files. Retraining the mixed folder will not join face and body.
