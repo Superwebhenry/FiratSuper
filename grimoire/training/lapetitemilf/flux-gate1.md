@@ -10,4 +10,6 @@ Folder: `MyDrive/FiratSuper/ADD_FLUX_PHOTOS/` (`1oLtTmwg2kt-Jn6zuci06ipRQoK6AOFV
 - Mix: face close-ups, waist-up, standing full body, sitting full body
 - No WhatsApp, no Photoroom, no extra people, no video
 
-Do not start until a trainer is chosen. New file only: `lapetitemilf_flux`. Do not overwrite `lapetitemilf_face`.
+Trainer chosen (2026-08-26): **Colab Pro A100** + Ostris ai-toolkit.
+Notebook: `notebooks/Flux_LoRA_Training_Colab.ipynb`
+New file only: `lapetitemilf_flux`. Do not overwrite `lapetitemilf_face`.

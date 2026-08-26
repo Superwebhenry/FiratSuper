@@ -43,8 +43,9 @@ Cell 13 full-body output: missing hands, fused limbs, cross-eyes, not her.
 Next: Flux character LoRA + 20-30 sharp original camera photos.
 Drop them in Drive: `MyDrive/FiratSuper/ADD_FLUX_PHOTOS/`
 
-Paid options: fal.ai Flux LoRA trainer, or Replicate Flux LoRA trainer.
-Colab Pro A100 can train Flux. T4 is not enough for a good Flux train.
+Use the Flux A100 notebook instead:
+https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/Flux_LoRA_Training_Colab.ipynb
+Runtime: A100 GPU only. Do not pick T4 or TPU.
 
 ## Old SD 1.5 notebook
 Waist-up face LoRA still exists: `loras/lapetitemilf_face.safetensors`

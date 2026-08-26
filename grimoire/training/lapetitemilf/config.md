@@ -1,5 +1,32 @@
 # Training Config: lapetitemilf
 
+## Flux (current, Colab A100)
+
+- **Backend**: Ostris ai-toolkit
+- **Base model**: `black-forest-labs/FLUX.1-dev` (gated Hugging Face)
+- **Notebook**: `notebooks/Flux_LoRA_Training_Colab.ipynb`
+- **Recipe file**: `configs/train_lora_flux_a100.yaml`
+- **Dataset**: `ADD_FLUX_PHOTOS/` — 31 images + 31 `.txt` captions
+- **Trigger**: `ohwx woman`
+- **Key parameters** (Ostris 24GB Flux recipe, A100 ~40 GB):
+  - steps: 2000
+  - batch: 1
+  - rank (linear): 16
+  - alpha: 16
+  - lr: 1e-4
+  - optimizer: adamw8bit
+  - dtype: bf16
+  - quantize: 8bit
+  - noise_scheduler: flowmatch
+  - train text encoder: **no** (Flux)
+  - resolutions: 512 / 768 / 1024
+  - gradient_checkpointing: yes
+- **VRAM**: A100 40 GB (T4/L4 refused by the notebook)
+- **Time**: first run downloads ~24 GB of Flux; then roughly 1-2 hours for 2000 steps
+- **Output name**: `lapetitemilf_flux` only. Never overwrite `lapetitemilf_face`.
+
+## SD 1.5 (archived, do not retrain)
+
 - **Backend**: kohya sd-scripts
 - **Base model**: Realistic Vision V5.1 (`Realistic_Vision_V5.1_fp16-no-ema.safetensors`)
 - **VAE**: `vae-ft-mse-840000-ema-pruned.safetensors` (preview)

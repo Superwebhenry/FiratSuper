@@ -2,18 +2,25 @@
 
 ## GPU (Colab)
 - **Provider**: Google Colab
-- **GPU**: Colab Pro — T4 is enough; **A100 or L4** is faster. Do not use TPU.
+- **Flux (current)**: Colab Pro **A100** (~40 GB). Do not use T4. Do not use TPU. High RAM can stay off.
+- **Old SD 1.5**: T4 was enough. Do not retrain that path.
 - **Runtime**: Python 3.10 + PyTorch (Colab preinstalled)
 
 ## Base Models
-- **SD 1.5**: `MyDrive/FiratSuper/models/v1-5-pruned-emaonly.safetensors`
-- **Realistic Vision V5.1** (photoreal SD 1.5): `MyDrive/FiratSuper/models/Realistic_Vision_V5.1_fp16-no-ema.safetensors`
-- **VAE**: `MyDrive/FiratSuper/models/vae-ft-mse-840000-ema-pruned.safetensors`
+- **Flux.1 [dev]** (current): `black-forest-labs/FLUX.1-dev` from Hugging Face (gated, accept license)
+- **SD 1.5** (archived): `MyDrive/FiratSuper/models/v1-5-pruned-emaonly.safetensors`
+- **Realistic Vision V5.1** (archived photoreal SD 1.5): `MyDrive/FiratSuper/models/Realistic_Vision_V5.1_fp16-no-ema.safetensors`
+- **VAE** (SD only): `MyDrive/FiratSuper/models/vae-ft-mse-840000-ema-pruned.safetensors`
 
 ## Training Backend
-- **kohya sd-scripts** v0.10.1 (Colab notebook)
+- **Flux (current)**: Ostris ai-toolkit, notebook `notebooks/Flux_LoRA_Training_Colab.ipynb`
+- **SD 1.5 (archived)**: kohya sd-scripts v0.10.1, notebook `notebooks/SD_LoRA_Training_Colab.ipynb`
 
 ## LoRAs
+- **lapetitemilf Flux (train this)**: `MyDrive/FiratSuper/loras/lapetitemilf_flux.safetensors`
+  - Trigger: `ohwx woman`. Base: Flux.1 [dev]. Colab A100 + Ostris ai-toolkit.
+  - Notebook: `notebooks/Flux_LoRA_Training_Colab.ipynb`
+  - Do not overwrite `lapetitemilf_face`.
 - **lapetitemilf (Quick, identity fail)**: `MyDrive/FiratSuper/loras/lapetitemilf_lora.safetensors` (~13.6 MB)
   - Trigger: `ohwx woman`
   - 5 epochs, rank 16, UNet only — preview did not match the subject
@@ -32,6 +39,6 @@
   - Waist-up prompt: `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman, waist up, swimsuit, looking at camera, detailed face, photorealistic, raw photo`
 ## Current ceiling (2026-08-26)
 SD 1.5 full-body generation failed (missing limbs, cross-eyes, identity miss).
-**Do not train another SD 1.5 LoRA.** Next model: Flux. See `grimoire/training/lapetitemilf/next-flux.md`.
+**Do not train another SD 1.5 LoRA.** Flux Colab A100 is the current path: `notebooks/Flux_LoRA_Training_Colab.ipynb`. See `grimoire/training/lapetitemilf/next-flux.md`.
 
 

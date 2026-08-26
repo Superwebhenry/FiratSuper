@@ -1,40 +1,41 @@
-# Next: leave SD 1.5. Train Flux.
+# Next: train Flux on Colab A100
 
 SD 1.5 + Realistic Vision is **not** the right tool for high-end lingerie/bikini of a real person.
 
-User (2026-08-26) full-body cell 13: missing hands, arm fused into leg, cross-eyed, not similar. Those are **base-model** failures. Retraining the same SD 1.5 recipe on the same (or similar) photos will not fix anatomy.
+User (2026-08-26) full-body cell 13: missing hands, arm fused into leg, cross-eyed, not similar. Those are **base-model** failures. Retraining the same SD 1.5 recipe will not fix anatomy.
 
-Do **not** delete existing LoRA files. The waist-up face LoRA still has some identity value. Do **not** run another Thorough/face/body SD 1.5 train.
+Do **not** delete existing LoRA files. Do **not** run another Thorough/face/body SD 1.5 train.
 
-## What to use instead
+## Trainer choice (2026-08-26): Colab Pro A100
 
-**Flux.1 [dev] character LoRA** (or Flux.2 LoRA when the trainer is available). This is the current photoreal standard: hands, eyes, and full-body hold together far better than SD 1.5.
+User asked what is best for NSFW generation, then chose **Colab A100**.
 
-Paid trainers (user said they will pay):
+- **Colab Pro A100 + Ostris ai-toolkit**: no platform safety checker. Generate nudes in the last notebook cell. Adult subject only.
+- fal.ai / Replicate web trainers: convenience, but their hosted generate UIs typically run a safety checker. Not the path for NSFW.
 
-- fal.ai Flux LoRA trainer
-- Replicate `ostris/flux-dev-lora-trainer`
+Do **not** add porn to the dataset. Flux already knows anatomy. Lingerie / full-body identity photos are enough. NSFW is an inference prompt, not a training target.
 
-Colab Pro **A100** can also train Flux with Ostris ai-toolkit. T4 is too small for a comfortable Flux train.
+## Notebook
 
-Midjourney looks pretty but identity lock is weaker than a real character LoRA. Not the first choice if the face must be her.
+Open (must reopen the GitHub link to see new cells):
 
-## Photos required (Gate 1 for Flux)
+https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/Flux_LoRA_Training_Colab.ipynb
 
-The old 25 social JPGs (~90 KB) are too small. Flux needs sharp originals.
+Runtime: **A100 GPU only**. Do not pick T4. Do not pick TPU.
 
-Drop **20-30 original camera files** (not WhatsApp, not Instagram beauty-filter) into a new Drive folder `MyDrive/FiratSuper/ADD_FLUX_PHOTOS/`:
+Generator: `scripts/generate_flux_notebook.py`
+Recipe: `configs/train_lora_flux_a100.yaml` (Ostris 24GB Flux YAML, A100 ~40GB)
 
-- 8+ face close-ups, looking at camera, sharp, one person
-- 8+ waist-up, face large, different outfits
-- 8+ **full body**, face still visible, standing and sitting
-- Mix of bikini and lingerie, indoor and outdoor
-- No extra people, no blurry night shots, no video
+Needs a Hugging Face READ token and license accept for `black-forest-labs/FLUX.1-dev`.
 
-Long side **1024px or more**. Keep the trigger `ohwx woman`.
+## Photos (Gate 1 GO)
 
-## After photos are in Drive
+31 keepers + 31 captions in `MyDrive/FiratSuper/ADD_FLUX_PHOTOS/` (`1oLtTmwg2kt-Jn6zuci06ipRQoK6AOFVZ`).
+Copies: `grimoire/training/lapetitemilf/captions/`.
+Trigger: `ohwx woman`.
 
-2026-08-26: **Gate 1 GO.** 31 keepers + 31 captions in `ADD_FLUX_PHOTOS/`. Copies in `grimoire/training/lapetitemilf/captions/`.
+## Output
 
-Next: zip or Flux Colab (ai-toolkit) / fal.ai / Replicate. New file only: `lapetitemilf_flux`. Do not overwrite `lapetitemilf_face`.
+New file only: `MyDrive/FiratSuper/loras/lapetitemilf_flux.safetensors`
+
+Do **not** overwrite `lapetitemilf_face` or any old SD LoRA.
