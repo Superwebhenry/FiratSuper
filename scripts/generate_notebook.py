@@ -43,9 +43,9 @@ Training is done. You do **not** need Forge or Automatic1111. Those are programs
 2. Sign in with **one** Google account (the Drive owner).
 3. **Runtime > Change runtime type > GPU**. T4 is enough. A100 or L4 is faster. Do not pick TPU.
 4. Run **cell 1**, then **2**, then **3**, then **4**. Wait for each green check.
-5. Run **cell 13**. Default makes **20 scenes** (1 picture each) from the moodboard.
-6. To remake ONE scene 8 times: set `MODE = "one"` and `SCENE_ID = 2` (jacuzzi), then run cell 13.
-7. Copy similar pictures to `MyDrive/FiratSuper/keepers/`
+5. Run **cell 13**. Default makes **20 full-body scenes** (1 picture each).
+6. Face will be softer than waist-up. That is expected on SD 1.5.
+7. To remake ONE scene 8 times: `MODE = "one"` and `SCENE_ID = 2` (jacuzzi).
 
 Do **not** run cell 7 (that is training). Do **not** run cell 12.
 
@@ -1791,30 +1791,30 @@ SCENE_ID = 1
 BATCH = 0
 HOW_MANY = 8
 WIDTH = 512
-HEIGHT = 640
+HEIGHT = 768
 
-# Keep "waist up" so the face stays hers. Change clothes/place only.
+# Full body. Face will be softer than waist-up.
 PRESETS = [
-    ("bed_swim", "waist up, sitting on a bed, swimsuit, looking at camera, detailed face"),
-    ("jacuzzi", "waist up, sitting in a jacuzzi, swimsuit, wet hair, looking at camera, detailed face"),
-    ("bed_white_lace", "waist up, sitting on a bed, white lace lingerie, looking at camera, detailed face"),
-    ("bed_black", "waist up, sitting on white pillows, black lingerie, bedroom, looking at camera, detailed face"),
-    ("bed_green", "waist up, sitting on a bed, emerald green lingerie, looking at camera, detailed face"),
-    ("bed_red", "waist up, sitting on a bed, red lingerie, looking at camera, detailed face"),
-    ("armchair", "waist up, sitting on a luxury armchair, black lingerie, looking at camera, detailed face"),
-    ("studio_teal", "waist up, studio, teal backdrop, white lingerie, looking at camera, detailed face"),
-    ("gold_room", "waist up, ornate room, gold mirror, lingerie, looking at camera, detailed face"),
-    ("garden", "waist up, garden path, red sheer robe, looking at camera, detailed face"),
-    ("stone_wall", "waist up, sunlit stone wall, lingerie, looking at camera, detailed face"),
-    ("beach_white", "waist up, beach, white bikini, looking at camera, detailed face"),
-    ("beach_black", "waist up, sandy beach, black bikini, looking at camera, detailed face"),
-    ("pool_edge", "waist up, sitting on a pool edge, swimsuit, looking at camera, detailed face"),
-    ("palms", "waist up, tropical palm leaves, floral bikini, looking at camera, detailed face"),
-    ("sunset_pool", "waist up, infinity pool, sunset, black swimsuit, looking at camera, detailed face"),
-    ("straw_hat", "waist up, beach, white bikini, wide brim straw hat, looking at camera, detailed face"),
-    ("ocean_rocks", "waist up, sitting on coastal rocks, swimsuit, looking at camera, detailed face"),
-    ("gazebo", "waist up, wooden gazebo, swimsuit, looking at camera, detailed face"),
-    ("villa", "waist up, sunlit villa patio, olive green bikini, looking at camera, detailed face"),
+    ("bed_swim", "sitting on a bed, full body, swimsuit, looking at camera, detailed face"),
+    ("jacuzzi", "sitting in a jacuzzi, full body, swimsuit, wet hair, looking at camera, detailed face"),
+    ("bed_white_lace", "sitting on a bed, full body, white lace lingerie, looking at camera, detailed face"),
+    ("bed_black", "sitting on a bed, full body, black lingerie, white pillows, looking at camera, detailed face"),
+    ("bed_green", "sitting on a bed, full body, emerald green lingerie, looking at camera, detailed face"),
+    ("bed_red", "sitting on a bed, full body, red lingerie, looking at camera, detailed face"),
+    ("armchair", "sitting on a luxury armchair, full body, black lingerie, looking at camera, detailed face"),
+    ("studio_teal", "standing, full body, studio, teal backdrop, white lingerie, looking at camera, detailed face"),
+    ("gold_room", "standing, full body, ornate room, gold mirror, lingerie, looking at camera, detailed face"),
+    ("garden", "standing, full body, garden path, red sheer robe, looking at camera, detailed face"),
+    ("stone_wall", "standing, full body, sunlit stone wall, lingerie, looking at camera, detailed face"),
+    ("beach_white", "standing, full body, beach, white bikini, looking at camera, detailed face"),
+    ("beach_black", "standing, full body, sandy beach, black bikini, looking at camera, detailed face"),
+    ("pool_edge", "sitting on a pool edge, full body, swimsuit, looking at camera, detailed face"),
+    ("palms", "standing, full body, tropical palm leaves, floral bikini, looking at camera, detailed face"),
+    ("sunset_pool", "standing, full body, infinity pool, sunset, black swimsuit, looking at camera, detailed face"),
+    ("straw_hat", "standing, full body, beach, white bikini, wide brim straw hat, looking at camera, detailed face"),
+    ("ocean_rocks", "sitting on coastal rocks, full body, swimsuit, looking at camera, detailed face"),
+    ("gazebo", "standing, full body, wooden gazebo, swimsuit, looking at camera, detailed face"),
+    ("villa", "standing, full body, sunlit villa patio, olive green bikini, looking at camera, detailed face"),
 ]
 
 FACE_LORA = os.path.join(LORAS_DIR, "lapetitemilf_face.safetensors")
@@ -1824,6 +1824,7 @@ if not os.path.isfile(BASE_MODEL_FILE):
     raise RuntimeError("Missing base model. Run cell 4 first.")
 
 print("This cell does NOT train. It only makes pictures.")
+print("FULL BODY. Face will be softer than the waist-up keepers.")
 print("LoRA:", FACE_LORA)
 print("MODE:", MODE)
 for i, (tag, scene) in enumerate(PRESETS, start=1):
@@ -2005,10 +2006,10 @@ Quick LoRA (kept, identity was weak):
 ### Make more pictures
 1. This Colab is the app. You do not need Forge or Automatic1111.
 2. Run cells 1, 2, 3, 4, then **cell 13**
-3. Default MODE all20 = 20 moodboard scenes, 1 picture each
+3. Default MODE all20 = 20 **full-body** moodboard scenes, 1 picture each
 4. One scene 8 times: MODE = "one", SCENE_ID = 1 to 20
 5. Copy similar pictures to `MyDrive/FiratSuper/keepers/`
-6. Never run cell 7 or cell 12. Do not put keepers in the training folder
+6. Faces will be softer than waist-up. Never run cell 7 or cell 12.
 
 ### How to read the old preview cells
 - Cell 11: frames 1-3 similar (face LoRA waist-up)

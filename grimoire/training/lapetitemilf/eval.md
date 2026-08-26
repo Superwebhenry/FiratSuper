@@ -62,7 +62,7 @@ Do **not** use `lapetitemilf_body` for identity. Do **not** stack two LoRAs.
 
 Cell 11b (waist-up keepers): user **fine**. This is the production recipe.
 
-Cell 12 (full-body then paste a redrawn face): user **not close**. Naive crop+img2img is not After Detailer. Do not rerun. Do not chase full-body identity on this SD 1.5 Colab setup.
+Cell 13 (2026-08-26): user wants **full body**, not waist-up. Cell 13 presets switched to full body 512x768. Face will be softer; that is the known SD 1.5 limit.
 
 ### Winning waist-up prompt
 
