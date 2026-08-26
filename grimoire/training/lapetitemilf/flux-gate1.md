@@ -35,6 +35,17 @@ The 3480px re-uploads of `lapetitemilf (5)/(14)/(20)/(25)` match those 1024px so
 
 Optional extra: keep `1787749977324.jpg` (hair pulled back) and maybe `1787749724307.jpg` (dramatic lighting). Drop Photoroom, WhatsApp, the duplicate car selfie, and the other social re-exports.
 
-## Gate 1 Decision: **HOLD for captions only**
+## Pass 4 (user said done)
 
-Do not start Flux training. Do not overwrite `lapetitemilf_face`. New file only: `lapetitemilf_flux`.
+Deleted: Photoroom, duplicate car selfie, `1787749746592.jpg`, `1787749926873.jpg`.
+
+Still in the folder:
+
+- `birthday.jpg` — same WhatsApp file as `IMG-20230924-WA0044.jpg` (id `1l33GymO35iXR54wnbwc-NYvoxtui5s9Y`, 194 KB). Rename did not change quality.
+- `1787749775444.jpg` — upscaled old social
+- `1787749805307.jpg` — upscaled old social
+
+Optional extras already kept: `1787749977324.jpg`, `1787749724307.jpg`.
+
+## Gate 1 Decision: **HOLD** — delete the 3 leftovers, then captions.
+
