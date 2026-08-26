@@ -45,7 +45,8 @@ Training is done. You do **not** need Forge or Automatic1111. Those are programs
 4. Run **cell 1**, then **2**, then **3**, then **4**. Wait for each green check.
 5. Run **cell 13**. 8 waist-up pictures appear under the cell.
 6. Files also go to Drive: `MyDrive/FiratSuper/output/lapetitemilf/face/`
-7. Want 8 more? In cell 13 set `BATCH = 1` (then 2, 3...) and run cell 13 again.
+7. Copy the similar ones into `MyDrive/FiratSuper/keepers/` (cell 2 creates this folder). Do not put them in the training dataset.
+8. Want 8 more? In cell 13 set `BATCH = 1` (then 2, 3...) and run cell 13 again.
 
 Do **not** run cell 7 (that is training). Do **not** run cell 12.
 
@@ -60,7 +61,8 @@ Do **not** run cell 7 (that is training). Do **not** run cell 12.
 MyDrive/FiratSuper/
 |-- ADD_BODY_PHOTOS/
 |-- datasets/lapetitemilf/10_ohwx_woman/
-|-- output/lapetitemilf/face/               # pictures from cell 13
+|-- output/lapetitemilf/face/               # all pictures from cell 13
+|-- keepers/                               # copy the similar pictures here
 |-- models/
 `-- loras/lapetitemilf_face.safetensors     # the file cell 13 uses
 ```"""
@@ -247,7 +249,7 @@ def sync_dataset_via_api(local_root):
         api_download_folder(service, inbox["id"], inbox_dir)
     else:
         os.makedirs(inbox_dir, exist_ok=True)
-    for sub in ("output", "models", "loras", "logs"):
+    for sub in ("output", "models", "loras", "logs", "keepers"):
         os.makedirs(os.path.join(local_root, sub), exist_ok=True)
     return service
 
@@ -323,12 +325,13 @@ RUN_TAG = RUN_NAME if RUN_NAME else TRAINING_PRESET
 OUTPUT_DIR = f"{ROOT}/output/{PROJECT_NAME}/{RUN_TAG}"
 MODELS_DIR = f"{ROOT}/models"
 LORAS_DIR = f"{ROOT}/loras"
+KEEPERS_DIR = f"{ROOT}/keepers"
 LOGS_DIR = f"{ROOT}/logs/{PROJECT_NAME}/{TRAINING_PRESET}"
 LORA_BASENAME = PROJECT_NAME + "_" + RUN_TAG
 if IMPORT_AS not in ("body", "face", "both"):
     raise RuntimeError("IMPORT_AS must be 'body', 'face', or 'both'.")
 
-for path in [DATASET_DIR, OUTPUT_DIR, MODELS_DIR, LORAS_DIR, LOGS_DIR]:
+for path in [DATASET_DIR, OUTPUT_DIR, MODELS_DIR, LORAS_DIR, LOGS_DIR, KEEPERS_DIR]:
     os.makedirs(path, exist_ok=True)
 
 if MODEL_TYPE == "sd15" and BASE_CHECKPOINT == "realistic_vision":
@@ -403,6 +406,7 @@ if os.path.isdir(DATASET_DIR):
 print("Waist-up photos imported (both_*):", n_both)
 print("IMPORT_AS (new inbox files):", IMPORT_AS)
 print("This run writes:", LORA_BASENAME + ".safetensors")
+print("Keep similar pictures here:", KEEPERS_DIR)
 if RUN_TAG == "together" and n_both < 8:
     print("Need 8+ waist-up photos. Drop them in ADD_BODY_PHOTOS, then cell 6b.")
     print("Inbox: https://drive.google.com/drive/folders/1YK-nUV4ihzqpDhxZICwM9YFngFbS34LP")
@@ -1909,7 +1913,9 @@ sheet.save(sheet_path)
 print("SHEET:")
 display(sheet)
 print("Saved:", sheet_path)
-print("Drive folder:", OUTPUT_DIR)
+print("All pictures:", OUTPUT_DIR)
+print("Copy the SIMILAR ones to:", KEEPERS_DIR)
+print("Do not copy them into the training dataset.")
 upload_project_file(sheet_path)
 for path in paths:
     upload_project_file(path)
@@ -1942,8 +1948,9 @@ Quick LoRA (kept, identity was weak):
 1. This Colab is the app. You do not need Forge or Automatic1111.
 2. Run cells 1, 2, 3, 4, then **cell 13**
 3. Pictures: `MyDrive/FiratSuper/output/lapetitemilf/face/`
-4. More pictures: in cell 13 set `BATCH = 1` and run cell 13 again
-5. Never run cell 7 or cell 12
+4. Copy similar pictures to `MyDrive/FiratSuper/keepers/`
+5. More pictures: in cell 13 set `BATCH = 1` and run cell 13 again
+6. Never run cell 7 or cell 12. Do not put keepers in the training folder
 
 ### How to read the old preview cells
 - Cell 11: frames 1-3 similar (face LoRA waist-up)
