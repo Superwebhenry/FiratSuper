@@ -53,9 +53,10 @@ This is a Colab Drive-login popup issue, not the training code.
 3. In the popup: Continue, then **Allow ALL permissions** (do not uncheck boxes)
 4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
-## Current preset: face LoRA hit on one crop - repeat that prompt
-- `2_front_neutral` (serious, looking at camera) was similar. The other 4 were so-so.
-- Do not retrain. Run **cell 9c** (same prompt, 5 seeds).
+## Current preset: face LoRA hits sometimes (2 of 5 on the hit prompt)
+- Winning look: serious close-up, looking at camera (`2_front_neutral`).
+- Identity can hit. It is not locked. Do not retrain on the same photos.
+- Run **cell 9d** to generate 10 more portraits and keep the similar ones.
 - Portraits: use `lapetitemilf_face` only. Body LoRA is not for faces.
 
 ## Drive layout
@@ -292,7 +293,7 @@ REPEATS = 10                      # how many times each image counts per epoch
 MODEL_TYPE = "sd15"               # "sd15" or "sdxl"
 BASE_CHECKPOINT = "realistic_vision"  # "sd15" or "realistic_vision"
 TRAINING_PRESET = "thorough"      # "quick" | "standard" | "thorough"
-RUN_NAME = "face"                 # new file; does not overwrite body or Thorough
+RUN_NAME = "face"                 # lapetitemilf_face. Use "face2" only after NEW unique close-ups
 TRAIN_TEXT_ENCODER = True         # required for character identity (trigger -> face)
 DRY_RUN = False                   # True = 5 steps (Gate 4). False = full training
 DATASET_PREPARED = True           # True = images+captions already on Drive
@@ -622,8 +623,9 @@ else:
     if n_face < 8:
         print("Still under 8 face photos. Add more close-ups before cell 7.")
     else:
-        print("Ready. Confirm RUN_NAME = 'face' in cell 2, then run cell 7.")
-        print("That writes lapetitemilf_face.safetensors and keeps body + Thorough.")"""
+        print("Ready. Confirm RUN_NAME in cell 2, then run cell 7.")
+        print("If lapetitemilf_face already exists, set RUN_NAME = 'face2'.")
+        print("Do not overwrite lapetitemilf_face, body, or Thorough.")"""
 )
 
 code(
@@ -662,13 +664,21 @@ print("Imported full-body photos (body_*):", len(body_files))
 print("Imported face photos (face_*):", len(face_files))
 print("This run would write:", LORA_BASENAME + ".safetensors")
 if not DRY_RUN:
-    if RUN_TAG == "face":
+    if RUN_TAG.startswith("face"):
         if len(face_files) < 8:
             raise RuntimeError(
                 "Stopped. Need 8+ face close-ups. Run cell 6b after adding "
                 "captioned photos to ADD_BODY_PHOTOS. Do not overwrite "
                 "lapetitemilf_body.safetensors."
             )
+        if RUN_TAG == "face":
+            existing = os.path.join(LORAS_DIR, "lapetitemilf_face.safetensors")
+            if os.path.isfile(existing):
+                raise RuntimeError(
+                    "Stopped. lapetitemilf_face already exists (2/5 similar). "
+                    "Do not overwrite it. After NEW unique close-ups, set "
+                    "RUN_NAME = 'face2'."
+                )
     elif RUN_TAG == "body":
         if len(body_files) < 10:
             raise RuntimeError(
@@ -676,8 +686,8 @@ if not DRY_RUN:
             )
     else:
         raise RuntimeError(
-            "Stopped. Set RUN_NAME to 'face' or 'body' so Thorough and body "
-            "files are not overwritten."
+            "Stopped. Set RUN_NAME to 'face', 'face2', or 'body' so Thorough "
+            "and body files are not overwritten."
         )
 
 parent_dataset = os.path.dirname(DATASET_DIR)
@@ -1146,8 +1156,107 @@ print("Saved:", sheet_path)
 upload_project_file(sheet_path)
 for path in paths:
     upload_project_file(path)
-print("If most of these look like the red box, use this prompt from now on.")
-print("If only seed 707 looks like her, identity is not locked yet.")"""
+print("If 2 of 5 look similar, identity can hit but is not locked.")
+print("Do not retrain on the same photos. Next: cell 9d (10 more portraits).")"""
+)
+
+code(
+    """# @title 9d) Keeper hunt (10 portraits, same hit prompt, no retraining)
+import os
+import torch
+from IPython.display import display
+from PIL import Image, ImageDraw
+
+if "pipe" not in globals():
+    raise RuntimeError("Run cell 9 first so the model is loaded.")
+
+lora_file = os.path.join(LORAS_DIR, LORA_BASENAME + ".safetensors")
+if not os.path.exists(lora_file):
+    raise RuntimeError("LoRA not found: " + lora_file)
+
+try:
+    pipe.unload_lora_weights()
+except Exception:
+    pass
+pipe.load_lora_weights(lora_file)
+print("This cell does NOT retrain.")
+print("Same prompt as cell 9c. New seeds. Keep the similar files.")
+
+LOOK = "long wavy highlighted blonde hair, brown eyes, adult woman"
+prompt = (
+    TRIGGER_WORD
+    + ", "
+    + LOOK
+    + ", portrait, close up face, looking at camera, serious, detailed face, "
+    + "photorealistic, raw photo, natural skin texture, natural lighting, high quality"
+)
+negative = (
+    "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
+    "doll, deformed, extra fingers, blurry, black hair, child, teen, "
+    "different person, extra people, extra faces"
+)
+# 707 already hit. Other seeds are new (not the cell 9c set).
+seeds = [707, 42, 314, 2025, 8192, 12345, 33333, 44444, 55555, 88888]
+print("Prompt:", prompt)
+print("Seeds:", seeds)
+print("About 10 images. T4: a few minutes.")
+
+images = []
+paths = []
+for seed in seeds:
+    gen_kw = {
+        "prompt": prompt,
+        "negative_prompt": negative,
+        "num_inference_steps": 28,
+        "guidance_scale": 6.0,
+        "width": 512,
+        "height": 512,
+        "output_type": "pil",
+    }
+    if CLIP_SKIP > 1:
+        gen_kw["clip_skip"] = CLIP_SKIP
+    print("=== seed", seed, "===")
+    gen = torch.Generator(device="cpu").manual_seed(seed)
+    image = pipe(
+        generator=gen,
+        cross_attention_kwargs={"scale": 1.0},
+        **gen_kw,
+    ).images[0]
+    path = os.path.join(OUTPUT_DIR, "preview_face_keeper_" + str(seed) + ".png")
+    image.save(path)
+    images.append(image)
+    paths.append(path)
+    print("Saved:", path)
+
+thumb = 220
+labeled = []
+for seed, image in zip(seeds, images):
+    im = image.copy()
+    im.thumbnail((thumb, thumb - 28))
+    canvas = Image.new("RGB", (thumb, thumb), (16, 16, 16))
+    canvas.paste(im, ((thumb - im.width) // 2, 28))
+    draw = ImageDraw.Draw(canvas)
+    draw.text((6, 6), "seed " + str(seed), fill=(255, 255, 255))
+    labeled.append(canvas)
+
+sheet_w = thumb * 5
+sheet_h = thumb * 2
+sheet = Image.new("RGB", (sheet_w, sheet_h), (0, 0, 0))
+for idx, tile in enumerate(labeled):
+    x = (idx % 5) * thumb
+    y = (idx // 5) * thumb
+    sheet.paste(tile, (x, y))
+sheet_path = os.path.join(OUTPUT_DIR, "preview_face_KEEPER_SHEET.png")
+sheet.save(sheet_path)
+print("KEEPER SHEET (same prompt, 10 seeds):")
+display(sheet)
+print("Saved:", sheet_path)
+upload_project_file(sheet_path)
+for path in paths:
+    upload_project_file(path)
+print("Keep the similar files. Discard the generic ones.")
+print("This is the current ceiling of this dataset: identity hits, not locked.")
+print("To lock it: unique sharp NEUTRAL close-ups looking at camera, then face2.")"""
 )
 
 code(
@@ -1326,7 +1435,7 @@ Quick LoRA (kept, identity was weak):
 2. Copy `lapetitemilf_face.safetensors` to `models/Lora/` after this run (body file still exists)
 3. Always keep these identity words after the trigger:
    `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman`
-4. Face: `..., portrait, close up face, photorealistic, raw photo`
+4. Face (winning prompt): `..., portrait, close up face, looking at camera, serious, detailed face, photorealistic, raw photo, natural skin texture`
 5. Waist-up: `..., waist up, swimsuit, looking at camera, photorealistic, raw photo`
 6. Full body poses (512x768). Change only the pose words, keep the identity words:
    - `..., standing, full body, front view, swimsuit, photorealistic, raw photo`
@@ -1335,15 +1444,17 @@ Quick LoRA (kept, identity was weak):
 7. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin, extra people, black hair, child, teen, different person`
 8. CLIP skip: 2. LoRA weight `0.8-1.0`. Full-body face: enable After Detailer if you have it.
 
-### How to read cell 9, 9b, 9c, and cell 10
+### How to read cell 9, 9b, 9c, 9d, and cell 10
 - Cell 9 = one seed, OFF vs ON
 - Cell 9b = 5 face close-ups. User: 2_front_neutral was similar, others so-so
-- Cell 9c = same prompt as that hit, 5 seeds
+- Cell 9c = same prompt, 5 seeds. User: **2 of 5 similar**
+- Cell 9d = same prompt, 10 seeds. Keep the similar files
 - Cell 10 = swimsuit body. Use face LoRA for portraits, not body
 
-### Next after this face run
-- Reopen the GitHub notebook, run cell 9 then cell 9c (no cell 7)
-- Keep body + Thorough files. Do not overwrite them"""
+### Next
+- Reopen the GitHub notebook, run cell 9 then **cell 9d** (no cell 7)
+- Keep lapetitemilf_face. Do not overwrite it
+- For a lock: unique sharp NEUTRAL close-ups looking at camera, then RUN_NAME = face2"""
 )
 
 nb = {

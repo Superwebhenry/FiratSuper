@@ -27,10 +27,27 @@
 - **Keep ~15**: 9 face close-ups (looking at camera / smile / side glance) plus full-body shots that still show the face.
 - **Skip**: mp4, 3 blurry night Santa frames (one with extra people), 2 re-uploads of photos already in the body set.
 - Instagram screenshot is usable as a face crop but is smoothed; one of many, not the only face source.
-- Next file: `lapetitemilf_face` (do not overwrite body).
 
-## Face LoRA (`lapetitemilf_face`) — somewhat similar, not locked
+## Face LoRA (`lapetitemilf_face`) — hits sometimes, not locked
 
 - User: close-up is a bit similar, still not her. Body LoRA cell 9 face is unrelated (expected).
-- Face sheet: **`2_front_neutral` similar**, other four so-so.
-- Next: cell 9c repeats that serious close-up prompt on 5 seeds. No retrain.
+- Face sheet (cell 9b): **`2_front_neutral` similar**, other four so-so.
+- Hit-prompt sheet (cell 9c, 2026-08-26): **2 of 5 similar**. Same serious close-up prompt, 5 seeds.
+- Diagnosis: identity is in the weights. Seed lottery is still too high (usable ~40%, not a lock).
+- Failure mode: insufficient unique sharp NEUTRAL close-ups looking at camera. Smiles / head-tilt / beauty-filter frames pull a generic woman.
+- Do **not** retrain on the same photos. Do **not** raise LoRA weight to fake a lock. Do **not** overwrite `lapetitemilf_face`.
+
+### Winning portrait prompt
+
+```
+ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman, portrait, close up face, looking at camera, serious, detailed face, photorealistic, raw photo, natural skin texture, natural lighting, high quality
+```
+
+- Seed that already hit: **707**. Keep it when generating.
+- Sweet spot: LoRA weight 0.8-1.0, CLIP skip 2, Realistic Vision V5.1.
+
+### Next (no retrain)
+
+1. Cell **9d**: 10 more portraits of that prompt. Keep the similar files.
+2. If they want **4/5 instead of 2/5**: unique sharp NEUTRAL face close-ups looking at camera (original camera files, not WhatsApp/Instagram smiles). Then `RUN_NAME = "face2"`.
+3. Full-body face on SD 1.5 stays soft. Forge: After Detailer for full-body faces.
