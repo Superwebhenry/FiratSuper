@@ -53,6 +53,8 @@ Trigger: `ohwx woman`.
 
 **NSFW:** this Colab has no platform safety checker. Generate after training in the last cell. Adult subject only. Do not add porn to the dataset.
 
+**Cell 4:** Colab is Python 3.13. Ostris still pins scipy 1.12, which cannot install there. This notebook patches that. Cell 4 takes several minutes. Do not stop it.
+
 ## Cells
 1. A100 GPU check
 2. Drive + settings
@@ -408,33 +410,105 @@ print("Hugging Face login OK. FLUX.1-dev is readable.")"""
 )
 
 code(
-    """# @title 4) Install Ostris ai-toolkit (Gate 3)
+    r"""# @title 4) Install Ostris ai-toolkit (Gate 3)
 import os
 import sys
 import subprocess
 import shutil
 
+INSTALL_MARK = "/content/ai-toolkit/.firat_install_ok"
+INSTALL_VER = "2"
+ROOT_TK = "/content/ai-toolkit"
+SKIP_PKGS = ("torchcodec", "av==", "librosa==", "mutagen==", "gradio")
+
+
 def run(cmd, cwd=None):
-    print("+", " ".join(cmd))
-    subprocess.check_call(cmd, cwd=cwd)
+    print("+", " ".join(cmd), flush=True)
+    env = os.environ.copy()
+    env["PYTHONUNBUFFERED"] = "1"
+    env["PIP_DISABLE_PIP_VERSION_CHECK"] = "1"
+    ret = subprocess.call(cmd, cwd=cwd, env=env)
+    if ret != 0:
+        raise RuntimeError("command failed (%d): %s" % (ret, " ".join(cmd)))
 
-if not os.path.isdir("/content/ai-toolkit/.git"):
-    if os.path.isdir("/content/ai-toolkit"):
-        shutil.rmtree("/content/ai-toolkit")
-    run(["git", "clone", "https://github.com/ostris/ai-toolkit", "/content/ai-toolkit"])
-run(["git", "submodule", "update", "--init", "--recursive"], cwd="/content/ai-toolkit")
-run(
-    [sys.executable, "-m", "pip", "install", "-q", "-U", "hf_transfer", "huggingface_hub"],
-)
-run(
-    [sys.executable, "-m", "pip", "install", "-q", "-r", "requirements.txt"],
-    cwd="/content/ai-toolkit",
-)
 
-sys.path.insert(0, "/content/ai-toolkit")
+def pip_req(path):
+    run(
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+            "--prefer-binary",
+            "--only-binary=scipy,numpy",
+            "-r",
+            path,
+        ],
+        cwd=ROOT_TK,
+    )
+
+
+def write_slim(src, dest):
+    scipy_line = "scipy>=1.14.1\n" if sys.version_info >= (3, 13) else "scipy>=1.12.0\n"
+    out = [scipy_line]
+    with open(src, encoding="utf-8") as fh:
+        for line in fh:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                out.append(line if line.endswith("\n") else line + "\n")
+                continue
+            if any(stripped.startswith(s) for s in SKIP_PKGS):
+                print("skip", stripped)
+                continue
+            out.append(line if line.endswith("\n") else line + "\n")
+    with open(dest, "w", encoding="utf-8") as fh:
+        fh.writelines(out)
+    print("Wrote", dest)
+
+
+print("Python", sys.version.replace("\n", " "))
+print("This cell can take several minutes. Let it finish.")
+
+if not os.path.isdir(os.path.join(ROOT_TK, ".git")):
+    if os.path.isdir(ROOT_TK):
+        shutil.rmtree(ROOT_TK)
+    run(["git", "clone", "https://github.com/ostris/ai-toolkit", ROOT_TK])
+run(["git", "submodule", "update", "--init", "--recursive"], cwd=ROOT_TK)
+
+# Ostris pins scipy==1.12.0. No Python 3.13 wheel, pip tries to compile and dies.
+req_overlay = os.path.join(ROOT_TK, "requirements_colab.txt")
+if sys.version_info >= (3, 13):
+    with open(req_overlay, "w", encoding="ascii") as fh:
+        fh.write("-r requirements_base.txt\n")
+        fh.write("scipy>=1.14.1\n")
+    print("Python 3.13+: using scipy>=1.14.1 instead of scipy==1.12.0")
+else:
+    req_overlay = os.path.join(ROOT_TK, "requirements.txt")
+
+already = False
+if os.path.isfile(INSTALL_MARK):
+    already = open(INSTALL_MARK, encoding="ascii").read().strip() == INSTALL_VER
+
+if already:
+    print("ai-toolkit packages already installed (mark %s). Skipping pip." % INSTALL_VER)
+else:
+    run([sys.executable, "-m", "pip", "install", "-U", "pip", "setuptools", "wheel", "hf_transfer"])
+    print("Installing Ostris requirements. If it fails, the red pip error is above this traceback.")
+    try:
+        pip_req(req_overlay)
+    except RuntimeError:
+        print("Full requirements failed. Retry without video extras (not needed for image LoRA).")
+        slim = os.path.join(ROOT_TK, "requirements_colab_slim.txt")
+        write_slim(os.path.join(ROOT_TK, "requirements_base.txt"), slim)
+        pip_req(slim)
+    with open(INSTALL_MARK, "w", encoding="ascii") as fh:
+        fh.write(INSTALL_VER)
+    print("Wrote", INSTALL_MARK)
+
+sys.path.insert(0, ROOT_TK)
 import torch
 print("torch", torch.__version__, "cuda", torch.cuda.is_available(), torch.cuda.get_device_name(0))
-print("ai-toolkit clone:", "/content/ai-toolkit")
+print("ai-toolkit clone:", ROOT_TK)
 print("If Colab asks to Restart Runtime, restart, then rerun cells 1-4.")
 print("Gate 3 install OK.")"""
 )
