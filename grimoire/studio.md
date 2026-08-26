@@ -32,6 +32,6 @@
   - Waist-up prompt: `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman, waist up, swimsuit, looking at camera, detailed face, photorealistic, raw photo`
 - **Face+body together**
   - Hit: face LoRA only, waist-up, weight 0.9. Seeds 707, 2025, 1301.
-  - Cell 12 full-body face redraw: **not close**. Skip.
+  - Generate in Colab **cell 13** (no Forge / Automatic1111 required).
 
 

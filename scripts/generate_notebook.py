@@ -34,40 +34,35 @@ def code(source: str) -> None:
 
 
 md(
-    """# FiratSuper - Stable Diffusion LoRA training (Google Colab)
+    """# FiratSuper - make pictures in Google Colab
 
-This notebook trains a character LoRA with **kohya sd-scripts**, stores files on **Google Drive**, and exports `.safetensors`.
+Training is done. You do **not** need Forge or Automatic1111. Those are programs for a home PC. This Colab is the app.
 
-**Dataset:** Drive folder `Lapetitemilf Model / dataset` - 25 JPG images.
+## Make pictures now
+1. Open this notebook from GitHub (use the latest link).
+2. Sign in with **one** Google account (the Drive owner).
+3. **Runtime > Change runtime type > GPU**. T4 is enough. A100 or L4 is faster. Do not pick TPU.
+4. Run **cell 1**, then **2**, then **3**, then **4**. Wait for each green check.
+5. Run **cell 13**. 8 waist-up pictures appear under the cell.
+6. Files also go to Drive: `MyDrive/FiratSuper/output/lapetitemilf/face/`
+7. Want 8 more? In cell 13 set `BATCH = 1` (then 2, 3...) and run cell 13 again.
 
-## Before you start
-1. **Runtime > Change runtime type > GPU**. T4 is enough. A100 or L4 is faster (Colab Pro). Do not pick TPU.
-2. Run cells **in order** (1 to 11, then 11b). Skip cell 12.
-3. Approve Google Drive access. In the popup click Continue, then **Allow ALL permissions** (do not uncheck boxes).
-4. **Cell 7:** `DRY_RUN = False` for full training (dry run already passed)
+Do **not** run cell 7 (that is training). Do **not** run cell 12.
 
 ## If cell 2 fails: credential propagation
-This is a Colab Drive-login popup issue, not the training code.
 1. Left sidebar: folder icon, then **Mount Drive**, then rerun cell 2
 2. Chrome, one Google account only (the account that owns the photos)
 3. In the popup: Continue, then **Allow ALL permissions** (do not uncheck boxes)
 4. If FUSE still fails, cell 2 tries Google login, then copies the dataset without mounting Drive
 
-## Current preset: 11b is the hit. Cell 12 failed. Stop there
-- User: 11b is fine. Cell 12 full-body face was not close. Do not rerun 12.
-- Use ONLY `lapetitemilf_face` on waist-up. Do not stack. Do not retrain.
-- Skip cell 7. Skip cell 12. Keep generating from cell 11b.
-
 ## Drive layout
 ```
 MyDrive/FiratSuper/
-|-- ADD_BODY_PHOTOS/                       # next: waist-up photos (face LARGE + body)
-|-- datasets/lapetitemilf/10_ohwx_woman/   # images + captions
-|-- output/lapetitemilf/quick/             # Quick checkpoints (done)
-|-- output/lapetitemilf/standard/          # Standard checkpoints (done)
-|-- output/lapetitemilf/thorough/          # Thorough checkpoints
-|-- models/                                # base models
-`-- loras/                                 # final LoRA files
+|-- ADD_BODY_PHOTOS/
+|-- datasets/lapetitemilf/10_ohwx_woman/
+|-- output/lapetitemilf/face/               # pictures from cell 13
+|-- models/
+`-- loras/lapetitemilf_face.safetensors     # the file cell 13 uses
 ```"""
 )
 
@@ -1665,10 +1660,10 @@ upload_project_file(sheet_path)
 for path in paths:
     upload_project_file(path)
 print("Judge FACE+BODY on 1-3. That is the together test.")
-print("Frame 4 full-body face stays soft on SD 1.5. Use After Detailer in Forge.")
+print("Frame 4 full-body face stays soft on SD 1.5.")
 print("Frame 5 is body LoRA only: body reference, generic face is expected.")
 print("Do not stack the two LoRA files in one generate.")
-print("If 1-3 miss her body: add 8-12 waist-up photos, then RUN_NAME=together.")"""
+print("Pictures: run cell 13 (or 11b). Do not run cell 7.")"""
 )
 
 code(
@@ -1773,8 +1768,153 @@ code(
 raise RuntimeError(
     "Stopped. Cell 12 failed: full-body face was not close. "
     "Do not rerun this cell. Do not retrain. "
-    "Working recipe: cell 11b, lapetitemilf_face, waist-up."
+    "Working recipe: cell 13, lapetitemilf_face, waist-up."
 )"""
+)
+
+code(
+    """# @title 13) MAKE PICTURES (no training)
+import gc
+import os
+import torch
+from diffusers import AutoencoderKL, DPMSolverMultistepScheduler, StableDiffusionPipeline
+from IPython.display import display
+from PIL import Image, ImageDraw
+
+# Raise BATCH by 1 each time you want 8 NEW pictures.
+BATCH = 0
+HOW_MANY = 8
+
+FACE_LORA = os.path.join(LORAS_DIR, "lapetitemilf_face.safetensors")
+if not os.path.isfile(FACE_LORA):
+    raise RuntimeError("Missing face LoRA. Run cell 2 then check Drive loras/.")
+if not os.path.isfile(BASE_MODEL_FILE):
+    raise RuntimeError("Missing base model. Run cell 4 first.")
+
+print("This cell does NOT train. It only makes pictures.")
+print("LoRA:", FACE_LORA)
+print("BATCH:", BATCH, "HOW_MANY:", HOW_MANY)
+
+
+def _disable_peft_torchao():
+    def _no(*args, **kwargs):
+        return False
+
+    def _skip(*args, **kwargs):
+        return None
+
+    try:
+        import peft.import_utils as iu
+        iu.is_torchao_available = _no
+    except Exception:
+        pass
+    try:
+        import peft.tuners.lora.torchao as tao
+        tao.is_torchao_available = _no
+        tao.dispatch_torchao = _skip
+    except Exception:
+        pass
+
+
+_disable_peft_torchao()
+
+if "pipe" not in globals():
+    print("Loading the model (first time this session)...")
+    vae = None
+    if VAE_FILE and os.path.exists(VAE_FILE):
+        vae = AutoencoderKL.from_single_file(VAE_FILE, torch_dtype=torch.float16)
+    pipe_kw = {"torch_dtype": torch.float16, "safety_checker": None}
+    if vae is not None:
+        pipe_kw["vae"] = vae
+    pipe = StableDiffusionPipeline.from_single_file(BASE_MODEL_FILE, **pipe_kw).to("cuda")
+    pipe.scheduler = DPMSolverMultistepScheduler.from_config(
+        pipe.scheduler.config, use_karras_sigmas=True
+    )
+    _disable_peft_torchao()
+else:
+    print("Reusing the model already in memory.")
+
+try:
+    pipe.unload_lora_weights()
+except Exception:
+    pass
+pipe.load_lora_weights(FACE_LORA)
+print("Loaded face LoRA only.")
+
+LOOK = "long wavy highlighted blonde hair, brown eyes, adult woman"
+prompt = (
+    TRIGGER_WORD
+    + ", "
+    + LOOK
+    + ", waist up, swimsuit, looking at camera, detailed face, "
+    + "photorealistic, raw photo, natural lighting, high quality"
+)
+negative = (
+    "cgi, 3d render, cartoon, anime, painting, airbrushed, plastic skin, "
+    "doll, deformed, extra fingers, extra legs, extra people, cropped head, "
+    "black hair, child, teen, different person, extra faces"
+)
+base_seeds = [707, 2025, 1301, 42, 314, 8192, 12345, 33333]
+seeds = [s + BATCH * 100000 for s in base_seeds[:HOW_MANY]]
+print("Prompt:", prompt)
+print("Seeds:", seeds)
+
+images = []
+paths = []
+for seed in seeds:
+    gen_kw = {
+        "prompt": prompt,
+        "negative_prompt": negative,
+        "num_inference_steps": 28,
+        "guidance_scale": 6.0,
+        "width": 512,
+        "height": 640,
+        "output_type": "pil",
+    }
+    if CLIP_SKIP > 1:
+        gen_kw["clip_skip"] = CLIP_SKIP
+    print("=== seed", seed, "===")
+    gen = torch.Generator(device="cpu").manual_seed(seed)
+    image = pipe(
+        generator=gen,
+        cross_attention_kwargs={"scale": 0.9},
+        **gen_kw,
+    ).images[0]
+    name = "gen_b" + str(BATCH) + "_s" + str(seed) + ".png"
+    path = os.path.join(OUTPUT_DIR, name)
+    image.save(path)
+    images.append(image)
+    paths.append(path)
+    print("Saved:", path)
+    display(image)
+
+thumb_w = 200
+thumb_h = 260
+labeled = []
+for seed, image in zip(seeds, images):
+    im = image.copy()
+    im.thumbnail((thumb_w, thumb_h - 28))
+    canvas = Image.new("RGB", (thumb_w, thumb_h), (16, 16, 16))
+    canvas.paste(im, ((thumb_w - im.width) // 2, 28))
+    draw = ImageDraw.Draw(canvas)
+    draw.text((6, 6), "seed " + str(seed), fill=(255, 255, 255))
+    labeled.append(canvas)
+cols = 4
+rows = 2
+sheet = Image.new("RGB", (thumb_w * cols, thumb_h * rows), (0, 0, 0))
+for idx, tile in enumerate(labeled):
+    sheet.paste(tile, ((idx % cols) * thumb_w, (idx // cols) * thumb_h))
+sheet_path = os.path.join(OUTPUT_DIR, "gen_BATCH_" + str(BATCH) + "_SHEET.png")
+sheet.save(sheet_path)
+print("SHEET:")
+display(sheet)
+print("Saved:", sheet_path)
+print("Drive folder:", OUTPUT_DIR)
+upload_project_file(sheet_path)
+for path in paths:
+    upload_project_file(path)
+print("Done. To make 8 more: set BATCH =", BATCH + 1, "and run this cell again.")
+print("Do not run cell 7.")"""
 )
 
 md(
@@ -1798,28 +1938,18 @@ Standard LoRA (kept, identity was close):
 Quick LoRA (kept, identity was weak):
 `MyDrive/FiratSuper/loras/lapetitemilf_lora.safetensors`
 
-### Use in Automatic1111 / ComfyUI / Forge
-1. Load **Realistic Vision V5.1** as the checkpoint (not vanilla SD 1.5)
-2. For portraits and waist-up: load ONLY `lapetitemilf_face.safetensors` at `0.8-1.0`
-3. Do **not** enable face LoRA and body LoRA in the same txt2img. That fried cell 11.
-4. Always keep these identity words after the trigger:
-   `ohwx woman, long wavy highlighted blonde hair, brown eyes, adult woman`
-5. Face: `..., portrait, close up face, looking at camera, serious, detailed face, photorealistic, raw photo, natural skin texture`
-6. Face+body: waist-up first, face LoRA only: `..., waist up, swimsuit, looking at camera, detailed face, photorealistic, raw photo`
-7. Full body on this SD 1.5 setup does not keep her face. Stay on waist-up. Do not stack two LoRAs.
-8. Negative: `cgi, 3d render, cartoon, anime, airbrushed, plastic skin, extra people, black hair, child, teen, different person`
-9. CLIP skip: 2
+### Make more pictures
+1. This Colab is the app. You do not need Forge or Automatic1111.
+2. Run cells 1, 2, 3, 4, then **cell 13**
+3. Pictures: `MyDrive/FiratSuper/output/lapetitemilf/face/`
+4. More pictures: in cell 13 set `BATCH = 1` and run cell 13 again
+5. Never run cell 7 or cell 12
 
-### How to read the preview cells
-- Cell 9 / 9b / 9c / 9d = face close-ups. User: about 60% similar
-- Cell 11: frames **1-3 similar** (face LoRA waist-up). Frame 4 full body not her. Frame 5 body LoRA not her
-- Cell 11b = waist-up keepers. User: **fine**
-- Cell 12 = full-body face redraw. User: **not close**. Skipped
-
-### Next
-- Use cell 11b / Forge with face LoRA, waist-up. No cell 7. No cell 12
-- Keep lapetitemilf_face. Do not use the body LoRA for identity. Do not stack
-- Waist-up with face LoRA is the working together recipe. Full body is out of scope on this setup"""
+### How to read the old preview cells
+- Cell 11: frames 1-3 similar (face LoRA waist-up)
+- Cell 11b = waist-up keepers. User: fine
+- Cell 12 = full-body face redraw. User: not close. Skipped
+- Cell 13 = make pictures (daily use)"""
 )
 
 nb = {
