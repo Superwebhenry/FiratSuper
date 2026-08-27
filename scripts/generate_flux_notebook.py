@@ -803,6 +803,9 @@ code(
     r"""# @title 10) Generate (identity / lingerie / nude) -- no safety checker
 import os
 import gc
+import sys
+import subprocess
+import importlib
 import torch
 from datetime import datetime
 from PIL import Image
@@ -812,6 +815,38 @@ print("Clearing GPU cache after training.")
 print("If this cell OOMs: Runtime > Restart session, rerun cells 1-3, then this cell.")
 gc.collect()
 torch.cuda.empty_cache()
+
+
+def _purge_old_torchao():
+    # ai-toolkit trains with torchao==0.10.0. New peft refuses that and
+    # cannot load a Flux LoRA. Inference does not need torchao.
+    try:
+        from importlib.metadata import version
+        ver = version("torchao")
+    except Exception:
+        print("torchao not installed")
+        return
+    print("torchao", ver)
+    nums = []
+    for part in ver.split("."):
+        digits = "".join(ch for ch in part if ch.isdigit())
+        if digits:
+            nums.append(int(digits))
+    while len(nums) < 3:
+        nums.append(0)
+    if tuple(nums[:3]) >= (0, 16, 0):
+        return
+    print("peft needs torchao>=0.16 to load Flux LoRA. Uninstalling", ver)
+    subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "torchao"])
+    for key in list(sys.modules):
+        if key == "torchao" or key.startswith("torchao.") or key.startswith("peft.tuners.lora.torchao"):
+            del sys.modules[key]
+    if "peft.import_utils" in sys.modules:
+        importlib.reload(sys.modules["peft.import_utils"])
+    print("old torchao removed")
+
+
+_purge_old_torchao()
 
 # identity = face check
 # lingerie = clothed NSFW
@@ -842,6 +877,7 @@ if not os.path.isfile(lora_path):
 from diffusers import FluxPipeline
 
 print("Loading FLUX.1-dev + LoRA (no safety checker)...")
+print("LoRA file:", lora_path)
 pipe = FluxPipeline.from_pretrained(
     "black-forest-labs/FLUX.1-dev",
     torch_dtype=torch.bfloat16,
@@ -855,7 +891,12 @@ if hasattr(pipe, "requires_safety_checker"):
 if getattr(pipe, "watermarker", None) is not None:
     pipe.watermarker = None
     print("Disabled watermarker")
-pipe.load_lora_weights(lora_path)
+try:
+    pipe.load_lora_weights(lora_path)
+except ImportError as err:
+    print("load_lora_weights ImportError:", err)
+    _purge_old_torchao()
+    pipe.load_lora_weights(lora_path)
 try:
     pipe.fuse_lora(lora_scale=LORA_WEIGHT)
 except Exception as err:
@@ -863,11 +904,11 @@ except Exception as err:
 try:
     pipe.to("cuda")
 except torch.cuda.OutOfMemoryError:
-    print("GPU full from training. Using CPU offload.")
+    print("GPU full. Using CPU offload.")
     gc.collect()
     torch.cuda.empty_cache()
     pipe.enable_model_cpu_offload()
-print("LoRA:", lora_path)
+print("LoRA loaded.")
 
 PROMPTS = {
     "identity": (
