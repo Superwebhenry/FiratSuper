@@ -860,6 +860,10 @@ WIDTH = 768
 HEIGHT = 1024
 SEED = 42
 LORA_WEIGHT = 1.0
+SKIN_LOCK = (
+    "smooth natural skin, no scars, no surgical marks, no stretch marks, "
+    "unblemished skin, natural anatomy"
+)
 
 if not SUBJECT_IS_ADULT:
     raise RuntimeError("Adult subject only.")
@@ -914,17 +918,17 @@ PROMPTS = {
     "identity": (
         "ohwx woman, close-up portrait of an adult woman with long highlighted "
         "blonde hair and brown eyes, looking at the camera, photorealistic raw photo, "
-        "natural skin texture, sharp eyes"
+        "natural skin texture, sharp eyes, " + SKIN_LOCK
     ),
     "lingerie": (
         "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
         "full body standing, black lace lingerie, looking at the camera, indoor fashion photo, "
-        "photorealistic, natural skin texture"
+        "photorealistic, natural skin texture, " + SKIN_LOCK
     ),
     "nude": (
         "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
         "full body standing nude, looking at the camera, photorealistic raw photo, "
-        "natural skin texture, realistic anatomy"
+        "natural skin texture, realistic anatomy, " + SKIN_LOCK
     ),
 }
 
