@@ -916,13 +916,8 @@ except Exception as err:
         pipe.fuse_lora(lora_scale=LORA_WEIGHT)
     except Exception as err2:
         print("fuse_lora skipped:", err2)
-try:
-    pipe.to("cuda")
-except torch.cuda.OutOfMemoryError:
-    print("GPU full. Using CPU offload.")
-    gc.collect()
-    torch.cuda.empty_cache()
-    pipe.enable_model_cpu_offload()
+print("Using CPU offload so cell 11 can run on the same A100 (T5+Flux fill 40GB).")
+pipe.enable_model_cpu_offload()
 print("LoRA loaded.")
 
 PROMPTS = {
@@ -998,6 +993,7 @@ code(
     r"""# @title 11) Refine a frontal keeper (img2img, do not retrain)
 import os
 import gc
+import inspect
 import torch
 from datetime import datetime
 from PIL import Image
@@ -1013,8 +1009,6 @@ REFINE_GUIDANCE = 2.5
 
 if "pipe" not in globals():
     raise RuntimeError("Run cell 10 first so FLUX + LoRA stay in memory, then this cell.")
-
-from diffusers import FluxImg2ImgPipeline
 
 src_path = SOURCE.strip()
 if not src_path:
@@ -1041,46 +1035,41 @@ prompt = (
 print("prompt:", prompt)
 print("Do not put the words scars or surgical in this prompt.")
 
+print("VRAM before offload: %.1f GB" % (torch.cuda.memory_allocated() / 1024**3))
+print("Offloading the SAME Flux to CPU. Do not clone. from_pipe recasts and OOMs.")
+try:
+    pipe.enable_model_cpu_offload()
+except Exception as err:
+    print("enable_model_cpu_offload:", err)
+    try:
+        pipe.to("cpu")
+    except Exception as err2:
+        print("pipe.to cpu:", err2)
 gc.collect()
 torch.cuda.empty_cache()
-print("VRAM before img2img: %.1f GB" % (torch.cuda.memory_allocated() / 1024**3))
+print("VRAM after offload: %.1f GB" % (torch.cuda.memory_allocated() / 1024**3))
 
-# Reuse the loaded Flux. Do NOT from_pretrained a second copy. Do NOT .to("cuda").
-# Cell 10 may already be using CPU offload; a second GPU copy OOMs the A100.
+from diffusers import FluxImg2ImgPipeline
+
+sig = inspect.signature(FluxImg2ImgPipeline.__init__)
+comps = {}
+for key, value in pipe.components.items():
+    if key in sig.parameters:
+        comps[key] = value
+img2img = FluxImg2ImgPipeline(**comps)
+print("Wrapped components. No from_pipe, no second download.")
 try:
-    img2img = FluxImg2ImgPipeline.from_pipe(pipe)
-    print("img2img from_pipe OK (shared weights)")
-except Exception as err:
-    print("from_pipe failed:", err)
-    print("Dropping txt2img pipe, loading img2img only...")
-    del pipe
-    gc.collect()
-    torch.cuda.empty_cache()
-    img2img = FluxImg2ImgPipeline.from_pretrained(
-        "black-forest-labs/FLUX.1-dev",
-        torch_dtype=torch.bfloat16,
-        token=os.environ.get("HF_TOKEN"),
-    )
-    img2img.load_lora_weights(lora_path)
     img2img.enable_model_cpu_offload()
+except Exception as err:
+    print("img2img offload:", err)
 
 try:
     img2img.set_adapters(["default"], adapter_weights=[NUDE_LORA_WEIGHT])
 except Exception as err:
     print("set_adapters:", err)
 
-# Keep one pipeline handle. Free the old name if it is a different object.
-if globals().get("pipe") is not img2img:
-    try:
-        del pipe
-    except Exception:
-        pass
-    gc.collect()
-    torch.cuda.empty_cache()
 pipe = img2img
-
 print("VRAM after wrap: %.1f GB" % (torch.cuda.memory_allocated() / 1024**3))
-print("Running img2img. No second model, no extra .to(cuda).")
 
 image = img2img(
     prompt=prompt,
