@@ -84,8 +84,10 @@ Then `IMPORT_AS = "both"`, `RUN_NAME = "together"` (writes `lapetitemilf_togethe
 ## Flux LoRA (`lapetitemilf_flux`) — first generate (2026-08-27)
 
 - User: pictures are **not bad at all**. Identity usable on Flux.
-- One nude waist-up had thin **vertical lines under both breasts** (look like scars). This is a Flux anatomy lottery, not a scar in the dataset. Do **not** retrain. Do **not** add porn photos.
-- Fix: throw that frame away, regenerate nude with a new seed and skin lock in the prompt (`smooth natural skin, no scars, no surgical marks`).
+- One nude waist-up had thin **vertical lines under both breasts**. Flux anatomy lottery, not a dataset scar.
+- Bad advice (reverted): adding `no scars, no surgical marks` to the **positive** prompt. Flux has no real negative. User then ran seeds through 400 and **every** nude had the lines.
+- Fix: delete those words. Nude prompt = identity + `waist-up standing nude, soft even indoor lighting, smooth skin`. LoRA weight **0.75**, guidance **2.5**, seeds from **501**. Do **not** retrain. Do **not** add porn photos.
 - Keepers: copy the good frames to `MyDrive/FiratSuper/keepers/`.
+
 
 

@@ -852,18 +852,20 @@ _purge_old_torchao()
 # lingerie = clothed NSFW
 # nude = unclothed NSFW
 # all = three of each
-MODE = "all"          # "identity" | "lingerie" | "nude" | "all"
-NUM_PER_PROMPT = 2
+#
+# Flux has no real negative prompt. Do NOT write "no scars" or "surgical".
+# Those words make Flux DRAW scars. First batch had one bad frame; after
+# adding "no scars" every nude got the lines.
+MODE = "nude"         # "identity" | "lingerie" | "nude" | "all"
+NUM_PER_PROMPT = 4
 GUIDANCE = 3.5
-STEPS = 28
+NUDE_GUIDANCE = 2.5
+STEPS = 32
 WIDTH = 768
 HEIGHT = 1024
-SEED = 42
+SEED = 501
 LORA_WEIGHT = 1.0
-SKIN_LOCK = (
-    "smooth natural skin, no scars, no surgical marks, no stretch marks, "
-    "unblemished skin, natural anatomy"
-)
+NUDE_LORA_WEIGHT = 0.75
 
 if not SUBJECT_IS_ADULT:
     raise RuntimeError("Adult subject only.")
@@ -902,9 +904,17 @@ except ImportError as err:
     _purge_old_torchao()
     pipe.load_lora_weights(lora_path)
 try:
-    pipe.fuse_lora(lora_scale=LORA_WEIGHT)
+    pipe.unfuse_lora()
+except Exception:
+    pass
+try:
+    pipe.set_adapters(["default"], adapter_weights=[LORA_WEIGHT])
 except Exception as err:
-    print("fuse_lora skipped:", err)
+    print("set_adapters skipped:", err)
+    try:
+        pipe.fuse_lora(lora_scale=LORA_WEIGHT)
+    except Exception as err2:
+        print("fuse_lora skipped:", err2)
 try:
     pipe.to("cuda")
 except torch.cuda.OutOfMemoryError:
@@ -918,17 +928,17 @@ PROMPTS = {
     "identity": (
         "ohwx woman, close-up portrait of an adult woman with long highlighted "
         "blonde hair and brown eyes, looking at the camera, photorealistic raw photo, "
-        "natural skin texture, sharp eyes, " + SKIN_LOCK
+        "natural skin texture, sharp eyes, soft even lighting"
     ),
     "lingerie": (
         "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
         "full body standing, black lace lingerie, looking at the camera, indoor fashion photo, "
-        "photorealistic, natural skin texture, " + SKIN_LOCK
+        "photorealistic, natural skin texture, soft even lighting"
     ),
     "nude": (
         "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
-        "full body standing nude, looking at the camera, photorealistic raw photo, "
-        "natural skin texture, realistic anatomy, " + SKIN_LOCK
+        "waist-up standing nude, looking at the camera, soft even indoor lighting, "
+        "photorealistic raw photo, smooth skin"
     ),
 }
 
@@ -946,12 +956,19 @@ saved = []
 idx = 0
 for kind in selected:
     prompt = PROMPTS[kind]
+    weight = NUDE_LORA_WEIGHT if kind == "nude" else LORA_WEIGHT
+    guidance = NUDE_GUIDANCE if kind == "nude" else GUIDANCE
+    try:
+        pipe.set_adapters(["default"], adapter_weights=[weight])
+    except Exception as err:
+        print("set_adapters:", err)
     for i in range(NUM_PER_PROMPT):
         seed = SEED + idx
-        print("gen", kind, "seed", seed)
+        print("gen", kind, "seed", seed, "guidance", guidance, "lora", weight)
+        print("prompt:", prompt)
         image = pipe(
             prompt=prompt,
-            guidance_scale=GUIDANCE,
+            guidance_scale=guidance,
             height=HEIGHT,
             width=WIDTH,
             num_inference_steps=STEPS,
