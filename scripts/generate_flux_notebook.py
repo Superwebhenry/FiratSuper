@@ -997,14 +997,16 @@ print("If a frontal nude is close but the chest has faint lines: run cell 11 on 
 code(
     r"""# @title 11) Refine a frontal keeper (img2img, do not retrain)
 import os
+import gc
+import torch
 from datetime import datetime
 from PIL import Image
 from IPython.display import display
 
 # Empty SOURCE = last picture from cell 10.
-# Or paste a Drive path to a PNG you like (frontal, small chest lines).
+# Example: "/content/drive/MyDrive/FiratSuper/output/lapetitemilf/flux_eval/20260827_092544/nude_03_seed506.png"
 SOURCE = ""
-STRENGTH = 0.28     # 0.22-0.32. Higher = more change, can drift the face
+STRENGTH = 0.28
 REFINE_SEED = 7
 REFINE_STEPS = 28
 REFINE_GUIDANCE = 2.5
@@ -1039,31 +1041,46 @@ prompt = (
 print("prompt:", prompt)
 print("Do not put the words scars or surgical in this prompt.")
 
+gc.collect()
+torch.cuda.empty_cache()
+print("VRAM before img2img: %.1f GB" % (torch.cuda.memory_allocated() / 1024**3))
+
+# Reuse the loaded Flux. Do NOT from_pretrained a second copy. Do NOT .to("cuda").
+# Cell 10 may already be using CPU offload; a second GPU copy OOMs the A100.
 try:
     img2img = FluxImg2ImgPipeline.from_pipe(pipe)
+    print("img2img from_pipe OK (shared weights)")
 except Exception as err:
     print("from_pipe failed:", err)
+    print("Dropping txt2img pipe, loading img2img only...")
+    del pipe
+    gc.collect()
+    torch.cuda.empty_cache()
     img2img = FluxImg2ImgPipeline.from_pretrained(
         "black-forest-labs/FLUX.1-dev",
         torch_dtype=torch.bfloat16,
         token=os.environ.get("HF_TOKEN"),
     )
     img2img.load_lora_weights(lora_path)
-    try:
-        img2img.set_adapters(["default"], adapter_weights=[NUDE_LORA_WEIGHT])
-    except Exception as err2:
-        print("set_adapters:", err2)
-try:
-    img2img.set_adapters(["default"], adapter_weights=[NUDE_LORA_WEIGHT])
-except Exception:
-    pass
+    img2img.enable_model_cpu_offload()
 
 try:
-    img2img.to("cuda")
-except torch.cuda.OutOfMemoryError:
+    img2img.set_adapters(["default"], adapter_weights=[NUDE_LORA_WEIGHT])
+except Exception as err:
+    print("set_adapters:", err)
+
+# Keep one pipeline handle. Free the old name if it is a different object.
+if globals().get("pipe") is not img2img:
+    try:
+        del pipe
+    except Exception:
+        pass
     gc.collect()
     torch.cuda.empty_cache()
-    img2img.enable_model_cpu_offload()
+pipe = img2img
+
+print("VRAM after wrap: %.1f GB" % (torch.cuda.memory_allocated() / 1024**3))
+print("Running img2img. No second model, no extra .to(cuda).")
 
 image = img2img(
     prompt=prompt,
