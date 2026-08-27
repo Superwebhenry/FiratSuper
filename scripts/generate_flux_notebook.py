@@ -66,6 +66,7 @@ Trigger: `ohwx woman`.
 8. Full train (~2000 steps)
 9. Copy LoRA to Drive and SHOW training samples
 10. Generate and SHOW pictures (identity + lingerie + nude, no filter)
+11. Refine a keeper (img2img, keep frontal, smooth the chest)
 
 ## Drive layout
 ```
@@ -937,8 +938,8 @@ PROMPTS = {
     ),
     "nude": (
         "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
-        "waist-up standing nude, looking at the camera, soft even indoor lighting, "
-        "photorealistic raw photo, smooth skin"
+        "waist-up, facing the camera, square frontal view, standing nude, "
+        "looking at the camera, soft even indoor lighting, photorealistic raw photo, smooth skin"
     ),
 }
 
@@ -989,7 +990,104 @@ if USE_DRIVE_API:
         upload_project_file(path, rel)
 print("Pictures are also on Drive:", out_dir)
 print("No safety checker ran. Copy keepers to MyDrive/FiratSuper/keepers/")
-print("Use ohwx woman in every prompt. Do not stack old SD LoRAs.")"""
+print("Use ohwx woman in every prompt. Do not stack old SD LoRAs.")
+print("If a frontal nude is close but the chest has faint lines: run cell 11 on that file.")"""
+)
+
+code(
+    r"""# @title 11) Refine a frontal keeper (img2img, do not retrain)
+import os
+from datetime import datetime
+from PIL import Image
+from IPython.display import display
+
+# Empty SOURCE = last picture from cell 10.
+# Or paste a Drive path to a PNG you like (frontal, small chest lines).
+SOURCE = ""
+STRENGTH = 0.28     # 0.22-0.32. Higher = more change, can drift the face
+REFINE_SEED = 7
+REFINE_STEPS = 28
+REFINE_GUIDANCE = 2.5
+
+if "pipe" not in globals():
+    raise RuntimeError("Run cell 10 first so FLUX + LoRA stay in memory, then this cell.")
+
+from diffusers import FluxImg2ImgPipeline
+
+src_path = SOURCE.strip()
+if not src_path:
+    if "saved" in globals() and saved:
+        src_path = saved[-1]
+    else:
+        raise RuntimeError("Set SOURCE to a PNG path, or run cell 10 first.")
+if not os.path.isfile(src_path):
+    raise RuntimeError("File not found: " + src_path)
+
+base = Image.open(src_path).convert("RGB")
+try:
+    resample = Image.Resampling.LANCZOS
+except AttributeError:
+    resample = Image.LANCZOS
+base = base.resize((WIDTH, HEIGHT), resample)
+print("source:", src_path, base.size)
+
+prompt = (
+    "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
+    "waist-up, facing the camera, square frontal view, standing nude, "
+    "looking at the camera, soft even indoor lighting, photorealistic raw photo, smooth skin"
+)
+print("prompt:", prompt)
+print("Do not put the words scars or surgical in this prompt.")
+
+try:
+    img2img = FluxImg2ImgPipeline.from_pipe(pipe)
+except Exception as err:
+    print("from_pipe failed:", err)
+    img2img = FluxImg2ImgPipeline.from_pretrained(
+        "black-forest-labs/FLUX.1-dev",
+        torch_dtype=torch.bfloat16,
+        token=os.environ.get("HF_TOKEN"),
+    )
+    img2img.load_lora_weights(lora_path)
+    try:
+        img2img.set_adapters(["default"], adapter_weights=[NUDE_LORA_WEIGHT])
+    except Exception as err2:
+        print("set_adapters:", err2)
+try:
+    img2img.set_adapters(["default"], adapter_weights=[NUDE_LORA_WEIGHT])
+except Exception:
+    pass
+
+try:
+    img2img.to("cuda")
+except torch.cuda.OutOfMemoryError:
+    gc.collect()
+    torch.cuda.empty_cache()
+    img2img.enable_model_cpu_offload()
+
+image = img2img(
+    prompt=prompt,
+    image=base,
+    strength=STRENGTH,
+    guidance_scale=REFINE_GUIDANCE,
+    num_inference_steps=REFINE_STEPS,
+    generator=torch.Generator("cuda").manual_seed(REFINE_SEED),
+).images[0]
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+out_dir = os.path.join(EVAL_DIR, "refine_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+out_path = os.path.join(out_dir, "refine_s%.2f_seed%d.png" % (STRENGTH, REFINE_SEED))
+image.save(out_path)
+print("saved", out_path)
+print("--- before ---")
+display(base)
+print("--- after ---")
+display(image)
+if USE_DRIVE_API:
+    upload_project_file(out_path, os.path.relpath(out_path, ROOT))
+print("If the face drifted, lower STRENGTH to 0.22 and rerun. If lines remain, try 0.32.")
+print("Stay frontal. Copy keepers to MyDrive/FiratSuper/keepers/")"""
 )
 
 md(
@@ -1004,7 +1102,8 @@ Training samples:
 Generations from cell 10:
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval/`
 
-Cell 8 does not print pictures. Cell 9 and cell 10 display them in the notebook.
+Cell 10 generates. Cell 11 refines a frontal keeper with img2img (smooth chest, same pose).
+Do not write "no scars" in prompts. Flux will draw them.
 
 Protected (not touched):
 `loras/lapetitemilf_face.safetensors`

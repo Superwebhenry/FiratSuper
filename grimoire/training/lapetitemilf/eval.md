@@ -87,7 +87,8 @@ Then `IMPORT_AS = "both"`, `RUN_NAME = "together"` (writes `lapetitemilf_togethe
 - One nude waist-up had thin **vertical lines under both breasts**. Flux anatomy lottery, not a dataset scar.
 - Bad advice (reverted): adding `no scars, no surgical marks` to the **positive** prompt. Flux has no real negative. User then ran seeds through 400 and **every** nude had the lines.
 - Fix: delete those words. Nude prompt = identity + `waist-up standing nude, soft even indoor lighting, smooth skin`. LoRA weight **0.75**, guidance **2.5**, seeds from **501**. Do **not** retrain. Do **not** add porn photos.
-- Keepers: copy the good frames to `MyDrive/FiratSuper/keepers/`.
+- User then ran more frontals: still **a bit** of under-breast line, but identity is good. Stay **frontal**. Do not switch to side views as the fix.
+- Next: cell 11 img2img refine on the best frontal (`STRENGTH` 0.22-0.32). Same prompt, no scar words. Do **not** retrain.
 
 
 
