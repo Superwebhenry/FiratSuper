@@ -64,8 +64,8 @@ Trigger: `ohwx woman`.
 6. Gate 2: write YAML
 7. Gate 4: dry run (5 steps)
 8. Full train (~2000 steps)
-9. Copy LoRA to Drive
-10. Generate (identity + lingerie + nude, no filter)
+9. Copy LoRA to Drive and SHOW training samples
+10. Generate and SHOW pictures (identity + lingerie + nude, no filter)
 
 ## Drive layout
 ```
@@ -345,12 +345,14 @@ INBOX_DIR = os.path.join(ROOT, "ADD_FLUX_PHOTOS")
 LORAS_DIR = os.path.join(ROOT, "loras")
 KEEPERS_DIR = os.path.join(ROOT, "keepers")
 EVAL_DIR = os.path.join(ROOT, "output", PROJECT_NAME, "flux_eval")
+SAMPLES_DIR = os.path.join(ROOT, "output", PROJECT_NAME, "flux_samples")
 DATASET_DIR = "/content/dataset"
 TRAIN_OUTPUT_DIR = "/content/output"
 CONFIG_PATH = "/content/lapetitemilf_flux.yaml"
 os.makedirs(LORAS_DIR, exist_ok=True)
 os.makedirs(KEEPERS_DIR, exist_ok=True)
 os.makedirs(EVAL_DIR, exist_ok=True)
+os.makedirs(SAMPLES_DIR, exist_ok=True)
 os.makedirs(DATASET_DIR, exist_ok=True)
 os.makedirs(TRAIN_OUTPUT_DIR, exist_ok=True)
 
@@ -708,14 +710,41 @@ print("Keep this tab open. Colab will drop the GPU if the tab sleeps too long.")
 cmd = [sys.executable, "run.py", CONFIG_PATH]
 print("+", " ".join(cmd))
 subprocess.check_call(cmd, cwd="/content/ai-toolkit")
-print("Training process finished. Run cell 9 to copy the LoRA to Drive.")"""
+print("Training process finished.")
+print("This cell does not show pictures. Run cell 9 to copy the LoRA AND display samples.")
+print("Then run cell 10 to generate identity / lingerie / nude and see them here.")"""
 )
 
 code(
-    r"""# @title 9) Copy lapetitemilf_flux.safetensors to Drive (never overwrite face)
+    r"""# @title 9) Copy LoRA + SHOW training samples
 import os
 import glob
 import shutil
+from IPython.display import display, Image as IPyImage
+
+IMG_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
+
+
+def iter_images(root):
+    if not os.path.isdir(root):
+        return
+    for dirpath, _dirs, files in os.walk(root):
+        for name in sorted(files):
+            if os.path.splitext(name)[1].lower() in IMG_EXTS:
+                yield os.path.join(dirpath, name)
+
+
+def show_images(paths, limit=12):
+    paths = [p for p in paths if os.path.isfile(p)]
+    if not paths:
+        print("No pictures to show.")
+        return
+    show = paths[-limit:]
+    print("Showing", len(show), "of", len(paths), "pictures")
+    for path in show:
+        print(path)
+        display(IPyImage(filename=path, width=384))
+
 
 if OUTPUT_LORA_NAME in PROTECTED_LORAS:
     raise RuntimeError("Refusing to write a protected LoRA name.")
@@ -726,7 +755,6 @@ final_path = os.path.join(run_dir, OUTPUT_LORA_NAME)
 if os.path.isfile(final_path):
     candidates.append(final_path)
 candidates.extend(sorted(glob.glob(os.path.join(run_dir, "*.safetensors"))))
-# Prefer the file that is not a step snapshot
 preferred = [p for p in candidates if os.path.basename(p) == OUTPUT_LORA_NAME]
 if not preferred:
     preferred = [p for p in candidates if "step" not in os.path.basename(p).lower()]
@@ -742,15 +770,33 @@ dest_rel = "loras/" + OUTPUT_LORA_NAME
 dest_abs = os.path.join(ROOT, dest_rel)
 if os.path.basename(dest_abs) in PROTECTED_LORAS:
     raise RuntimeError("Refusing to overwrite protected LoRA: " + dest_abs)
-if os.path.isfile(dest_abs) and os.path.basename(dest_abs) in PROTECTED_LORAS:
-    raise RuntimeError("Protected file already exists, will not replace: " + dest_abs)
 
 upload_project_file(src, dest_rel)
 print("LoRA saved as", dest_rel)
-print("Protected files were not touched:")
-for name in sorted(PROTECTED_LORAS):
-    print("  ", name)
-print("Next: cell 10 generates pictures with this LoRA (no safety checker).")"""
+
+sample_dir = os.path.join(run_dir, "samples")
+local_imgs = list(iter_images(sample_dir))
+if not local_imgs:
+    local_imgs = list(iter_images(run_dir))
+copied_src = []
+seen = set()
+for path in local_imgs:
+    name = os.path.basename(path)
+    if name in seen:
+        continue
+    seen.add(name)
+    dest_rel_img = "output/%s/flux_samples/%s" % (PROJECT_NAME, name)
+    upload_project_file(path, dest_rel_img)
+    copied_src.append(path)
+
+print("Copied", len(copied_src), "training samples to Drive:", SAMPLES_DIR)
+print("--- training samples ---")
+show_images(copied_src)
+if not copied_src:
+    print("Ostris did not write sample PNGs in", sample_dir)
+    print("That is OK. Run cell 10 to generate pictures and see them in this notebook.")
+print("Protected files were not touched.")
+print("Next: cell 10 generates identity / lingerie / nude and DISPLAYS them here.")"""
 )
 
 code(
@@ -760,6 +806,7 @@ import gc
 import torch
 from datetime import datetime
 from PIL import Image
+from IPython.display import display
 
 print("Clearing GPU cache after training.")
 print("If this cell OOMs: Runtime > Restart session, rerun cells 1-3, then this cell.")
@@ -869,6 +916,8 @@ for kind in selected:
         path = os.path.join(out_dir, fname)
         image.save(path)
         saved.append(path)
+        print("saved", path)
+        display(image)
         idx += 1
 
 print("Saved", len(saved), "pictures in", out_dir)
@@ -876,6 +925,7 @@ if USE_DRIVE_API:
     for path in saved:
         rel = os.path.relpath(path, ROOT)
         upload_project_file(path, rel)
+print("Pictures are also on Drive:", out_dir)
 print("No safety checker ran. Copy keepers to MyDrive/FiratSuper/keepers/")
 print("Use ohwx woman in every prompt. Do not stack old SD LoRAs.")"""
 )
@@ -886,8 +936,13 @@ md(
 LoRA file (new only):
 `MyDrive/FiratSuper/loras/lapetitemilf_flux.safetensors`
 
-Generations:
+Training samples:
+`MyDrive/FiratSuper/output/lapetitemilf/flux_samples/`
+
+Generations from cell 10:
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval/`
+
+Cell 8 does not print pictures. Cell 9 and cell 10 display them in the notebook.
 
 Protected (not touched):
 `loras/lapetitemilf_face.safetensors`
