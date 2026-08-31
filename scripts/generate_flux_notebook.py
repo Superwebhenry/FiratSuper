@@ -48,7 +48,7 @@ High RAM can stay off.
 **Locked LoRA (do not overwrite):** `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. Do not run cells 5-9.
 
-**Generate path:** cells 1, 2, 3, then 10. If this is a new runtime, also run cell 4 (install only). Cell 11 is optional refine.
+**Generate path:** cells 1, 2, 3, then 10 or 12. If this is a new runtime, also run cell 4 (install only). Cell 11 is optional refine. Cell 12 makes 20 outdoor nude styles.
 
 **Trigger:** `ohwx woman`. Do not write "no scars" in prompts. Adult subject only.
 
@@ -60,6 +60,7 @@ Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. D
 5-9. Training (LOCKED -- do not run)
 10. Generate and SHOW pictures (identity + lingerie + nude, no filter)
 11. Refine a keeper (img2img, keep frontal)
+12. 20 outdoor nude styles (forest, meadow, rocks, path, bench)
 
 ## Drive layout
 ```
@@ -1148,6 +1149,181 @@ print("If the face drifted, lower STRENGTH to 0.22 and rerun. If lines remain, t
 print("Stay frontal. Copy keepers to MyDrive/FiratSuper/keepers/")"""
 )
 
+code(
+    r"""# @title 12) 20 outdoor nude styles -- no safety checker
+import os
+import gc
+import sys
+import subprocess
+import importlib
+import torch
+from datetime import datetime
+from IPython.display import display
+
+# 20 original outdoor looks for THIS character. Not copies of stock sites.
+# START=0 END=20 runs all. For a short test: END=3
+# If the runtime dies, rerun with START set to the next index.
+START = 0
+END = 20
+SEED = 800
+STEPS = 32
+NUDE_GUIDANCE = 2.5
+NUDE_LORA_WEIGHT = 0.75
+
+ID = (
+    "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
+)
+
+STYLES = [
+    ("01_forest_stand", 768, 1024, ID + "full body standing nude in a green forest, looking at the camera, dappled sunlight through trees, photorealistic raw photo, natural skin texture"),
+    ("02_meadow_stand", 768, 1024, ID + "full body standing nude in a lush green meadow, looking at the camera, tall grass around her legs, bright daylight, photorealistic raw photo, natural skin texture"),
+    ("03_golden_field", 768, 1024, ID + "full body standing nude in a dry golden grass field, looking at the camera, warm late-afternoon sunlight, photorealistic raw photo, natural skin texture"),
+    ("04_forest_sit", 768, 1024, ID + "sitting nude on the forest floor, looking at the camera, green plants around her, soft overcast forest light, photorealistic raw photo, natural skin texture"),
+    ("05_meadow_kneel", 768, 1024, ID + "kneeling nude in green grass, looking at the camera, outdoor meadow, even daylight, photorealistic raw photo, natural skin texture"),
+    ("06_tree_lean", 768, 1024, ID + "standing nude leaning back against a tree trunk, looking at the camera, forest around her, dappled sunlight, photorealistic raw photo, natural skin texture"),
+    ("07_rock_sit", 768, 1024, ID + "sitting nude on a large sunlit rock, looking at the camera, rocky hillside behind her, bright daylight, photorealistic raw photo, natural skin texture"),
+    ("08_grass_lie", 1024, 768, ID + "lying nude in tall green grass, looking at the camera, meadow around her, soft daylight, photorealistic raw photo, natural skin texture"),
+    ("09_cliff_stand", 768, 1024, ID + "full body standing nude on a rocky outcrop, looking at the camera, distant hills behind her, bright daylight, photorealistic raw photo, natural skin texture"),
+    ("10_forest_path", 768, 1024, ID + "full body standing nude on a dirt path in the woods, looking at the camera, trees on both sides, natural daylight, photorealistic raw photo, natural skin texture"),
+    ("11_wood_bench", 768, 1024, ID + "sitting nude on a wooden outdoor bench, looking at the camera, trees and grass behind her, soft daylight, photorealistic raw photo, natural skin texture"),
+    ("12_rural_fence", 768, 1024, ID + "standing nude beside a weathered wooden fence, looking at the camera, rural field behind her, warm sunlight, photorealistic raw photo, natural skin texture"),
+    ("13_creek_stand", 768, 1024, ID + "standing nude at a shallow forest creek, looking at the camera, water around her feet, green woods, soft daylight, photorealistic raw photo, natural skin texture"),
+    ("14_shoulder_look", 768, 1024, ID + "full body standing nude in a sunlit forest clearing, looking back over her shoulder at the camera, photorealistic raw photo, natural skin texture"),
+    ("15_outdoor_close", 768, 1024, ID + "waist-up nude outdoor portrait, looking at the camera, blurred trees behind her, soft daylight, photorealistic raw photo, natural skin texture"),
+    ("16_meadow_waist", 768, 1024, ID + "waist-up standing nude in a green meadow, looking at the camera, sunlight on her skin, photorealistic raw photo, natural skin texture"),
+    ("17_wide_field", 1024, 768, ID + "full body standing nude in a wide grassy field, looking at the camera, big sky and landscape around her, bright daylight, photorealistic raw photo, natural skin texture"),
+    ("18_fallen_log", 768, 1024, ID + "sitting nude on a fallen log in the woods, looking at the camera, moss and trees around her, overcast forest light, photorealistic raw photo, natural skin texture"),
+    ("19_wildflowers", 768, 1024, ID + "full body standing nude among wildflowers in a meadow, looking at the camera, bright daylight, photorealistic raw photo, natural skin texture"),
+    ("20_overcast_woods", 768, 1024, ID + "full body standing nude in a quiet overcast forest, looking at the camera, even soft light, photorealistic raw photo, natural skin texture"),
+]
+
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+if START < 0 or END > len(STYLES) or START >= END:
+    raise RuntimeError("Set START/END inside 0..%d and START < END" % len(STYLES))
+
+print("Do not write scars or surgical in these prompts.")
+print("Keep this tab open. 20 pictures can take a while.")
+
+
+def _purge_old_torchao():
+    try:
+        from importlib.metadata import version
+        ver = version("torchao")
+    except Exception:
+        print("torchao not installed")
+        return
+    print("torchao", ver)
+    nums = []
+    for part in ver.split("."):
+        digits = "".join(ch for ch in part if ch.isdigit())
+        if digits:
+            nums.append(int(digits))
+    while len(nums) < 3:
+        nums.append(0)
+    if tuple(nums[:3]) >= (0, 16, 0):
+        return
+    print("peft needs torchao>=0.16 to load Flux LoRA. Uninstalling", ver)
+    subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "torchao"])
+    for key in list(sys.modules):
+        if key == "torchao" or key.startswith("torchao.") or key.startswith("peft.tuners.lora.torchao"):
+            del sys.modules[key]
+    if "peft.import_utils" in sys.modules:
+        importlib.reload(sys.modules["peft.import_utils"])
+    print("old torchao removed")
+
+
+def _load_txt2img():
+    global pipe
+    lora_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+    if not os.path.isfile(lora_path):
+        local_final = os.path.join(TRAIN_OUTPUT_DIR, LORA_NAME, OUTPUT_LORA_NAME)
+        if os.path.isfile(local_final):
+            lora_path = local_final
+    if not os.path.isfile(lora_path):
+        raise RuntimeError("LoRA not found: " + lora_path)
+    gc.collect()
+    torch.cuda.empty_cache()
+    _purge_old_torchao()
+    from diffusers import FluxPipeline
+    print("Loading FLUX.1-dev + LoRA (no safety checker)...")
+    print("LoRA file:", lora_path)
+    loaded = FluxPipeline.from_pretrained(
+        "black-forest-labs/FLUX.1-dev",
+        torch_dtype=torch.bfloat16,
+        token=os.environ.get("HF_TOKEN"),
+    )
+    if getattr(loaded, "safety_checker", None) is not None:
+        loaded.safety_checker = None
+    if hasattr(loaded, "requires_safety_checker"):
+        loaded.requires_safety_checker = False
+    if getattr(loaded, "watermarker", None) is not None:
+        loaded.watermarker = None
+    try:
+        loaded.load_lora_weights(lora_path)
+    except ImportError as err:
+        print("load_lora_weights ImportError:", err)
+        _purge_old_torchao()
+        loaded.load_lora_weights(lora_path)
+    try:
+        loaded.unfuse_lora()
+    except Exception:
+        pass
+    loaded.enable_model_cpu_offload()
+    pipe = loaded
+    print("LoRA loaded.")
+
+
+need_load = True
+if "pipe" in globals() and pipe is not None:
+    if type(pipe).__name__ == "FluxPipeline":
+        need_load = False
+        print("Using Flux txt2img already in memory.")
+    else:
+        print("In-memory pipe is", type(pipe).__name__, "- loading txt2img.")
+if need_load:
+    _load_txt2img()
+
+try:
+    pipe.set_adapters(["default"], adapter_weights=[NUDE_LORA_WEIGHT])
+except Exception as err:
+    print("set_adapters:", err)
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+out_dir = os.path.join(EVAL_DIR, "outdoor_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+saved = []
+batch = STYLES[START:END]
+print("Running styles", START, "to", END, "->", out_dir)
+
+for i, (slug, width, height, prompt) in enumerate(batch):
+    idx = START + i
+    seed = SEED + idx
+    print("---", slug, "seed", seed, width, "x", height)
+    print(prompt)
+    image = pipe(
+        prompt=prompt,
+        guidance_scale=NUDE_GUIDANCE,
+        height=height,
+        width=width,
+        num_inference_steps=STEPS,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    ).images[0]
+    fname = "%s_seed%d.png" % (slug, seed)
+    path = os.path.join(out_dir, fname)
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+print("Saved", len(saved), "pictures in", out_dir)
+if USE_DRIVE_API:
+    for path in saved:
+        upload_project_file(path, os.path.relpath(path, ROOT))
+print("Copy keepers to MyDrive/FiratSuper/keepers/")
+print("Do not put these pictures back into the training folders.")"""
+)
+
 md(
     """## Done
 
@@ -1156,6 +1332,9 @@ Locked production LoRA:
 
 Generations from cell 10:
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/`
+
+Outdoor styles from cell 12:
+`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/outdoor_*/`
 
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
@@ -1168,11 +1347,12 @@ Also locked:
 `loras/lapetitemilf_face.safetensors`
 
 ### Make more pictures
-1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then cell 10.
+1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then cell 10 or cell 12.
 2. Cell 10: set MODE to `identity`, `lingerie`, `nude`, or `all`. Change SEED for new frames.
-3. Nude recipe: LoRA 0.75, guidance 2.5, stay frontal. Optional cell 11 refine.
-4. In ComfyUI later: Flux.1 [dev] + this LoRA, trigger `ohwx woman`. Do not load SD 1.5 LoRAs on Flux.
-5. Adult content only.
+3. Cell 12: 20 outdoor nude styles. Test with END=3 first. Then START=3 END=20.
+4. Nude recipe: LoRA 0.75, guidance 2.5. No scar words. Optional cell 11 refine.
+5. In ComfyUI later: Flux.1 [dev] + this LoRA, trigger `ohwx woman`. Do not load SD 1.5 LoRAs on Flux.
+6. Adult content only. Do not train on generated pictures.
 
 ### If the runtime dies
 - LoRA is already on Drive. Rerun 1, 2, 3, 10, 11. New runtime: also 4. Skip 5-9.

@@ -14,8 +14,9 @@ https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd
 2. Cells **1, 2, 3**. New runtime: also **4**. Then **10**.
 3. Do **not** run cells 5-9 (training is locked).
 4. Cell 10: `MODE` = `identity` / `lingerie` / `nude` / `all`. Change `SEED` for new frames.
-5. Nude: LoRA **0.75**, guidance **2.5**, stay frontal. No "no scars". Optional cell 11 refine.
-6. Copy keepers to `MyDrive/FiratSuper/keepers/`.
+5. Cell 12: 20 outdoor nude styles of her (forest, meadow, rocks, path, bench). Not copies of stock photos. Test `END=3` first.
+6. Nude: LoRA **0.75**, guidance **2.5**. No "no scars". Optional cell 11 refine.
+7. Copy keepers to `MyDrive/FiratSuper/keepers/`.
 
 If the tab is still open from training, just run cell 10.
 
