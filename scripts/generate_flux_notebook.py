@@ -48,7 +48,7 @@ High RAM can stay off.
 **Locked LoRA (do not overwrite):** `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. Do not run cells 5-9.
 
-**Generate path:** cells 1, 2, 3, then 10 or 12. If this is a new runtime, also run cell 4 (install only). Cell 11 is optional refine. Cell 12 makes 20 outdoor nude styles.
+**Generate path:** cells 1, 2, 3, then 10, 12, or 13. If this is a new runtime, also run cell 4 (install only). Cell 11 is optional refine. Cell 13 makes 10 series of 10 pictures (100 total).
 
 **Trigger:** `ohwx woman`. Do not write "no scars" in prompts. Adult subject only.
 
@@ -61,6 +61,7 @@ Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. D
 10. Generate and SHOW pictures (identity + lingerie + nude, no filter)
 11. Refine a keeper (img2img, keep frontal)
 12. 20 outdoor nude styles (forest, meadow, rocks, path, bench)
+13. 10 series x 10 shots (same place, new pose / angle / distance)
 
 ## Drive layout
 ```
@@ -1324,6 +1325,256 @@ print("Copy keepers to MyDrive/FiratSuper/keepers/")
 print("Do not put these pictures back into the training folders.")"""
 )
 
+code(
+    r"""# @title 13) 10 series x 10 shots (100 pictures)
+import os
+import gc
+import sys
+import subprocess
+import importlib
+import torch
+from datetime import datetime
+from IPython.display import display
+
+# One series = one place. 10 shots = new pose / angle / distance.
+# Run ONE series at a time (10 pictures). Then raise SERIES_START.
+# All 100: SERIES_START = 0 and SERIES_END = 10 (keep the tab open, ~1-2 hours).
+# If it dies mid-series, set SHOT_START to the next index.
+SERIES_START = 0
+SERIES_END = 1
+SHOT_START = 0
+SHOT_END = 10
+SEED = 900
+STEPS = 32
+
+ID = (
+    "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
+)
+
+POSES = [
+    ("01_full_front", 768, 1024, "full body standing, facing the camera"),
+    ("02_three_quarter", 768, 1024, "full body standing, three-quarter view, looking at the camera"),
+    ("03_over_shoulder", 768, 1024, "full body standing in profile, looking back over her shoulder at the camera"),
+    ("04_waist_up", 768, 1024, "waist-up, facing the camera"),
+    ("05_close_portrait", 768, 1024, "close-up portrait of her face and shoulders, looking at the camera"),
+    ("06_sit", 768, 1024, "sitting, looking at the camera"),
+    ("07_lean", 768, 1024, "leaning in this location, looking at the camera"),
+    ("08_high_angle", 768, 1024, "shot from a slightly high angle looking down"),
+    ("09_side", 768, 1024, "side view, her face turned toward the camera"),
+    ("10_wide", 768, 1024, "full body from farther away so more of the location is visible"),
+]
+
+# (slug, kind, place, body)
+# kind: nude -> LoRA 0.75 guidance 2.5 ; lingerie -> LoRA 1.0 guidance 3.5
+SERIES = [
+    (
+        "01_outdoor_shower",
+        "nude",
+        "outdoor shower, dark stacked-stone wall, white outdoor stairs with a metal rail, a shower head pouring water, green plants, bright daylight",
+        "nude, wet skin, wet highlighted blonde hair, water falling over her",
+    ),
+    (
+        "02_plaid_apartment",
+        "lingerie",
+        "classic apartment with herringbone wood parquet, a tall dark antique wardrobe, a leather pouf, a wooden chest, large white-framed windows, soft daylight",
+        "wearing a red and black plaid lingerie set, barefoot",
+    ),
+    (
+        "03_green_forest",
+        "nude",
+        "green forest with tree trunks and leafy ground, dappled sunlight through the trees",
+        "nude, standing among the trees",
+    ),
+    (
+        "04_golden_field",
+        "nude",
+        "open field of dry golden grass, warm late-afternoon sunlight, big sky",
+        "nude in the tall grass",
+    ),
+    (
+        "05_white_bathtub",
+        "nude",
+        "indoor bathroom with a white bathtub, a gold-frame mirror, tile floor, even indoor light",
+        "nude",
+    ),
+    (
+        "06_hotel_window",
+        "lingerie",
+        "hotel bedroom with a wide window, sheer curtains, a made bed with white sheets, soft daylight",
+        "wearing black lace lingerie, barefoot",
+    ),
+    (
+        "07_hot_tub",
+        "nude",
+        "indoor spa with a bubbling hot tub, stone tile, warm lamps, light steam",
+        "nude, wet highlighted blonde hair",
+    ),
+    (
+        "08_sandy_beach",
+        "nude",
+        "sandy beach at the ocean, bright daylight, blue water behind her",
+        "nude on the sand",
+    ),
+    (
+        "09_private_pool",
+        "nude",
+        "private backyard pool, sun lounger, pale stone deck, bright daylight",
+        "nude by the pool",
+    ),
+    (
+        "10_glass_greenhouse",
+        "lingerie",
+        "glass greenhouse full of green plants, soft daylight through the glass roof",
+        "wearing a white lace lingerie set, barefoot",
+    ),
+]
+
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+if len(POSES) != 10 or len(SERIES) != 10:
+    raise RuntimeError("Need 10 series and 10 poses.")
+if SERIES_START < 0 or SERIES_END > len(SERIES) or SERIES_START >= SERIES_END:
+    raise RuntimeError("SERIES_START/END must be inside 0..10 and START < END")
+if SHOT_START < 0 or SHOT_END > len(POSES) or SHOT_START >= SHOT_END:
+    raise RuntimeError("SHOT_START/END must be inside 0..10 and START < END")
+
+print("Series", SERIES_START, "to", SERIES_END, "(10 series total).")
+print("Shots", SHOT_START, "to", SHOT_END, "in each series.")
+print("Do not write scars or surgical in these prompts.")
+print("Keep this tab open.")
+
+
+def _purge_old_torchao():
+    try:
+        from importlib.metadata import version
+        ver = version("torchao")
+    except Exception:
+        print("torchao not installed")
+        return
+    print("torchao", ver)
+    nums = []
+    for part in ver.split("."):
+        digits = "".join(ch for ch in part if ch.isdigit())
+        if digits:
+            nums.append(int(digits))
+    while len(nums) < 3:
+        nums.append(0)
+    if tuple(nums[:3]) >= (0, 16, 0):
+        return
+    print("peft needs torchao>=0.16 to load Flux LoRA. Uninstalling", ver)
+    subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "torchao"])
+    for key in list(sys.modules):
+        if key == "torchao" or key.startswith("torchao.") or key.startswith("peft.tuners.lora.torchao"):
+            del sys.modules[key]
+    if "peft.import_utils" in sys.modules:
+        importlib.reload(sys.modules["peft.import_utils"])
+    print("old torchao removed")
+
+
+def _load_txt2img():
+    global pipe
+    lora_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+    if not os.path.isfile(lora_path):
+        local_final = os.path.join(TRAIN_OUTPUT_DIR, LORA_NAME, OUTPUT_LORA_NAME)
+        if os.path.isfile(local_final):
+            lora_path = local_final
+    if not os.path.isfile(lora_path):
+        raise RuntimeError("LoRA not found: " + lora_path)
+    gc.collect()
+    torch.cuda.empty_cache()
+    _purge_old_torchao()
+    from diffusers import FluxPipeline
+    print("Loading FLUX.1-dev + LoRA (no safety checker)...")
+    print("LoRA file:", lora_path)
+    loaded = FluxPipeline.from_pretrained(
+        "black-forest-labs/FLUX.1-dev",
+        torch_dtype=torch.bfloat16,
+        token=os.environ.get("HF_TOKEN"),
+    )
+    if getattr(loaded, "safety_checker", None) is not None:
+        loaded.safety_checker = None
+    if hasattr(loaded, "requires_safety_checker"):
+        loaded.requires_safety_checker = False
+    if getattr(loaded, "watermarker", None) is not None:
+        loaded.watermarker = None
+    try:
+        loaded.load_lora_weights(lora_path)
+    except ImportError as err:
+        print("load_lora_weights ImportError:", err)
+        _purge_old_torchao()
+        loaded.load_lora_weights(lora_path)
+    try:
+        loaded.unfuse_lora()
+    except Exception:
+        pass
+    loaded.enable_model_cpu_offload()
+    pipe = loaded
+    print("LoRA loaded.")
+
+
+need_load = True
+if "pipe" in globals() and pipe is not None:
+    if type(pipe).__name__ == "FluxPipeline":
+        need_load = False
+        print("Using Flux txt2img already in memory.")
+    else:
+        print("In-memory pipe is", type(pipe).__name__, "- loading txt2img.")
+if need_load:
+    _load_txt2img()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+root_out = os.path.join(EVAL_DIR, "series_" + stamp)
+os.makedirs(root_out, exist_ok=True)
+saved = []
+
+for sidx in range(SERIES_START, SERIES_END):
+    slug, kind, place, body = SERIES[sidx]
+    if kind == "nude":
+        weight = 0.75
+        guidance = 2.5
+    else:
+        weight = 1.0
+        guidance = 3.5
+    try:
+        pipe.set_adapters(["default"], adapter_weights=[weight])
+    except Exception as err:
+        print("set_adapters:", err)
+    series_dir = os.path.join(root_out, slug)
+    os.makedirs(series_dir, exist_ok=True)
+    print("==== series", sidx + 1, slug, kind, "====")
+    for pidx in range(SHOT_START, SHOT_END):
+        pose_slug, width, height, pose_text = POSES[pidx]
+        seed = SEED + sidx * 10 + pidx
+        prompt = (
+            ID + pose_text + ", " + body + ". " + place +
+            ", photorealistic raw photo, natural skin texture"
+        )
+        print("---", slug, pose_slug, "seed", seed)
+        print(prompt)
+        image = pipe(
+            prompt=prompt,
+            guidance_scale=guidance,
+            height=height,
+            width=width,
+            num_inference_steps=STEPS,
+            generator=torch.Generator("cuda").manual_seed(seed),
+        ).images[0]
+        fname = "%s_seed%d.png" % (pose_slug, seed)
+        path = os.path.join(series_dir, fname)
+        image.save(path)
+        saved.append(path)
+        print("saved", path)
+        display(image)
+
+print("Saved", len(saved), "pictures in", root_out)
+if USE_DRIVE_API:
+    for path in saved:
+        upload_project_file(path, os.path.relpath(path, ROOT))
+print("Next series: set SERIES_START =", SERIES_END, "and SERIES_END =", min(10, SERIES_END + 1))
+print("Copy keepers to MyDrive/FiratSuper/keepers/")
+print("Do not put these pictures back into the training folders.")"""
+)
+
 md(
     """## Done
 
@@ -1336,6 +1587,9 @@ Generations from cell 10:
 Outdoor styles from cell 12:
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/outdoor_*/`
 
+Series from cell 13 (10 places x 10 shots):
+`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/series_*/`
+
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
 
@@ -1347,17 +1601,19 @@ Also locked:
 `loras/lapetitemilf_face.safetensors`
 
 ### Make more pictures
-1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then cell 10 or cell 12.
+1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then cell 10, 12, or 13.
 2. Cell 10: set MODE to `identity`, `lingerie`, `nude`, or `all`. Change SEED for new frames.
 3. Cell 12: 20 outdoor nude styles. Test with END=3 first. Then START=3 END=20.
-4. Nude recipe: LoRA 0.75, guidance 2.5. No scar words. Optional cell 11 refine.
-5. In ComfyUI later: Flux.1 [dev] + this LoRA, trigger `ohwx woman`. Do not load SD 1.5 LoRAs on Flux.
-6. Adult content only. Do not train on generated pictures.
+4. Cell 13: 10 series x 10 shots. Default runs series 0 only (10 pictures). Then SERIES_START=1 SERIES_END=2, and so on. All 100: SERIES_END=10.
+5. Nude recipe: LoRA 0.75, guidance 2.5. No scar words. Optional cell 11 refine.
+6. In ComfyUI later: Flux.1 [dev] + this LoRA, trigger `ohwx woman`. Do not load SD 1.5 LoRAs on Flux.
+7. Adult content only. Do not train on generated pictures.
 
 ### If the runtime dies
 - LoRA is already on Drive. Rerun 1, 2, 3, 10, 11. New runtime: also 4. Skip 5-9.
 - Hugging Face 403: accept FLUX.1-dev license, new READ token.
-- Drive popup: Allow ALL, one Google account."""
+- Drive popup: Allow ALL, one Google account.
+- Cell 13 crash: files already written stay on Drive. Set SHOT_START or SERIES_START to continue."""
 )
 
 
