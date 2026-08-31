@@ -14,8 +14,8 @@
 2. **Runtime → Change runtime type → A100 GPU**
 3. Chrome, חשבון אחד (`superweb.contact@gmail.com`). **Allow ALL**
 4. Hugging Face READ token ל-[FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev)
-5. תאים **1, 2, 3**. ריצה חדשה: גם **4**. אחר כך **10** / **12** / **13**. אל תריצי 5–9.
-6. תא 10: מקורה / הלבשה / עירום. תא 12: 20 סגנונות חוץ. תא **13**: 10 סדרות × 10 תמונות.
+5. תאים **1, 2, 3**. ריצה חדשה: גם **4**. אחר כך **10** / **12** / **13** / **14**. אל תריצי 5–9.
+6. תא 10: מקורה / הלבשה / עירום. תא 12: חוץ. תא 13: 10 סדרות. תא **14**: 50 רחוקות (בגד ים ואז שמלה).
 7. עירום: LoRA 0.75, guidance 2.5. בלי המילים scars. שומרים ל-`keepers/`
 
 ## דאטאסט Flux v2 (Gate 1 GO)
@@ -45,9 +45,9 @@
 2. **Runtime → Change runtime type → A100 GPU**. אל תבחר T4. אל תבחר TPU.
 3. Chrome, חשבון Google אחד (`superweb.contact@gmail.com`). בפופאפ: **Allow ALL**
 4. Hugging Face: אשר רישיון ל-[FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev) והדבק READ token
-5. תאים 1, 2, 3. ריצה חדשה: גם 4. אחר כך תא 10 / 12 / 13. אופציונלי: תא 11.
+5. תאים 1, 2, 3. ריצה חדשה: גם 4. אחר כך תא 10 / 12 / 13 / 14. אופציונלי: תא 11.
 6. הקובץ כבר ב-Drive: `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
-7. תא 13 = 10 סדרות × 10 תמונות (אותו מקום, פוזות שונות). מבוגרת בלבד.
+7. תא 14 = 50 תמונות רחוקות: בגד ים ואז שמלת ערב. מבוגרת בלבד.
 
 ## מבנה Google Drive
 

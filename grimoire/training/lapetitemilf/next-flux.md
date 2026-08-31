@@ -16,8 +16,9 @@ https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd
 4. Cell 10: `MODE` = `identity` / `lingerie` / `nude` / `all`. Change `SEED` for new frames.
 5. Cell 12: 20 outdoor nude styles of her (forest, meadow, rocks, path, bench). Not copies of stock photos. Test `END=3` first.
 6. Cell 13: **10 series x 10 shots**. Same place inside a series; pose / angle / distance change. Default runs series 0 only (outdoor shower, 10 pictures). Next: `SERIES_START = 1`, `SERIES_END = 2`. All 100: `SERIES_END = 10` (keep the tab open).
-7. Nude: LoRA **0.75**, guidance **2.5**. No "no scars". Optional cell 11 refine.
-8. Copy keepers to `MyDrive/FiratSuper/keepers/`.
+7. Cell 14: **50 far shots**. Camera stays far. Series 0 = swimsuit strip at the pool (25). Series 1 = evening gown, then black lingerie, then nude (25). Default runs series 0 only. Then `SERIES_START = 1`, `SERIES_END = 2`.
+8. Nude: LoRA **0.75**, guidance **2.5**. No "no scars". Optional cell 11 refine.
+9. Copy keepers to `MyDrive/FiratSuper/keepers/`.
 
 If the tab is still open from training, just run cell 10.
 

@@ -48,7 +48,7 @@ High RAM can stay off.
 **Locked LoRA (do not overwrite):** `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. Do not run cells 5-9.
 
-**Generate path:** cells 1, 2, 3, then 10, 12, or 13. If this is a new runtime, also run cell 4 (install only). Cell 11 is optional refine. Cell 13 makes 10 series of 10 pictures (100 total).
+**Generate path:** cells 1, 2, 3, then 10, 12, 13, or 14. If this is a new runtime, also run cell 4 (install only). Cell 11 is optional refine.
 
 **Trigger:** `ohwx woman`. Do not write "no scars" in prompts. Adult subject only.
 
@@ -62,6 +62,7 @@ Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. D
 11. Refine a keeper (img2img, keep frontal)
 12. 20 outdoor nude styles (forest, meadow, rocks, path, bench)
 13. 10 series x 10 shots (same place, new pose / angle / distance)
+14. 50 far shots: swimsuit strip (25) then evening-gown strip (25)
 
 ## Drive layout
 ```
@@ -1575,6 +1576,253 @@ print("Copy keepers to MyDrive/FiratSuper/keepers/")
 print("Do not put these pictures back into the training folders.")"""
 )
 
+code(
+    r"""# @title 14) 50 far shots: swimsuit strip + evening gown strip
+import os
+import gc
+import sys
+import subprocess
+import importlib
+import torch
+from datetime import datetime
+from IPython.display import display
+
+# Two series, 25 far full-body shots each (50 total).
+# Camera stays FAR. No close-ups. Same place inside a series.
+# Default runs series 0 only (swimsuit, 25 pictures). Then series 1 (gown).
+# All 50: SERIES_START = 0 and SERIES_END = 2. Keep the tab open.
+SERIES_START = 0
+SERIES_END = 1
+SHOT_START = 0
+SHOT_END = 25
+SEED = 1200
+STEPS = 32
+WIDTH = 768
+HEIGHT = 1024
+
+FAR = (
+    "full body from a far camera, she is small in the frame, "
+    "the location fills most of the shot"
+)
+ID = (
+    "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
+)
+
+SWIM_PLACE = (
+    "private backyard pool, pale stone deck, a sun lounger, bright daylight"
+)
+GOWN_PLACE = (
+    "large hotel suite in the evening, tall windows, a sofa, warm lamps, polished floor"
+)
+
+# (slug, kind, action)  kind nude -> LoRA 0.75 g 2.5 ; else LoRA 1.0 g 3.5
+SWIM_SHOTS = [
+    ("01_bikini_stand", "clothed", "standing, wearing a dark two-piece bikini"),
+    ("02_bikini_walk", "clothed", "walking along the deck, wearing a dark two-piece bikini"),
+    ("03_bikini_sit", "clothed", "sitting on the sun lounger, wearing a dark two-piece bikini"),
+    ("04_bikini_pool_edge", "clothed", "standing at the pool edge, wearing a dark two-piece bikini"),
+    ("05_untie_top", "clothed", "standing, wearing a dark two-piece bikini, untying the bikini top"),
+    ("06_strap_down", "clothed", "standing, wearing a dark two-piece bikini, one bikini strap down"),
+    ("07_top_in_hand", "clothed", "topless, holding the bikini top, still wearing dark bikini bottoms"),
+    ("08_topless_stand", "clothed", "topless, wearing only dark bikini bottoms, standing"),
+    ("09_topless_sit", "clothed", "topless, wearing only dark bikini bottoms, sitting on the sun lounger"),
+    ("10_topless_walk", "clothed", "topless, wearing only dark bikini bottoms, walking along the deck"),
+    ("11_thumbs_waist", "clothed", "topless, wearing dark bikini bottoms, thumbs in the waistband pulling down"),
+    ("12_bottoms_hips", "clothed", "topless, dark bikini bottoms pulled down to her hips"),
+    ("13_bottoms_thighs", "clothed", "topless, dark bikini bottoms around her thighs"),
+    ("14_step_out", "clothed", "stepping out of dark bikini bottoms, otherwise nude"),
+    ("15_holding_suit", "nude", "nude, holding the dark bikini in one hand"),
+    ("16_nude_pool_edge", "nude", "standing nude at the pool edge"),
+    ("17_nude_lounger", "nude", "sitting nude on the sun lounger"),
+    ("18_nude_walk", "nude", "walking nude along the deck"),
+    ("19_nude_shallow", "nude", "standing nude in the shallow end of the pool"),
+    ("20_nude_lean", "nude", "leaning nude near the pool"),
+    ("21_nude_side", "nude", "nude, side view, face turned toward the camera"),
+    ("22_nude_shoulder", "nude", "nude, looking back over her shoulder at the camera"),
+    ("23_nude_sit_edge", "nude", "sitting nude on the pool edge with her legs toward the water"),
+    ("24_nude_farther", "nude", "standing nude, camera even farther back"),
+    ("25_nude_back", "nude", "nude, standing with her back partly to the camera, looking back"),
+]
+
+GOWN_SHOTS = [
+    ("01_gown_stand", "clothed", "standing, wearing a long black evening gown"),
+    ("02_gown_walk", "clothed", "walking, wearing a long black evening gown"),
+    ("03_gown_shoulder", "clothed", "wearing a long black evening gown, looking back over her shoulder"),
+    ("04_gown_sit", "clothed", "sitting on the sofa, wearing a long black evening gown"),
+    ("05_gown_unzip", "clothed", "standing, wearing a long black evening gown, unzipping the back"),
+    ("06_gown_strap", "clothed", "wearing a long black evening gown with one strap down"),
+    ("07_gown_slip", "clothed", "the long black evening gown slipping down, black lingerie starting to show"),
+    ("08_gown_waist", "clothed", "the long black evening gown around her waist, wearing a black lingerie set"),
+    ("09_step_from_gown", "clothed", "stepping out of the long black evening gown, wearing a black lingerie set"),
+    ("10_lingerie_hold_gown", "clothed", "wearing a black lingerie set, holding the evening gown"),
+    ("11_lingerie_stand", "clothed", "standing, wearing a black bra and black panties"),
+    ("12_lingerie_walk", "clothed", "walking, wearing a black bra and black panties"),
+    ("13_lingerie_sit", "clothed", "sitting on the sofa, wearing a black bra and black panties"),
+    ("14_unhook_bra", "clothed", "wearing black panties, unhooking a black bra"),
+    ("15_bra_off", "clothed", "topless, wearing only black panties, holding the bra"),
+    ("16_panties_stand", "clothed", "topless, wearing only black panties, standing"),
+    ("17_panties_pull", "clothed", "topless, pulling down black panties"),
+    ("18_panties_thighs", "clothed", "topless, black panties around her thighs"),
+    ("19_step_from_panties", "clothed", "stepping out of black panties, otherwise nude"),
+    ("20_nude_hold_gown", "nude", "nude, holding the black evening gown"),
+    ("21_nude_stand", "nude", "standing nude"),
+    ("22_nude_walk", "nude", "walking nude"),
+    ("23_nude_sit", "nude", "sitting nude on the sofa"),
+    ("24_nude_shoulder", "nude", "nude, looking back over her shoulder at the camera"),
+    ("25_nude_farther", "nude", "standing nude, camera even farther back"),
+]
+
+SERIES = [
+    ("01_swimsuit_pool", SWIM_PLACE, SWIM_SHOTS),
+    ("02_evening_gown", GOWN_PLACE, GOWN_SHOTS),
+]
+
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+if len(SWIM_SHOTS) != 25 or len(GOWN_SHOTS) != 25:
+    raise RuntimeError("Need 25 shots in each strip series.")
+if SERIES_START < 0 or SERIES_END > len(SERIES) or SERIES_START >= SERIES_END:
+    raise RuntimeError("SERIES_START/END must be inside 0..2 and START < END")
+if SHOT_START < 0 or SHOT_END > 25 or SHOT_START >= SHOT_END:
+    raise RuntimeError("SHOT_START/END must be inside 0..25 and START < END")
+
+print("Far-camera strip series", SERIES_START, "to", SERIES_END)
+print("Shots", SHOT_START, "to", SHOT_END)
+print("Do not write scars or surgical in these prompts.")
+print("Keep this tab open.")
+
+
+def _purge_old_torchao():
+    try:
+        from importlib.metadata import version
+        ver = version("torchao")
+    except Exception:
+        print("torchao not installed")
+        return
+    print("torchao", ver)
+    nums = []
+    for part in ver.split("."):
+        digits = "".join(ch for ch in part if ch.isdigit())
+        if digits:
+            nums.append(int(digits))
+    while len(nums) < 3:
+        nums.append(0)
+    if tuple(nums[:3]) >= (0, 16, 0):
+        return
+    print("peft needs torchao>=0.16 to load Flux LoRA. Uninstalling", ver)
+    subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "torchao"])
+    for key in list(sys.modules):
+        if key == "torchao" or key.startswith("torchao.") or key.startswith("peft.tuners.lora.torchao"):
+            del sys.modules[key]
+    if "peft.import_utils" in sys.modules:
+        importlib.reload(sys.modules["peft.import_utils"])
+    print("old torchao removed")
+
+
+def _load_txt2img():
+    global pipe
+    lora_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+    if not os.path.isfile(lora_path):
+        local_final = os.path.join(TRAIN_OUTPUT_DIR, LORA_NAME, OUTPUT_LORA_NAME)
+        if os.path.isfile(local_final):
+            lora_path = local_final
+    if not os.path.isfile(lora_path):
+        raise RuntimeError("LoRA not found: " + lora_path)
+    gc.collect()
+    torch.cuda.empty_cache()
+    _purge_old_torchao()
+    from diffusers import FluxPipeline
+    print("Loading FLUX.1-dev + LoRA (no safety checker)...")
+    print("LoRA file:", lora_path)
+    loaded = FluxPipeline.from_pretrained(
+        "black-forest-labs/FLUX.1-dev",
+        torch_dtype=torch.bfloat16,
+        token=os.environ.get("HF_TOKEN"),
+    )
+    if getattr(loaded, "safety_checker", None) is not None:
+        loaded.safety_checker = None
+    if hasattr(loaded, "requires_safety_checker"):
+        loaded.requires_safety_checker = False
+    if getattr(loaded, "watermarker", None) is not None:
+        loaded.watermarker = None
+    try:
+        loaded.load_lora_weights(lora_path)
+    except ImportError as err:
+        print("load_lora_weights ImportError:", err)
+        _purge_old_torchao()
+        loaded.load_lora_weights(lora_path)
+    try:
+        loaded.unfuse_lora()
+    except Exception:
+        pass
+    loaded.enable_model_cpu_offload()
+    pipe = loaded
+    print("LoRA loaded.")
+
+
+need_load = True
+if "pipe" in globals() and pipe is not None:
+    if type(pipe).__name__ == "FluxPipeline":
+        need_load = False
+        print("Using Flux txt2img already in memory.")
+    else:
+        print("In-memory pipe is", type(pipe).__name__, "- loading txt2img.")
+if need_load:
+    _load_txt2img()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+root_out = os.path.join(EVAL_DIR, "strip_" + stamp)
+os.makedirs(root_out, exist_ok=True)
+saved = []
+
+for sidx in range(SERIES_START, SERIES_END):
+    slug, place, shots = SERIES[sidx]
+    series_dir = os.path.join(root_out, slug)
+    os.makedirs(series_dir, exist_ok=True)
+    print("==== series", sidx + 1, slug, "====")
+    for pidx in range(SHOT_START, SHOT_END):
+        shot_slug, kind, action = shots[pidx]
+        if kind == "nude":
+            weight = 0.75
+            guidance = 2.5
+        else:
+            weight = 1.0
+            guidance = 3.5
+        try:
+            pipe.set_adapters(["default"], adapter_weights=[weight])
+        except Exception as err:
+            print("set_adapters:", err)
+        seed = SEED + sidx * 25 + pidx
+        prompt = (
+            ID + FAR + ", " + action + ". " + place +
+            ", photorealistic raw photo, natural skin texture"
+        )
+        print("---", slug, shot_slug, "seed", seed, kind)
+        print(prompt)
+        image = pipe(
+            prompt=prompt,
+            guidance_scale=guidance,
+            height=HEIGHT,
+            width=WIDTH,
+            num_inference_steps=STEPS,
+            generator=torch.Generator("cuda").manual_seed(seed),
+        ).images[0]
+        fname = "%s_seed%d.png" % (shot_slug, seed)
+        path = os.path.join(series_dir, fname)
+        image.save(path)
+        saved.append(path)
+        print("saved", path)
+        display(image)
+
+print("Saved", len(saved), "pictures in", root_out)
+if USE_DRIVE_API:
+    for path in saved:
+        upload_project_file(path, os.path.relpath(path, ROOT))
+print("Next series: set SERIES_START =", SERIES_END, "and SERIES_END =", min(2, SERIES_END + 1))
+print("Copy keepers to MyDrive/FiratSuper/keepers/")
+print("Do not put these pictures back into the training folders.")"""
+)
+
 md(
     """## Done
 
@@ -1590,6 +1838,9 @@ Outdoor styles from cell 12:
 Series from cell 13 (10 places x 10 shots):
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/series_*/`
 
+Far strip series from cell 14 (swimsuit 25 + evening gown 25):
+`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/strip_*/`
+
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
 
@@ -1601,19 +1852,21 @@ Also locked:
 `loras/lapetitemilf_face.safetensors`
 
 ### Make more pictures
-1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then cell 10, 12, or 13.
+1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then cell 10, 12, 13, or 14.
 2. Cell 10: set MODE to `identity`, `lingerie`, `nude`, or `all`. Change SEED for new frames.
 3. Cell 12: 20 outdoor nude styles. Test with END=3 first. Then START=3 END=20.
 4. Cell 13: 10 series x 10 shots. Default runs series 0 only (10 pictures). Then SERIES_START=1 SERIES_END=2, and so on. All 100: SERIES_END=10.
-5. Nude recipe: LoRA 0.75, guidance 2.5. No scar words. Optional cell 11 refine.
-6. In ComfyUI later: Flux.1 [dev] + this LoRA, trigger `ohwx woman`. Do not load SD 1.5 LoRAs on Flux.
-7. Adult content only. Do not train on generated pictures.
+5. Cell 14: 50 far full-body shots. Series 0 = swimsuit strip by the pool (25). Series 1 = evening gown to black lingerie to nude (25). Default runs series 0 only. Then SERIES_START=1 SERIES_END=2.
+6. Nude recipe: LoRA 0.75, guidance 2.5. No scar words. Optional cell 11 refine.
+7. In ComfyUI later: Flux.1 [dev] + this LoRA, trigger `ohwx woman`. Do not load SD 1.5 LoRAs on Flux.
+8. Adult content only. Do not train on generated pictures.
 
 ### If the runtime dies
 - LoRA is already on Drive. Rerun 1, 2, 3, 10, 11. New runtime: also 4. Skip 5-9.
 - Hugging Face 403: accept FLUX.1-dev license, new READ token.
 - Drive popup: Allow ALL, one Google account.
-- Cell 13 crash: files already written stay on Drive. Set SHOT_START or SERIES_START to continue."""
+- Cell 13 crash: files already written stay on Drive. Set SHOT_START or SERIES_START to continue.
+- Cell 14 crash: same. Swimsuit is series 0. Evening gown is series 1."""
 )
 
 
