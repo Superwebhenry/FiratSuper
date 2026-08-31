@@ -1,40 +1,26 @@
-# Next: train Flux v2 on Colab A100
+# Next: generate with locked Flux v2
 
-SD 1.5 is done. Flux v1 (`lapetitemilf_flux`) is trained and **protected**.
+Training is done. User (2026-08-31): v2 is a hit. Do **not** retrain.
 
-v2 adds 7 original chest photos so frontal nudes can lock the chest. Do not train on Flux outputs.
+Locked file: `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 
-## Notebook
+## Make pictures (Colab A100)
 
-Open (must reopen the GitHub link so Colab is not a stale cache):
+Open (reopen the GitHub link if you need the locked notebook):
 
 https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/Flux_LoRA_Training_Colab.ipynb
 
-Runtime: **A100 GPU only**. Do not pick T4. Do not pick TPU.
+1. A100 GPU. One Google account. Allow ALL.
+2. Cells **1, 2, 3**. New runtime: also **4**. Then **10**.
+3. Do **not** run cells 5-9 (training is locked).
+4. Cell 10: `MODE` = `identity` / `lingerie` / `nude` / `all`. Change `SEED` for new frames.
+5. Nude: LoRA **0.75**, guidance **2.5**, stay frontal. No "no scars". Optional cell 11 refine.
+6. Copy keepers to `MyDrive/FiratSuper/keepers/`.
 
-Generator: `scripts/generate_flux_notebook.py`
+If the tab is still open from training, just run cell 10.
 
-Needs a Hugging Face READ token and license accept for `black-forest-labs/FLUX.1-dev`.
+## Later (optional)
 
-## Photos (Gate 1 GO for v2)
+ComfyUI: Flux.1 [dev] checkpoint + `lapetitemilf_flux_v2.safetensors`, trigger `ohwx woman`. Do not load SD 1.5 LoRAs on Flux.
 
-- 31 keepers in `ADD_FLUX_PHOTOS/` (`1oLtTmwg2kt-Jn6zuci06ipRQoK6AOFVZ`)
-- 7 keepers in `ADD_FLUX_CHEST/` (`1iEmUvagFQVJ2TArN_7ee4Af4TUti1hZw`)
-- 1 chest JPEG left uncaptioned on purpose (dropped gen)
-- Captions: `grimoire/training/lapetitemilf/captions/`
-- Trigger: `ohwx woman`
-- Total: **38** pairs
-
-## Output
-
-New file only: `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
-
-Do **not** overwrite `lapetitemilf_flux` or `lapetitemilf_face`.
-
-## Run order
-
-1. A100, one Google account, Allow ALL
-2. Cells 1-8 (train). Cell 7 is the 5-step dry run.
-3. Cells 9-11 (copy LoRA, generate, refine)
-
-If the runtime dies after the LoRA is on Drive: rerun 1, 2, 3, 10, 11. Skip 4-9.
+Do not feed generated images back into a dataset.

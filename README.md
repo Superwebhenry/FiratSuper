@@ -1,7 +1,22 @@
-# FiratSuper — אימון LoRA ל-Flux (Colab A100)
+# FiratSuper — Flux LoRA (Colab A100)
 
-הנתיב הנוכחי: **Flux.1 [dev] character LoRA** על Google Colab Pro **A100**.
-SD 1.5 נכשל בגוף מלא (ידיים, עיניים, זהות). אל תאמן אותו שוב. אל תמחק את קבצי ה-LoRA הישנים.
+האימון נגמר. **v2 נעול.** עכשיו רק מייצרים תמונות. אל תאמני SD. אל תדרסי LoRA.
+
+## קובץ הייצור
+
+`MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors` (נעול)
+
+גם נעולים: `lapetitemilf_flux` (v1), `lapetitemilf_face`.
+
+## ייצור תמונות
+
+1. פתחי את [המחברת ב-Colab](https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/Flux_LoRA_Training_Colab.ipynb)
+2. **Runtime → Change runtime type → A100 GPU**
+3. Chrome, חשבון אחד (`superweb.contact@gmail.com`). **Allow ALL**
+4. Hugging Face READ token ל-[FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev)
+5. תאים **1, 2, 3**. ריצה חדשה: גם **4**. אחר כך **10**. אל תריצי 5–9.
+6. תא 10: `MODE` = `identity` / `lingerie` / `nude` / `all`. שנה `SEED` לפריימים חדשים.
+7. עירום: LoRA 0.75, guidance 2.5, חזית. בלי המילים scars. שומרים ל-`keepers/`
 
 ## דאטאסט Flux v2 (Gate 1 GO)
 
@@ -11,8 +26,8 @@ SD 1.5 נכשל בגוף מלא (ידיים, עיניים, זהות). אל תא�
 | תיקייה 2 | [ADD_FLUX_CHEST](https://drive.google.com/drive/folders/1iEmUvagFQVJ2TArN_7ee4Af4TUti1hZw) — 7 שומרים (תמונה אחת בלי כיתוב, לא לאימון) |
 | סה"כ | 38 זוגות תמונה + `.txt` |
 | מילת טריגר | `ohwx woman` |
-| קובץ פלט | `loras/lapetitemilf_flux_v2.safetensors` בלבד |
-| מוגן | `lapetitemilf_flux` (v1) ו-`lapetitemilf_face` — אל תדרוס |
+| קובץ פלט | `loras/lapetitemilf_flux_v2.safetensors` — **נעול, אל תדרסי** |
+| מוגן | `lapetitemilf_flux` (v1) ו-`lapetitemilf_face` |
 
 ## מה כלול
 
@@ -22,15 +37,17 @@ SD 1.5 נכשל בגוף מלא (ידיים, עיניים, זהות). אל תא�
 | [`configs/train_lora_flux_a100.yaml`](configs/train_lora_flux_a100.yaml) | מתכון Ostris ai-toolkit |
 | [`notebooks/SD_LoRA_Training_Colab.ipynb`](notebooks/SD_LoRA_Training_Colab.ipynb) | נוטבוק SD 1.5 ישן — לא לאמן מחדש |
 
-## התחלה מהירה (Flux)
+## התחלה מהירה (ייצור, לא אימון)
 
-1. פתח את [Flux notebook ב-Colab](https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/Flux_LoRA_Training_Colab.ipynb)
+האימון כבר רץ. אל תריצי תאים 5–9.
+
+1. פתחי את [Flux notebook ב-Colab](https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/Flux_LoRA_Training_Colab.ipynb)
 2. **Runtime → Change runtime type → A100 GPU**. אל תבחר T4. אל תבחר TPU.
 3. Chrome, חשבון Google אחד (`superweb.contact@gmail.com`). בפופאפ: **Allow ALL**
 4. Hugging Face: אשר רישיון ל-[FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev) והדבק READ token
-5. הרץ תאים 1 עד 10 לפי הסדר. תא 7 = בדיקה קצרה. תא 8 = אימון מלא.
-6. ה-LoRA יישמר ב-`MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
-7. תא 10 מייצר תמונות בלי safety checker (זהות / הלבשה / עירום). מבוגרת בלבד.
+5. תאים 1, 2, 3. ריצה חדשה: גם 4. אחר כך תא 10. אופציונלי: תא 11.
+6. הקובץ כבר ב-Drive: `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
+7. תא 10 מייצר בלי safety checker. מבוגרת בלבד.
 
 ## מבנה Google Drive
 
@@ -39,7 +56,7 @@ MyDrive/FiratSuper/
 |-- ADD_FLUX_PHOTOS/                         ← 31 תמונות + captions
 |-- ADD_FLUX_CHEST/                          ← 7 שומרים + captions (v2)
 |-- datasets/lapetitemilf/10_ohwx_woman/     ← דאטאסט SD ישן, לא לגעת
-|-- loras/lapetitemilf_flux_v2.safetensors    ← קובץ חדש (Flux v2)
+|-- loras/lapetitemilf_flux_v2.safetensors    ← נעול (ייצור)
 |-- loras/lapetitemilf_flux.safetensors      ← v1, מוגן, אל תדרוס
 |-- loras/lapetitemilf_face.safetensors      ← מוגן, אל תדרוס
 |-- output/lapetitemilf/flux_eval_v2/        ← תמונות מתא 10
@@ -52,7 +69,7 @@ MyDrive/FiratSuper/
 |--------|-----|------|
 | `PROJECT_NAME` | `lapetitemilf` | שם הפרויקט |
 | `TRIGGER_WORD` | `ohwx woman` | מילת טריגר בפרומפט |
-| `LORA_NAME` | `lapetitemilf_flux_v2` | שם הקובץ החדש בלבד |
+| `LORA_NAME` | `lapetitemilf_flux_v2` | קובץ נעול לייצור |
 | `TRAIN_STEPS` | `2000` | צעדי אימון |
 | `NETWORK_DIM` | `16` | rank (מתכון Ostris) |
 

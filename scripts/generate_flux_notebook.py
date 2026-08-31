@@ -36,7 +36,7 @@ def code(source: str) -> None:
 md(
     """# FiratSuper Flux LoRA (Colab A100)
 
-Train a **Flux.1 [dev] character LoRA** with Ostris ai-toolkit.
+**Training is done.** Use this notebook to **generate** with the locked v2 LoRA.
 
 **Runtime:** Runtime > Change runtime type > **A100 GPU**. Do not pick T4. Do not pick TPU.
 High RAM can stay off.
@@ -45,40 +45,32 @@ High RAM can stay off.
 
 **Hugging Face:** Accept the license for [black-forest-labs/FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev) and paste a READ token.
 
-**Output file only:** `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
-Do **not** overwrite `lapetitemilf_flux` (v1), `lapetitemilf_face`, or any old SD 1.5 LoRA.
+**Locked LoRA (do not overwrite):** `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
+Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. Do not run cells 5-9.
 
-**Dataset:** `ADD_FLUX_PHOTOS/` (31) + `ADD_FLUX_CHEST/` (7 keepers). Gate 1 copies both.
-Images with no matching `.txt` are skipped (one dropped gen stays in Drive, not trained).
-Total **38** pairs. Trigger: `ohwx woman`.
+**Generate path:** cells 1, 2, 3, then 10. If this is a new runtime, also run cell 4 (install only). Cell 11 is optional refine.
 
-**NSFW:** this Colab has no platform safety checker. Generate after training in the last cell. Adult subject only. Do not add porn to the dataset.
-
-**Cell 4:** Colab is Python 3.13. Ostris still pins scipy 1.12, which cannot install there. This notebook patches that. Cell 4 takes several minutes. Do not stop it.
+**Trigger:** `ohwx woman`. Do not write "no scars" in prompts. Adult subject only.
 
 ## Cells
 1. A100 GPU check
 2. Drive + settings
 3. Hugging Face login
-4. Install ai-toolkit
-5. Gate 1: copy photos + captions
-6. Gate 2: write YAML
-7. Gate 4: dry run (5 steps)
-8. Full train (~2000 steps)
-9. Copy LoRA to Drive and SHOW training samples
+4. Install (needed on a fresh runtime; skip if packages are already in this session)
+5-9. Training (LOCKED -- do not run)
 10. Generate and SHOW pictures (identity + lingerie + nude, no filter)
-11. Refine a keeper (img2img, keep frontal, smooth the chest)
+11. Refine a keeper (img2img, keep frontal)
 
 ## Drive layout
 ```
 MyDrive/FiratSuper/
 |-- ADD_FLUX_PHOTOS/                      # 31 keepers + .txt captions
 |-- ADD_FLUX_CHEST/                       # 7 chest keepers + .txt (skip unpaired)
-|-- loras/lapetitemilf_flux_v2.safetensors # NEW file this notebook writes
-|-- loras/lapetitemilf_flux.safetensors    # v1, protected, do not touch
-|-- loras/lapetitemilf_face.safetensors    # protected, do not touch
+|-- loras/lapetitemilf_flux_v2.safetensors # LOCKED production LoRA
+|-- loras/lapetitemilf_flux.safetensors    # v1, locked
+|-- loras/lapetitemilf_face.safetensors    # locked
 |-- output/lapetitemilf/flux_eval_v2/      # generations from cell 10
-`-- keepers/
+`-- keepers/                              # copy keepers here
 ```"""
 )
 
@@ -342,12 +334,12 @@ PROTECTED_LORAS = {
     "lapetitemilf_lora.safetensors",
     "lapetitemilf_together.safetensors",
     "lapetitemilf_flux.safetensors",
+    "lapetitemilf_flux_v2.safetensors",
 }
 OUTPUT_LORA_NAME = LORA_NAME + ".safetensors"
 if OUTPUT_LORA_NAME in PROTECTED_LORAS:
-    raise RuntimeError(
-        "LORA_NAME is protected. This notebook writes lapetitemilf_flux_v2 only."
-    )
+    print("LoRA is LOCKED:", OUTPUT_LORA_NAME)
+    print("Do not run cells 5-9. Generate with cell 10.")
 if not SUBJECT_IS_ADULT:
     raise RuntimeError("This notebook is for an adult subject only.")
 
@@ -537,6 +529,11 @@ code(
 import os
 import shutil
 
+if OUTPUT_LORA_NAME in PROTECTED_LORAS:
+    raise RuntimeError(
+        "Training is locked. " + OUTPUT_LORA_NAME + " is on Drive. Run cell 10 to generate."
+    )
+
 IMG_EXT = {".jpg", ".jpeg", ".png"}
 SKIP_NAMES = {".drive_upload.json", ".ds_store", "thumbs.db"}
 SOURCE_FOLDERS = [
@@ -636,6 +633,11 @@ code(
     r"""# @title 6) Gate 2: write Ostris Flux YAML (A100 / 24GB recipe)
 import os
 
+if OUTPUT_LORA_NAME in PROTECTED_LORAS:
+    raise RuntimeError(
+        "Training is locked. " + OUTPUT_LORA_NAME + " is on Drive. Run cell 10 to generate."
+    )
+
 def write_flux_yaml(path, steps, dry):
     sample_flag = "true" if dry else "false"
     skip_first = "true"
@@ -728,6 +730,11 @@ import os
 import subprocess
 import sys
 
+if OUTPUT_LORA_NAME in PROTECTED_LORAS:
+    raise RuntimeError(
+        "Training is locked. " + OUTPUT_LORA_NAME + " is on Drive. Run cell 10 to generate."
+    )
+
 write_flux_yaml(CONFIG_PATH, DRY_RUN_STEPS, dry=True)
 print("Dry run: %d steps. This downloads FLUX.1-dev the first time (~24 GB)." % DRY_RUN_STEPS)
 cmd = [sys.executable, "run.py", CONFIG_PATH]
@@ -744,6 +751,11 @@ import os
 import subprocess
 import sys
 import torch
+
+if OUTPUT_LORA_NAME in PROTECTED_LORAS:
+    raise RuntimeError(
+        "Training is locked. " + OUTPUT_LORA_NAME + " is on Drive. Run cell 10 to generate."
+    )
 
 write_flux_yaml(CONFIG_PATH, TRAIN_STEPS, dry=False)
 print("Full train:", TRAIN_STEPS, "steps on", torch.cuda.get_device_name(0))
@@ -1139,31 +1151,31 @@ print("Stay frontal. Copy keepers to MyDrive/FiratSuper/keepers/")"""
 md(
     """## Done
 
-LoRA file (new only):
+Locked production LoRA:
 `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
-
-Training samples:
-`MyDrive/FiratSuper/output/lapetitemilf/flux_samples_v2/`
 
 Generations from cell 10:
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/`
 
-Cell 10 generates. Cell 11 refines a frontal keeper with img2img (smooth chest, same pose).
-Do not write "no scars" in prompts. Flux will draw them.
+Copy keepers to:
+`MyDrive/FiratSuper/keepers/`
 
-Protected (not touched):
+Do not write "no scars" in prompts. Flux will draw them.
+Do not train on generated pictures. Do not retrain.
+
+Also locked:
 `loras/lapetitemilf_flux.safetensors` (v1)
 `loras/lapetitemilf_face.safetensors`
 
-### Use later
-1. Keep this Colab. Rerun cells 1, 2, 3, then cell 10.
-2. In ComfyUI: Flux.1 [dev] checkpoint + this LoRA, trigger `ohwx woman`.
-3. Do not load SD 1.5 LoRAs on Flux.
-4. Adult content only.
+### Make more pictures
+1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then cell 10.
+2. Cell 10: set MODE to `identity`, `lingerie`, `nude`, or `all`. Change SEED for new frames.
+3. Nude recipe: LoRA 0.75, guidance 2.5, stay frontal. Optional cell 11 refine.
+4. In ComfyUI later: Flux.1 [dev] + this LoRA, trigger `ohwx woman`. Do not load SD 1.5 LoRAs on Flux.
+5. Adult content only.
 
-### If training dies
-- Tab slept / GPU dropped: reconnect A100, rerun 1-4, then 8. Checkpoints are in `/content/output/lapetitemilf_flux_v2/` until the VM is deleted.
-- If LoRA is already on Drive: rerun 1, 2, 3, 10, 11. Skip 4-9.
+### If the runtime dies
+- LoRA is already on Drive. Rerun 1, 2, 3, 10, 11. New runtime: also 4. Skip 5-9.
 - Hugging Face 403: accept FLUX.1-dev license, new READ token.
 - Drive popup: Allow ALL, one Google account."""
 )

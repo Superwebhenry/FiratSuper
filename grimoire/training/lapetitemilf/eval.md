@@ -97,5 +97,12 @@ Then `IMPORT_AS = "both"`, `RUN_NAME = "together"` (writes `lapetitemilf_togethe
 - Train **v2 only**: `lapetitemilf_flux_v2`. Keep the original 31. Do not overwrite v1.
 - Judge frontal nudes on cell 10 after v2. Stay frontal. Still no scar words.
 
+## Flux v2 trained (2026-08-31)
+
+- File: `loras/lapetitemilf_flux_v2.safetensors` (locked).
+- User: **this is a hit**. Stop training. Generate only.
+- Nude recipe stays: LoRA 0.75, guidance 2.5, frontal, no scar words. Optional cell 11.
+- Copy keepers to `keepers/`. Do not train on gens.
+
 
 
