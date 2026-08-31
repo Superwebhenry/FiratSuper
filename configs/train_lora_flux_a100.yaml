@@ -3,7 +3,7 @@
 # Paths below are Colab local SSD paths. The notebook writes a copy at runtime.
 job: extension
 config:
-  name: "lapetitemilf_flux"
+  name: "lapetitemilf_flux_v2"
   process:
     - type: sd_trainer
       training_folder: "/content/output"

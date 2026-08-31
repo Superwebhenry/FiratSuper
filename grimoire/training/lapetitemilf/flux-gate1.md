@@ -12,4 +12,9 @@ Folder: `MyDrive/FiratSuper/ADD_FLUX_PHOTOS/` (`1oLtTmwg2kt-Jn6zuci06ipRQoK6AOFV
 
 Trainer chosen (2026-08-26): **Colab Pro A100** + Ostris ai-toolkit.
 Notebook: `notebooks/Flux_LoRA_Training_Colab.ipynb`
-New file only: `lapetitemilf_flux`. Do not overwrite `lapetitemilf_face`.
+v1 file (done, protected): `lapetitemilf_flux`. Do not overwrite `lapetitemilf_face`.
+
+## v2 add-on (2026-08-31)
+
+See `flux-chest.md`. Gate 1 now copies `ADD_FLUX_PHOTOS` + `ADD_FLUX_CHEST`.
+Skip images with no `.txt`. Expected pairs: **38**. New file: `lapetitemilf_flux_v2`.

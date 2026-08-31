@@ -3,15 +3,16 @@
 הנתיב הנוכחי: **Flux.1 [dev] character LoRA** על Google Colab Pro **A100**.
 SD 1.5 נכשל בגוף מלא (ידיים, עיניים, זהות). אל תאמן אותו שוב. אל תמחק את קבצי ה-LoRA הישנים.
 
-## דאטאסט Flux (Gate 1 GO)
+## דאטאסט Flux v2 (Gate 1 GO)
 
 | | |
 |--|--|
-| תיקייה | [ADD_FLUX_PHOTOS](https://drive.google.com/drive/folders/1oLtTmwg2kt-Jn6zuci06ipRQoK6AOFVZ) |
-| תמונות | 31 קבצי מצלמה חדים |
-| Captions | 31 קבצי `.txt` (אותו שם כמו התמונה) |
+| תיקייה 1 | [ADD_FLUX_PHOTOS](https://drive.google.com/drive/folders/1oLtTmwg2kt-Jn6zuci06ipRQoK6AOFVZ) — 31 זוגות |
+| תיקייה 2 | [ADD_FLUX_CHEST](https://drive.google.com/drive/folders/1iEmUvagFQVJ2TArN_7ee4Af4TUti1hZw) — 7 שומרים (תמונה אחת בלי כיתוב, לא לאימון) |
+| סה"כ | 38 זוגות תמונה + `.txt` |
 | מילת טריגר | `ohwx woman` |
-| קובץ פלט | `loras/lapetitemilf_flux.safetensors` בלבד |
+| קובץ פלט | `loras/lapetitemilf_flux_v2.safetensors` בלבד |
+| מוגן | `lapetitemilf_flux` (v1) ו-`lapetitemilf_face` — אל תדרוס |
 
 ## מה כלול
 
@@ -28,18 +29,20 @@ SD 1.5 נכשל בגוף מלא (ידיים, עיניים, זהות). אל תא�
 3. Chrome, חשבון Google אחד (`superweb.contact@gmail.com`). בפופאפ: **Allow ALL**
 4. Hugging Face: אשר רישיון ל-[FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev) והדבק READ token
 5. הרץ תאים 1 עד 10 לפי הסדר. תא 7 = בדיקה קצרה. תא 8 = אימון מלא.
-6. ה-LoRA יישמר ב-`MyDrive/FiratSuper/loras/lapetitemilf_flux.safetensors`
+6. ה-LoRA יישמר ב-`MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 7. תא 10 מייצר תמונות בלי safety checker (זהות / הלבשה / עירום). מבוגרת בלבד.
 
 ## מבנה Google Drive
 
 ```
 MyDrive/FiratSuper/
-|-- ADD_FLUX_PHOTOS/                      ← 31 תמונות + captions ל-Flux
-|-- datasets/lapetitemilf/10_ohwx_woman/  ← דאטאסט SD ישן, לא לגעת
-|-- loras/lapetitemilf_flux.safetensors   ← קובץ חדש (Flux)
-|-- loras/lapetitemilf_face.safetensors   ← מוגן, אל תדרוס
-|-- output/lapetitemilf/flux_eval/        ← תמונות מתא 10
+|-- ADD_FLUX_PHOTOS/                         ← 31 תמונות + captions
+|-- ADD_FLUX_CHEST/                          ← 7 שומרים + captions (v2)
+|-- datasets/lapetitemilf/10_ohwx_woman/     ← דאטאסט SD ישן, לא לגעת
+|-- loras/lapetitemilf_flux_v2.safetensors    ← קובץ חדש (Flux v2)
+|-- loras/lapetitemilf_flux.safetensors      ← v1, מוגן, אל תדרוס
+|-- loras/lapetitemilf_face.safetensors      ← מוגן, אל תדרוס
+|-- output/lapetitemilf/flux_eval_v2/        ← תמונות מתא 10
 `-- keepers/
 ```
 
@@ -49,7 +52,7 @@ MyDrive/FiratSuper/
 |--------|-----|------|
 | `PROJECT_NAME` | `lapetitemilf` | שם הפרויקט |
 | `TRIGGER_WORD` | `ohwx woman` | מילת טריגר בפרומפט |
-| `LORA_NAME` | `lapetitemilf_flux` | שם הקובץ החדש בלבד |
+| `LORA_NAME` | `lapetitemilf_flux_v2` | שם הקובץ החדש בלבד |
 | `TRAIN_STEPS` | `2000` | צעדי אימון |
 | `NETWORK_DIM` | `16` | rank (מתכון Ostris) |
 
@@ -63,7 +66,7 @@ MyDrive/FiratSuper/
 
 - Colab Pro עם **A100**
 - Hugging Face token עם גישה ל-FLUX.1-dev
-- תיקיית `ADD_FLUX_PHOTOS` ב-Drive (31 זוגות)
+- תיקיות `ADD_FLUX_PHOTOS` + `ADD_FLUX_CHEST` ב-Drive (38 זוגות)
 
 ## SD 1.5 (ארכיון)
 

@@ -6,7 +6,7 @@
 - **Base model**: `black-forest-labs/FLUX.1-dev` (gated Hugging Face)
 - **Notebook**: `notebooks/Flux_LoRA_Training_Colab.ipynb`
 - **Recipe file**: `configs/train_lora_flux_a100.yaml`
-- **Dataset**: `ADD_FLUX_PHOTOS/` — 31 images + 31 `.txt` captions
+- **Dataset**: `ADD_FLUX_PHOTOS/` (31) + `ADD_FLUX_CHEST/` (7 keepers) = 38 pairs
 - **Trigger**: `ohwx woman`
 - **Key parameters** (Ostris 24GB Flux recipe, A100 ~40 GB):
   - steps: 2000
@@ -23,7 +23,7 @@
   - gradient_checkpointing: yes
 - **VRAM**: A100 40 GB (T4/L4 refused by the notebook)
 - **Time**: first run downloads ~24 GB of Flux; then roughly 1-2 hours for 2000 steps
-- **Output name**: `lapetitemilf_flux` only. Never overwrite `lapetitemilf_face`.
+- **Output name**: `lapetitemilf_flux_v2` only. Never overwrite `lapetitemilf_flux` (v1) or `lapetitemilf_face`.
 
 ## SD 1.5 (archived, do not retrain)
 

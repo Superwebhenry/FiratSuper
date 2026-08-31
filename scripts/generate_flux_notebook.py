@@ -45,11 +45,12 @@ High RAM can stay off.
 
 **Hugging Face:** Accept the license for [black-forest-labs/FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev) and paste a READ token.
 
-**Output file only:** `MyDrive/FiratSuper/loras/lapetitemilf_flux.safetensors`
-Do **not** overwrite `lapetitemilf_face` or any old SD 1.5 LoRA.
+**Output file only:** `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
+Do **not** overwrite `lapetitemilf_flux` (v1), `lapetitemilf_face`, or any old SD 1.5 LoRA.
 
-**Dataset:** `MyDrive/FiratSuper/ADD_FLUX_PHOTOS/` (31 images + 31 captions, Gate 1 GO).
-Trigger: `ohwx woman`.
+**Dataset:** `ADD_FLUX_PHOTOS/` (31) + `ADD_FLUX_CHEST/` (7 keepers). Gate 1 copies both.
+Images with no matching `.txt` are skipped (one dropped gen stays in Drive, not trained).
+Total **38** pairs. Trigger: `ohwx woman`.
 
 **NSFW:** this Colab has no platform safety checker. Generate after training in the last cell. Adult subject only. Do not add porn to the dataset.
 
@@ -71,10 +72,12 @@ Trigger: `ohwx woman`.
 ## Drive layout
 ```
 MyDrive/FiratSuper/
-|-- ADD_FLUX_PHOTOS/                 # 31 keepers + .txt captions
-|-- loras/lapetitemilf_flux.safetensors   # NEW file this notebook writes
-|-- loras/lapetitemilf_face.safetensors   # protected, do not touch
-|-- output/lapetitemilf/flux_eval/        # generations from cell 10
+|-- ADD_FLUX_PHOTOS/                      # 31 keepers + .txt captions
+|-- ADD_FLUX_CHEST/                       # 7 chest keepers + .txt (skip unpaired)
+|-- loras/lapetitemilf_flux_v2.safetensors # NEW file this notebook writes
+|-- loras/lapetitemilf_flux.safetensors    # v1, protected, do not touch
+|-- loras/lapetitemilf_face.safetensors    # protected, do not touch
+|-- output/lapetitemilf/flux_eval_v2/      # generations from cell 10
 `-- keepers/
 ```"""
 )
@@ -120,6 +123,7 @@ MOUNT = "/content/drive"
 MYDRIVE = os.path.join(MOUNT, "MyDrive")
 FIRATSUPER_DRIVE_ID = "18UE4fijDjq8ggmkDYjaUpRQXVDE0cqYt"
 FLUX_INBOX_ID = "1oLtTmwg2kt-Jn6zuci06ipRQoK6AOFVZ"
+FLUX_CHEST_ID = "1iEmUvagFQVJ2TArN_7ee4Af4TUti1hZw"
 USE_DRIVE_API = False
 DRIVE_SERVICE = None
 
@@ -268,7 +272,7 @@ def upload_project_file(local_path, dest_rel=None):
 
 
 def sync_flux_via_api(local_root):
-    print("FUSE mount failed. Copying ADD_FLUX_PHOTOS via Drive API to", local_root)
+    print("FUSE mount failed. Copying Flux folders via Drive API to", local_root)
     service = _api_service()
     os.makedirs(local_root, exist_ok=True)
     inbox = api_find_child(service, FIRATSUPER_DRIVE_ID, "ADD_FLUX_PHOTOS")
@@ -277,6 +281,13 @@ def sync_flux_via_api(local_root):
         service,
         inbox_id,
         os.path.join(local_root, "ADD_FLUX_PHOTOS"),
+    )
+    chest = api_find_child(service, FIRATSUPER_DRIVE_ID, "ADD_FLUX_CHEST")
+    chest_id = chest["id"] if chest else FLUX_CHEST_ID
+    api_download_folder(
+        service,
+        chest_id,
+        os.path.join(local_root, "ADD_FLUX_CHEST"),
     )
     for sub in ("output", "loras", "logs", "keepers"):
         os.makedirs(os.path.join(local_root, sub), exist_ok=True)
@@ -311,8 +322,8 @@ if (not USE_DRIVE_API) and (not _drive_ok()):
 # === edit here ===
 PROJECT_NAME = "lapetitemilf"
 TRIGGER_WORD = "ohwx woman"
-LORA_NAME = "lapetitemilf_flux"
-EXPECTED_PAIRS = 31
+LORA_NAME = "lapetitemilf_flux_v2"
+EXPECTED_PAIRS = 38
 TRAIN_STEPS = 2000
 DRY_RUN_STEPS = 5
 NETWORK_DIM = 16
@@ -330,10 +341,13 @@ PROTECTED_LORAS = {
     "lapetitemilf_standard.safetensors",
     "lapetitemilf_lora.safetensors",
     "lapetitemilf_together.safetensors",
+    "lapetitemilf_flux.safetensors",
 }
 OUTPUT_LORA_NAME = LORA_NAME + ".safetensors"
 if OUTPUT_LORA_NAME in PROTECTED_LORAS:
-    raise RuntimeError("LORA_NAME is protected. Use lapetitemilf_flux only.")
+    raise RuntimeError(
+        "LORA_NAME is protected. This notebook writes lapetitemilf_flux_v2 only."
+    )
 if not SUBJECT_IS_ADULT:
     raise RuntimeError("This notebook is for an adult subject only.")
 
@@ -343,10 +357,11 @@ else:
     ROOT = "/content/drive/MyDrive/FiratSuper"
 
 INBOX_DIR = os.path.join(ROOT, "ADD_FLUX_PHOTOS")
+CHEST_DIR = os.path.join(ROOT, "ADD_FLUX_CHEST")
 LORAS_DIR = os.path.join(ROOT, "loras")
 KEEPERS_DIR = os.path.join(ROOT, "keepers")
-EVAL_DIR = os.path.join(ROOT, "output", PROJECT_NAME, "flux_eval")
-SAMPLES_DIR = os.path.join(ROOT, "output", PROJECT_NAME, "flux_samples")
+EVAL_DIR = os.path.join(ROOT, "output", PROJECT_NAME, "flux_eval_v2")
+SAMPLES_DIR = os.path.join(ROOT, "output", PROJECT_NAME, "flux_samples_v2")
 DATASET_DIR = "/content/dataset"
 TRAIN_OUTPUT_DIR = "/content/output"
 CONFIG_PATH = "/content/lapetitemilf_flux.yaml"
@@ -360,6 +375,7 @@ os.makedirs(TRAIN_OUTPUT_DIR, exist_ok=True)
 free_gb = shutil.disk_usage("/content").free / 1024**3
 print("ROOT:", ROOT)
 print("Inbox:", INBOX_DIR)
+print("Chest:", CHEST_DIR)
 print("Local dataset:", DATASET_DIR)
 print("LoRA out:", os.path.join(LORAS_DIR, OUTPUT_LORA_NAME))
 print("Free disk: %.1f GB" % free_gb)
@@ -517,19 +533,31 @@ print("Gate 3 install OK.")"""
 )
 
 code(
-    r"""# @title 5) Gate 1: copy ADD_FLUX_PHOTOS (images + captions)
+    r"""# @title 5) Gate 1: copy ADD_FLUX_PHOTOS + ADD_FLUX_CHEST
 import os
 import shutil
 
 IMG_EXT = {".jpg", ".jpeg", ".png"}
 SKIP_NAMES = {".drive_upload.json", ".ds_store", "thumbs.db"}
+SOURCE_FOLDERS = [
+    ("ADD_FLUX_PHOTOS", INBOX_DIR),
+    ("ADD_FLUX_CHEST", CHEST_DIR),
+]
 
-if USE_DRIVE_API and (not os.path.isdir(INBOX_DIR) or not os.listdir(INBOX_DIR)):
-    print("Re-copy inbox via Drive API...")
+need_sync = False
+if USE_DRIVE_API:
+    if (not os.path.isdir(INBOX_DIR)) or (not os.listdir(INBOX_DIR)):
+        need_sync = True
+    if (not os.path.isdir(CHEST_DIR)) or (not os.listdir(CHEST_DIR)):
+        need_sync = True
+if need_sync:
+    print("Re-copy Flux folders via Drive API...")
     DRIVE_SERVICE = sync_flux_via_api(ROOT)
 
 if not os.path.isdir(INBOX_DIR):
     raise RuntimeError("Missing inbox folder: " + INBOX_DIR)
+if not os.path.isdir(CHEST_DIR):
+    print("WARNING: missing chest folder:", CHEST_DIR)
 
 if os.path.isdir(DATASET_DIR):
     shutil.rmtree(DATASET_DIR)
@@ -538,40 +566,52 @@ os.makedirs(DATASET_DIR, exist_ok=True)
 pairs = []
 missing_txt = []
 skipped = []
-for name in sorted(os.listdir(INBOX_DIR)):
-    if name.startswith("."):
+seen_stems = {}
+for label, folder in SOURCE_FOLDERS:
+    if not os.path.isdir(folder):
+        print("WARNING: skip missing folder", label)
         continue
-    if name.lower() in SKIP_NAMES:
-        skipped.append(name)
-        continue
-    path = os.path.join(INBOX_DIR, name)
-    if os.path.isdir(path):
-        skipped.append(name + "/")
-        continue
-    stem, ext = os.path.splitext(name)
-    if ext.lower() not in IMG_EXT:
-        if ext.lower() != ".txt":
-            skipped.append(name)
-        continue
-    txt_name = stem + ".txt"
-    txt_path = os.path.join(INBOX_DIR, txt_name)
-    if not os.path.isfile(txt_path):
-        missing_txt.append(name)
-        continue
-    shutil.copy2(path, os.path.join(DATASET_DIR, name))
-    shutil.copy2(txt_path, os.path.join(DATASET_DIR, txt_name))
-    with open(txt_path, "r", encoding="utf-8") as fh:
-        caption = fh.read().strip()
-    pairs.append((name, caption))
+    print("Scanning", label)
+    for name in sorted(os.listdir(folder)):
+        if name.startswith("."):
+            continue
+        if name.lower() in SKIP_NAMES:
+            skipped.append(label + "/" + name)
+            continue
+        path = os.path.join(folder, name)
+        if os.path.isdir(path):
+            skipped.append(label + "/" + name + "/")
+            continue
+        stem, ext = os.path.splitext(name)
+        if ext.lower() not in IMG_EXT:
+            if ext.lower() != ".txt":
+                skipped.append(label + "/" + name)
+            continue
+        txt_name = stem + ".txt"
+        txt_path = os.path.join(folder, txt_name)
+        if not os.path.isfile(txt_path):
+            missing_txt.append(label + "/" + name)
+            continue
+        if stem in seen_stems:
+            skipped.append(label + "/" + name + " (dup of " + seen_stems[stem] + ")")
+            continue
+        dest_img = os.path.join(DATASET_DIR, name)
+        dest_txt = os.path.join(DATASET_DIR, txt_name)
+        shutil.copy2(path, dest_img)
+        shutil.copy2(txt_path, dest_txt)
+        with open(txt_path, "r", encoding="utf-8") as fh:
+            caption = fh.read().strip()
+        seen_stems[stem] = label
+        pairs.append((name, caption))
 
 print("Copied pairs:", len(pairs))
 if skipped:
     print("Skipped:", ", ".join(skipped[:20]))
 if missing_txt:
-    print("Images with no .txt:")
+    print("WARNING: skipping images with no matching .txt (not trained):")
     for name in missing_txt:
         print("  ", name)
-    raise RuntimeError("Gate 1 FAIL: %d images have no matching .txt" % len(missing_txt))
+    print("That is OK for a dropped gen. Do not caption Flux outputs.")
 
 if len(pairs) < 20:
     raise RuntimeError("Gate 1 FAIL: need at least 20 image+txt pairs. Got %d" % len(pairs))
@@ -786,7 +826,7 @@ for path in local_imgs:
     if name in seen:
         continue
     seen.add(name)
-    dest_rel_img = "output/%s/flux_samples/%s" % (PROJECT_NAME, name)
+    dest_rel_img = "output/%s/flux_samples_v2/%s" % (PROJECT_NAME, name)
     upload_project_file(path, dest_rel_img)
     copied_src.append(path)
 
@@ -1100,18 +1140,19 @@ md(
     """## Done
 
 LoRA file (new only):
-`MyDrive/FiratSuper/loras/lapetitemilf_flux.safetensors`
+`MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 
 Training samples:
-`MyDrive/FiratSuper/output/lapetitemilf/flux_samples/`
+`MyDrive/FiratSuper/output/lapetitemilf/flux_samples_v2/`
 
 Generations from cell 10:
-`MyDrive/FiratSuper/output/lapetitemilf/flux_eval/`
+`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/`
 
 Cell 10 generates. Cell 11 refines a frontal keeper with img2img (smooth chest, same pose).
 Do not write "no scars" in prompts. Flux will draw them.
 
 Protected (not touched):
+`loras/lapetitemilf_flux.safetensors` (v1)
 `loras/lapetitemilf_face.safetensors`
 
 ### Use later
@@ -1121,7 +1162,8 @@ Protected (not touched):
 4. Adult content only.
 
 ### If training dies
-- Tab slept / GPU dropped: reconnect A100, rerun 1-4, then 8. Checkpoints are in `/content/output/lapetitemilf_flux/` until the VM is deleted.
+- Tab slept / GPU dropped: reconnect A100, rerun 1-4, then 8. Checkpoints are in `/content/output/lapetitemilf_flux_v2/` until the VM is deleted.
+- If LoRA is already on Drive: rerun 1, 2, 3, 10, 11. Skip 4-9.
 - Hugging Face 403: accept FLUX.1-dev license, new READ token.
 - Drive popup: Allow ALL, one Google account."""
 )

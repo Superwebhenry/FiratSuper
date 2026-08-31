@@ -35,3 +35,11 @@ Content: beach, green bikini, sunglasses. Style: hard daylight.
 ---
 
 Approve / adjust these five, then the rest of the 31 get the same pattern.
+
+## Chest add-on (2026-08-31)
+
+Same pattern. Name nude/topless, glasses, piercing, toy, necklace so they do not become default identity. Do not mention scars.
+
+Example (`1788183657894.jpg`):
+
+ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, waist-up, looking at the camera, topless, a white cloth wrap at her hips, both hands on her waist. Indoor photo by a bright window, even lighting, photorealistic raw photo, natural skin texture.

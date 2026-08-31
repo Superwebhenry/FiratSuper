@@ -90,5 +90,12 @@ Then `IMPORT_AS = "both"`, `RUN_NAME = "together"` (writes `lapetitemilf_togethe
 - User then ran more frontals: still **a bit** of under-breast line, but identity is good. Stay **frontal**. Do not switch to side views as the fix.
 - Next: cell 11 img2img refine on the best frontal (`STRENGTH` 0.22-0.32). Same prompt, no scar words. Do **not** retrain.
 
+## Flux v2 chest add-on (2026-08-31)
+
+- User uploaded 8 photos to `ADD_FLUX_CHEST/`.
+- Audit: **7 KEEP**, **1 DROP** (`1788183845578.jpg`, EXIF 2026-08-27 — likely a Flux generate). Details: `flux-chest.md`.
+- Train **v2 only**: `lapetitemilf_flux_v2`. Keep the original 31. Do not overwrite v1.
+- Judge frontal nudes on cell 10 after v2. Stay frontal. Still no scar words.
+
 
 
