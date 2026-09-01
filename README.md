@@ -79,6 +79,15 @@ MyDrive/FiratSuper/
 2. ב-ComfyUI: checkpoint של Flux.1 [dev] + הקובץ הזה. לא לטעון LoRA של SD 1.5 על Flux.
 3. משקל LoRA: `0.8–1.0`
 
+## RunComfy (זוגות)
+
+אל תשתמשי בתבנית Flux.1 Inpaint — היא לא מחברת את ה-LoRA. גררי את הקובץ המוכן:
+
+- [`workflows/couple_kontext_lora.json`](workflows/couple_kontext_lora.json) — קודם זה (בלי מסיכה)
+- [`workflows/couple_fill_lora.json`](workflows/couple_fill_lora.json) — רק אם Kontext משנה את הגבר
+
+הוראות קצרות: [`workflows/README.md`](workflows/README.md)
+
 ## דרישות
 
 - Colab Pro עם **A100**
