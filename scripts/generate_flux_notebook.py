@@ -48,7 +48,7 @@ High RAM can stay off.
 **Locked LoRA (do not overwrite):** `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. Do not run cells 5-9.
 
-**Generate path:** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22 far strip, 23-27 explicit sets, or 28-37 far strip). Skip 5-9.
+**Generate path:** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22 far strip, 23-27 explicit sets, 28-37 far strip, or 38-40 explicit couple with visible genitals and semen). Skip 5-9.
 
 **Trigger:** `ohwx woman`. Do not write "no scars" in prompts. Adult subject only.
 Do not train on generated pictures. Two-person sex shots often glitch on Flux; rerun with a new SEED_BASE if anatomy breaks.
@@ -87,6 +87,9 @@ Do not train on generated pictures. Two-person sex shots often glitch on Flux; r
 35. Far strip: window bedroom, black lingerie (20)
 36. Far strip: white bedroom, black lace (20)
 37. Far strip: white sectional, white tee (20)
+38. Explicit set: white room penis visible (20)
+39. Explicit set: grey sofa semen (20)
+40. Explicit set: genital close and facial (20)
 
 ## Drive layout
 ```
@@ -619,7 +622,7 @@ def run_scene_set(slug, place, shots, seed_base, shot_start=0, shot_end=20):
     print("Do not put these pictures back into the training folders.")
 
 
-print("Drive settings OK. Helpers ready for cells 13-37.")"""
+print("Drive settings OK. Helpers ready for cells 13-40.")"""
 )
 
 code(
@@ -2235,6 +2238,103 @@ far_strip_cell(
 )
 
 
+code(
+    r"""# @title 38) Explicit set: white room penis visible (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'bright modern white room, white leather couch, large white bed with white linens, high-key daylight'
+SLUG = '38_white_room_explicit'
+SEED_BASE = 5500
+SHOTS = [
+    ('01_stand_hip', 'nude', 'standing nude by the white bed, his erect penis with visible glans, shaft, and veins beside her hip, she smiles at the camera, an adult man whose face is out of frame'),
+    ('02_couch_legs', 'nude', 'sitting nude on the white leather couch, legs apart, his erect photorealistic penis with glans and shaft veins in the foreground, she looks at the camera and smiles, an adult man whose face is out of frame'),
+    ('03_cowgirl', 'sex', 'cowgirl on the white bed, his erect penis with visible glans and veined shaft entering her, she smiles at the camera, an adult man whose face is out of frame'),
+    ('04_cowgirl_lean', 'sex', 'cowgirl leaning back on the white bed, his erect shaft and glans visible with natural skin texture, she looks at the camera, an adult man whose face is out of frame'),
+    ('05_missionary', 'sex', 'missionary on the white bed, her legs spread toward the camera, his erect penis with glans and veins visible at her vulva, she smiles, an adult man whose face is out of frame'),
+    ('06_doggy', 'sex', 'doggy on the white bed, his erect penis with visible glans and shaft entering her from behind, she looks back and smiles, an adult man whose face is out of frame'),
+    ('07_hold_penis', 'sex', 'standing nude, she holds his erect penis with both hands, photorealistic glans, shaft, and veins visible, smiling at the camera, an adult man whose face is out of frame'),
+    ('08_kneel_oral', 'sex', 'kneeling oral, his erect penis with visible glans and veined shaft in her mouth, she looks up smiling, an adult man whose face is out of frame'),
+    ('09_oral_close', 'sex', 'close oral, her tongue on the glans, shaft veins visible, natural skin texture, eye contact, slight smile, an adult man whose face is out of frame'),
+    ('10_extreme_close', 'sex', 'extreme close-up of his erect penis next to her vulva, photorealistic glans, shaft, veins, and natural skin texture, an adult man whose face is out of frame'),
+    ('11_legs_up', 'sex', 'on her back on the white bed, legs up, his erect penis with visible glans at her vulva, she smiles at the camera, an adult man whose face is out of frame'),
+    ('12_side_sex', 'sex', 'side sex on the white bed, his erect penis with shaft and glans visible, she looks at the camera, an adult man whose face is out of frame'),
+    ('13_sit_facing', 'sex', 'sitting on him facing the camera on the white bed, his erect penis with veins and glans visible, she smiles, an adult man whose face is out of frame'),
+    ('14_pen_close', 'sex', 'close-up of penetration, realistic erect penis and vulva with natural skin texture, she looking at the camera in the background, an adult man whose face is out of frame'),
+    ('15_facial_start', 'sex', 'kneeling, thick white semen landing on her smiling face, his erect penis with visible glans still in frame, an adult man whose face is out of frame'),
+    ('16_semen_lips', 'sex', 'close-up, thick white semen on her lips and chin, she smiles at the camera, his erect penis still in frame, an adult man whose face is out of frame'),
+    ('17_semen_chest', 'sex', 'thick white semen on her chest and face, she smiles, holding his erect penis with visible glans and veins, an adult man whose face is out of frame'),
+    ('18_after_drip', 'sex', 'sitting on the white bed after, thick white semen dripping, his erect penis visible, she smiles, an adult man whose face is out of frame'),
+    ('19_wide_bed', 'sex', 'wide shot of both on the white bed, she nude, his erect penis with glans and shaft visible, thick white semen on her, daylight, she smiles, an adult man whose face is out of frame'),
+    ('20_face_glans', 'sex', 'tight close-up of her smiling face with thick white semen on her lips, his glans near her cheek, an adult man whose face is out of frame'),
+]
+run_scene_set(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
+
+code(
+    r"""# @title 39) Explicit set: grey sofa semen (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'modern apartment, large grey fabric sofa, indoor plants, dark grey tile, even indoor light'
+SLUG = '39_grey_sofa_semen'
+SEED_BASE = 5600
+SHOTS = [
+    ('01_wide_doggy', 'sex', 'wide doggy on the grey sofa, his erect penis with visible glans and veined shaft behind her, she looks back and smiles, an adult man whose face is out of frame'),
+    ('02_closer_doggy', 'sex', 'closer doggy on the grey sofa, his erect penis entering her, glans and shaft visible, she looks back at the camera with a smile, an adult man whose face is out of frame'),
+    ('03_rear_close', 'sex', 'rear close-up, photorealistic erect penis and vulva with natural skin texture, thick white semen starting to drip, she looks back, an adult man whose face is out of frame'),
+    ('04_all_fours', 'sex', 'on all fours on the grey sofa, his hands on her hips, his erect penis with glans and veins visible, she smiles over her shoulder, an adult man whose face is out of frame'),
+    ('05_hold_face', 'sex', 'kneeling in front of the sofa, holding his erect penis near her smiling face, glans and veins visible, natural skin texture, an adult man whose face is out of frame'),
+    ('06_oral_sofa', 'sex', 'oral on the grey sofa, his erect penis with visible glans in her mouth, she looks up smiling, an adult man whose face is out of frame'),
+    ('07_oral_tongue', 'sex', 'close oral, tongue out next to the glans, shaft veins visible, eye contact, smile, an adult man whose face is out of frame'),
+    ('08_lie_back', 'sex', 'lying back on the grey sofa, legs spread, his erect penis with glans at her vulva, she smiles at the camera, an adult man whose face is out of frame'),
+    ('09_missionary', 'sex', 'missionary on the grey sofa, his erect penis with shaft and veins visible, she smiles, an adult man whose face is out of frame'),
+    ('10_stand_behind', 'sex', 'standing sex from behind at the grey sofa, his erect penis with visible glans entering her, she looks back smiling, an adult man whose face is out of frame'),
+    ('11_sit_him', 'sex', 'sitting on him on the grey sofa, his erect penis with glans and veins visible, she smiles at the camera, an adult man whose face is out of frame'),
+    ('12_pen_close', 'sex', 'close penetration, photorealistic erect penis and vulva, visible glans, shaft veins, natural skin texture, an adult man whose face is out of frame'),
+    ('13_semen_butt', 'sex', 'thick white semen splashed on her buttocks, his erect penis with glans still visible, she looks back, an adult man whose face is out of frame'),
+    ('14_semen_vulva', 'sex', 'thick white semen dripping from her vulva, his erect penis in frame, she smiles back at the camera, an adult man whose face is out of frame'),
+    ('15_facial_hold', 'sex', 'kneeling, thick white semen on her face, holding his erect penis with visible glans and veins, broad smile at the camera, an adult man whose face is out of frame'),
+    ('16_semen_close', 'sex', 'close-up, thick white semen on lips, chin, and cheeks, she smiles, his erect penis near her mouth, an adult man whose face is out of frame'),
+    ('17_semen_chest', 'sex', 'thick white semen on her chest and neck, she smiles, grey sofa behind her, his erect penis in frame, an adult man whose face is out of frame'),
+    ('18_wide_sofa', 'sex', 'wide sofa shot, she nude, thick white semen on her, his erect penis with glans and shaft visible, plants in the background, she smiles, an adult man whose face is out of frame'),
+    ('19_wipe_mouth', 'sex', 'she wipes thick white semen from her smiling mouth, his erect penis in frame, an adult man whose face is out of frame'),
+    ('20_face_glans', 'sex', 'tight smiling facial close-up, thick white semen on her lips, his glans by her cheek, an adult man whose face is out of frame'),
+]
+run_scene_set(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
+
+code(
+    r"""# @title 40) Explicit set: genital close and facial (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'bright white bedroom, white bed, white leather sofa, high-key light'
+SLUG = '40_genital_facial'
+SEED_BASE = 5700
+SHOTS = [
+    ('01_waist_hold', 'sex', 'waist-up, she holds his erect penis with both hands, smiling at the camera, photorealistic glans, shaft, and veins visible, an adult man whose face is out of frame'),
+    ('02_kiss_shaft', 'sex', 'she kisses the shaft of his erect penis, looking at the camera, slight smile, glans and veins visible, natural skin texture, an adult man whose face is out of frame'),
+    ('03_oral_up', 'sex', 'oral close, his erect penis with visible glans in her mouth, brown eyes looking up, smile around it, an adult man whose face is out of frame'),
+    ('04_glans_lips', 'sex', 'extreme close-up of the glans and her lips, photorealistic skin, shaft veins, an adult man whose face is out of frame'),
+    ('05_vulva_penis', 'sex', 'her vulva and his erect penis in one close frame, photorealistic glans, shaft, veins, natural skin texture, an adult man whose face is out of frame'),
+    ('06_pen_smile', 'sex', 'penetration close-up, realistic erect penis and vulva with natural skin texture, her smile visible at the top of the frame, an adult man whose face is out of frame'),
+    ('07_cowgirl_low', 'sex', 'cowgirl from a low angle, his erect penis with glans and veins visible entering her, she smiles down at the camera, an adult man whose face is out of frame'),
+    ('08_missionary', 'sex', 'missionary close, legs spread, his erect penis with visible glans at her vulva, she smiles, an adult man whose face is out of frame'),
+    ('09_doggy_close', 'sex', 'doggy close, his erect penis with shaft and glans visible, she looks back smiling, an adult man whose face is out of frame'),
+    ('10_folded', 'sex', 'on her back folded, his erect penis near her face and vulva both in frame, glans visible, open-mouth smile, an adult man whose face is out of frame'),
+    ('11_side_oral', 'sex', 'side close oral, his erect penis with veins and glans, her smile, eye contact, an adult man whose face is out of frame'),
+    ('12_stroke', 'sex', 'she strokes him with both hands, smiling, photorealistic glans and shaft veins visible, an adult man whose face is out of frame'),
+    ('13_semen_shoot', 'sex', 'thick white semen shooting toward her smiling face, his erect penis with visible glans in frame, an adult man whose face is out of frame'),
+    ('14_semen_tongue', 'sex', 'thick white semen on her tongue, she smiles at the camera, his erect penis in frame, an adult man whose face is out of frame'),
+    ('15_semen_hold', 'sex', 'thick white semen on her cheeks and lips, wide smile, holding his erect penis with visible glans and veins, an adult man whose face is out of frame'),
+    ('16_semen_drip', 'sex', 'thick white semen dripping down her chin onto her chest, she smiles, his erect penis in frame, an adult man whose face is out of frame'),
+    ('17_afterglow', 'sex', 'afterglow close, thick white semen on her vulva, his erect penis resting nearby with visible glans, she smiles, an adult man whose face is out of frame'),
+    ('18_semen_rear', 'sex', 'thick white semen on her buttocks and vulva, she looks back smiling, his erect penis in frame, an adult man whose face is out of frame'),
+    ('19_medium_bed', 'sex', 'medium shot on the white bed, thick white semen on her face and chest, his erect penis with glans and shaft visible, she smiles, an adult man whose face is out of frame'),
+    ('20_final_face', 'sex', 'final tight face, thick white semen on her lips, happy smile, his glans at the edge of the frame, an adult man whose face is out of frame'),
+]
+run_scene_set(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
+
+
 md(
     """## Done
 
@@ -2252,6 +2352,9 @@ Cells 28-37 (far strip) write to:
 Cells 23-27 (explicit couple / POV / facial) write to:
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/scene_*/`
 
+Cells 38-40 (explicit couple, visible penis, semen) write to:
+`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/scene_*/`
+
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
 
@@ -2264,8 +2367,8 @@ Also locked:
 `loras/lapetitemilf_face.safetensors`
 
 ### Make more pictures
-1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then ONE of cells 13-37.
-2. Cells 13-22 and 28-37: far camera strip. Cells 23-27: explicit couple / POV / facial sets.
+1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then ONE of cells 13-40.
+2. Cells 13-22 and 28-37: far camera strip. Cells 23-27 and 38-40: explicit couple / POV / facial sets.
 3. If it dies, set SHOT_START and rerun that cell.
 4. Nude/sex recipe: LoRA about 0.7, guidance 2.5. No scar words.
 5. Adult content only. Do not train on generated pictures.
