@@ -14,8 +14,8 @@
 2. **Runtime → Change runtime type → A100 GPU**
 3. Chrome, חשבון אחד (`superweb.contact@gmail.com`). **Allow ALL**
 4. Hugging Face READ token ל-[FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev)
-5. תאים **1, 2, 3**. ריצה חדשה: גם **4**. אחר כך **תא אחד מ־13 עד 22**. אל תריצי 5–9.
-6. כל תא 13–22 = מקום אחד, מצלמה רחוקה, 20 תמונות הורדה הדרגתית.
+5. תאים **1, 2, 3**. ריצה חדשה: גם **4**. אחר כך **תא אחד מ־13 עד 27**. אל תריצי 5–9.
+6. תאים 13–22 = מקום אחד, מצלמה רחוקה, הורדה. תאים 23–27 = סטים זוגיים / POV / facial.
 7. עירום: LoRA 0.75, guidance 2.5. בלי scars. שומרים ל-`keepers/`
 
 ## דאטאסט Flux v2 (Gate 1 GO)
@@ -45,7 +45,7 @@
 2. **Runtime → Change runtime type → A100 GPU**. אל תבחר T4. אל תבחר TPU.
 3. Chrome, חשבון Google אחד (`superweb.contact@gmail.com`). בפופאפ: **Allow ALL**
 4. Hugging Face: אשר רישיון ל-[FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev) והדבק READ token
-5. תאים 1, 2, 3. ריצה חדשה: גם 4. אחר כך תא אחד מ־13 עד 22. אופציונלי: 10–12.
+5. תאים 1, 2, 3. ריצה חדשה: גם 4. אחר כך תא אחד מ־13 עד 27. אופציונלי: 10–12.
 6. הקובץ כבר ב-Drive: `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 7. כל תא 13–22 = 20 תמונות רחוקות, הורדה הדרגתית. מבוגרת בלבד.
 

@@ -48,9 +48,10 @@ High RAM can stay off.
 **Locked LoRA (do not overwrite):** `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. Do not run cells 5-9.
 
-**Generate path:** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22). Skip 5-9. Cell 11 is optional refine. Cell 12 is mixed outdoor nudes.
+**Generate path:** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22 far strip, or 23-27 explicit sets). Skip 5-9.
 
 **Trigger:** `ohwx woman`. Do not write "no scars" in prompts. Adult subject only.
+Do not train on generated pictures. Two-person sex shots often glitch on Flux; rerun with a new SEED_BASE if anatomy breaks.
 
 ## Cells
 1. A100 GPU check
@@ -71,6 +72,11 @@ Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. D
 20. Far strip: beach, straw hat (20)
 21. Far strip: shoreline poses, red bikini (20)
 22. Far strip: sandstone cave, camo leggings (20)
+23. Explicit set: bright apartment couple (20)
+24. Explicit set: tile room athletic couple (20)
+25. Explicit set: POV oral, bedroom (20)
+26. Explicit set: webcam ring-light POV (20)
+27. Explicit set: facial close-ups (20)
 
 ## Drive layout
 ```
@@ -538,7 +544,72 @@ def run_far_strip(slug, place, shots, seed_base, shot_start=0, shot_end=20):
     print("Do not put these pictures back into the training folders.")
 
 
-print("Drive settings OK. Far-strip helper ready for cells 13-22.")"""
+def run_scene_set(slug, place, shots, seed_base, shot_start=0, shot_end=20):
+    import os
+    import torch
+    from datetime import datetime
+    from IPython.display import display
+    if not SUBJECT_IS_ADULT:
+        raise RuntimeError("Adult subject only.")
+    if len(shots) != 20:
+        raise RuntimeError("Need 20 shots in this series. Got %d" % len(shots))
+    if shot_start < 0 or shot_end > 20 or shot_start >= shot_end:
+        raise RuntimeError("SHOT_START/END must be inside 0..20 and START < END")
+    ensure_flux_pipe()
+    ident = (
+        "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
+    )
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    out_dir = os.path.join(EVAL_DIR, "scene_" + slug + "_" + stamp)
+    os.makedirs(out_dir, exist_ok=True)
+    print("Scene set", slug)
+    print("Shots", shot_start, "to", shot_end, "->", out_dir)
+    print("Two-person shots often glitch on Flux. That is the base model, not a bad LoRA.")
+    print("Do not write scars or surgical in these prompts.")
+    print("Keep this tab open.")
+    saved = []
+    for pidx in range(shot_start, shot_end):
+        shot_slug, kind, action = shots[pidx]
+        if kind in ("nude", "sex"):
+            weight = 0.7
+            guidance = 2.5
+        else:
+            weight = 0.9
+            guidance = 3.0
+        try:
+            pipe.set_adapters(["default"], adapter_weights=[weight])
+        except Exception as err:
+            print("set_adapters:", err)
+        seed = seed_base + pidx
+        prompt = (
+            ident + action + ". " + place +
+            ", photorealistic raw photo, natural skin texture"
+        )
+        print("---", shot_slug, "seed", seed, kind, "lora", weight)
+        print(prompt)
+        image = pipe(
+            prompt=prompt,
+            guidance_scale=guidance,
+            height=1024,
+            width=768,
+            num_inference_steps=32,
+            generator=torch.Generator("cuda").manual_seed(seed),
+        ).images[0]
+        path = os.path.join(out_dir, "%s_seed%d.png" % (shot_slug, seed))
+        image.save(path)
+        saved.append(path)
+        print("saved", path)
+        display(image)
+    print("Saved", len(saved), "pictures in", out_dir)
+    if USE_DRIVE_API:
+        for path in saved:
+            upload_project_file(path, os.path.relpath(path, ROOT))
+    print("If it stopped early, set SHOT_START to the next index and rerun this cell.")
+    print("Copy keepers to MyDrive/FiratSuper/keepers/")
+    print("Do not put these pictures back into the training folders.")
+
+
+print("Drive settings OK. Helpers ready for cells 13-27.")"""
 )
 
 code(
@@ -1489,28 +1560,28 @@ print("Do not put these pictures back into the training folders.")"""
 )
 
 code(
-    r"""# @title 13) Far strip: pool, dark bikini (20)
+    r"""# @title 13) Far strip: fireplace room, sheer black top (20)
 SHOT_START = 0
 SHOT_END = 20
-PLACE = 'private backyard pool, pale stone deck, a sun lounger, bright daylight'
-SLUG = '13_pool_bikini'
-SEED_BASE = 2000
+PLACE = 'dim elegant room, beige fireplace mantel packed with books and warm orange light in the hearth, dark wood floor, two glowing pendant bulbs, paneled wall'
+SLUG = '13_fireplace_room'
+SEED_BASE = 3000
 SHOTS = [
-    ('01_stand', 'clothed', 'standing, wearing a dark two-piece bikini'),
-    ('02_walk', 'clothed', 'walking, wearing a dark two-piece bikini'),
-    ('03_sit', 'clothed', 'sitting, wearing a dark two-piece bikini'),
-    ('04_shoulder', 'clothed', 'wearing a dark two-piece bikini, looking back over her shoulder at the camera'),
-    ('05_start', 'clothed', 'standing, wearing a dark two-piece bikini, untying the bikini top'),
-    ('06_loosen', 'clothed', 'standing, wearing a dark two-piece bikini, untying the bikini top, the garment loosening'),
-    ('07_mid_stand', 'clothed', 'standing, topless, wearing only dark bikini bottoms'),
-    ('08_mid_walk', 'clothed', 'walking, topless, wearing only dark bikini bottoms'),
-    ('09_mid_sit', 'clothed', 'sitting, topless, wearing only dark bikini bottoms'),
-    ('10_mid_shoulder', 'clothed', 'topless, wearing only dark bikini bottoms, looking back over her shoulder at the camera'),
-    ('11_almost_pull', 'clothed', 'topless, pulling down dark bikini bottoms'),
-    ('12_almost_hips', 'clothed', 'topless, pulling down dark bikini bottoms, pulled to her hips'),
-    ('13_almost_thighs', 'clothed', 'topless, pulling down dark bikini bottoms, around her thighs'),
+    ('01_stand', 'clothed', 'standing, wearing a sheer black short-sleeve polka-dot top, black panties, and black high-heel sandals, leaning on the fireplace mantel'),
+    ('02_walk', 'clothed', 'walking, wearing a sheer black short-sleeve polka-dot top, black panties, and black high-heel sandals, leaning on the fireplace mantel'),
+    ('03_sit', 'clothed', 'sitting, wearing a sheer black short-sleeve polka-dot top, black panties, and black high-heel sandals, leaning on the fireplace mantel'),
+    ('04_shoulder', 'clothed', 'wearing a sheer black short-sleeve polka-dot top, black panties, and black high-heel sandals, leaning on the fireplace mantel, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing at the mantel, wearing a sheer black polka-dot top and black panties, sliding the panties down'),
+    ('06_loosen', 'clothed', 'standing at the mantel, wearing a sheer black polka-dot top and black panties, sliding the panties down, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, wearing only a sheer black polka-dot top and black high-heel sandals, bottomless'),
+    ('08_mid_walk', 'clothed', 'walking, wearing only a sheer black polka-dot top and black high-heel sandals, bottomless'),
+    ('09_mid_sit', 'clothed', 'sitting, wearing only a sheer black polka-dot top and black high-heel sandals, bottomless'),
+    ('10_mid_shoulder', 'clothed', 'wearing only a sheer black polka-dot top and black high-heel sandals, bottomless, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'taking off the sheer black polka-dot top, otherwise nude, still in black high-heel sandals'),
+    ('12_almost_hips', 'clothed', 'taking off the sheer black polka-dot top, otherwise nude, still in black high-heel sandals, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'taking off the sheer black polka-dot top, otherwise nude, still in black high-heel sandals, around her thighs'),
     ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
-    ('15_hold', 'nude', 'nude, holding the dark bikini'),
+    ('15_hold', 'nude', 'nude, holding the sheer black top'),
     ('16_nude_stand', 'nude', 'standing nude'),
     ('17_nude_walk', 'nude', 'walking nude'),
     ('18_nude_sit', 'nude', 'sitting nude'),
@@ -1521,28 +1592,28 @@ run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 )
 
 code(
-    r"""# @title 14) Far strip: hotel, evening gown (20)
+    r"""# @title 14) Far strip: forest creek, rocks (20)
 SHOT_START = 0
 SHOT_END = 20
-PLACE = 'large hotel suite in the evening, tall windows, a sofa, warm lamps, polished floor'
-SLUG = '14_hotel_gown'
-SEED_BASE = 2100
+PLACE = 'shallow rocky forest creek, large grey rocks, clear water, dense yellow-green trees, dappled sunlight'
+SLUG = '14_forest_creek'
+SEED_BASE = 3100
 SHOTS = [
-    ('01_stand', 'clothed', 'standing, wearing a long black evening gown'),
-    ('02_walk', 'clothed', 'walking, wearing a long black evening gown'),
-    ('03_sit', 'clothed', 'sitting, wearing a long black evening gown'),
-    ('04_shoulder', 'clothed', 'wearing a long black evening gown, looking back over her shoulder at the camera'),
-    ('05_start', 'clothed', 'standing, wearing a long black evening gown, unzipping the back'),
-    ('06_loosen', 'clothed', 'standing, wearing a long black evening gown, unzipping the back, the garment loosening'),
-    ('07_mid_stand', 'clothed', 'standing, wearing a black bra and black panties, the gown off'),
-    ('08_mid_walk', 'clothed', 'walking, wearing a black bra and black panties, the gown off'),
-    ('09_mid_sit', 'clothed', 'sitting, wearing a black bra and black panties, the gown off'),
-    ('10_mid_shoulder', 'clothed', 'wearing a black bra and black panties, the gown off, looking back over her shoulder at the camera'),
-    ('11_almost_pull', 'clothed', 'topless, pulling down black panties'),
-    ('12_almost_hips', 'clothed', 'topless, pulling down black panties, pulled to her hips'),
-    ('13_almost_thighs', 'clothed', 'topless, pulling down black panties, around her thighs'),
+    ('01_stand', 'clothed', 'standing, wearing a simple earth-tone sundress, sitting on a rock in the shallow creek'),
+    ('02_walk', 'clothed', 'walking, wearing a simple earth-tone sundress, sitting on a rock in the shallow creek'),
+    ('03_sit', 'clothed', 'sitting, wearing a simple earth-tone sundress, sitting on a rock in the shallow creek'),
+    ('04_shoulder', 'clothed', 'wearing a simple earth-tone sundress, sitting on a rock in the shallow creek, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing in the shallow creek, slipping an earth-tone sundress off one shoulder'),
+    ('06_loosen', 'clothed', 'standing in the shallow creek, slipping an earth-tone sundress off one shoulder, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, topless, a wrap of fabric at her hips, sitting on the rocks in the water'),
+    ('08_mid_walk', 'clothed', 'walking, topless, a wrap of fabric at her hips, sitting on the rocks in the water'),
+    ('09_mid_sit', 'clothed', 'sitting, topless, a wrap of fabric at her hips, sitting on the rocks in the water'),
+    ('10_mid_shoulder', 'clothed', 'topless, a wrap of fabric at her hips, sitting on the rocks in the water, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'the fabric around her thighs, sitting on rocks in the creek, otherwise nude'),
+    ('12_almost_hips', 'clothed', 'the fabric around her thighs, sitting on rocks in the creek, otherwise nude, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'the fabric around her thighs, sitting on rocks in the creek, otherwise nude, around her thighs'),
     ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
-    ('15_hold', 'nude', 'nude, holding the black evening gown'),
+    ('15_hold', 'nude', 'nude, holding the sundress'),
     ('16_nude_stand', 'nude', 'standing nude'),
     ('17_nude_walk', 'nude', 'walking nude'),
     ('18_nude_sit', 'nude', 'sitting nude'),
@@ -1553,28 +1624,28 @@ run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 )
 
 code(
-    r"""# @title 15) Far strip: outdoor shower, towel (20)
+    r"""# @title 15) Far strip: gold bikini, volcanic beach (20)
 SHOT_START = 0
 SHOT_END = 20
-PLACE = 'outdoor shower, dark stacked-stone wall, white outdoor stairs with a metal rail, a shower head pouring water, green plants, bright daylight'
-SLUG = '15_outdoor_shower'
-SEED_BASE = 2200
+PLACE = 'tropical beach, bright white sand, dark volcanic rocks, turquoise ocean, clear blue sky, hard sunlight'
+SLUG = '15_gold_bikini_beach'
+SEED_BASE = 3200
 SHOTS = [
-    ('01_stand', 'clothed', 'standing, wrapped in a white towel, wet highlighted blonde hair, water falling over her'),
-    ('02_walk', 'clothed', 'walking, wrapped in a white towel, wet highlighted blonde hair, water falling over her'),
-    ('03_sit', 'clothed', 'sitting, wrapped in a white towel, wet highlighted blonde hair, water falling over her'),
-    ('04_shoulder', 'clothed', 'wrapped in a white towel, wet highlighted blonde hair, water falling over her, looking back over her shoulder at the camera'),
-    ('05_start', 'clothed', 'standing under the water, loosening a white towel wrapped around her'),
-    ('06_loosen', 'clothed', 'standing under the water, loosening a white towel wrapped around her, the garment loosening'),
-    ('07_mid_stand', 'clothed', 'standing, the white towel around her hips, topless, wet skin'),
-    ('08_mid_walk', 'clothed', 'walking, the white towel around her hips, topless, wet skin'),
-    ('09_mid_sit', 'clothed', 'sitting, the white towel around her hips, topless, wet skin'),
-    ('10_mid_shoulder', 'clothed', 'the white towel around her hips, topless, wet skin, looking back over her shoulder at the camera'),
-    ('11_almost_pull', 'clothed', 'the white towel around her thighs, otherwise nude'),
-    ('12_almost_hips', 'clothed', 'the white towel around her thighs, otherwise nude, pulled to her hips'),
-    ('13_almost_thighs', 'clothed', 'the white towel around her thighs, otherwise nude, around her thighs'),
+    ('01_stand', 'clothed', 'standing, wearing a shiny metallic gold bandeau bikini and gold cuff bracelets, kneeling on the white sand'),
+    ('02_walk', 'clothed', 'walking, wearing a shiny metallic gold bandeau bikini and gold cuff bracelets, kneeling on the white sand'),
+    ('03_sit', 'clothed', 'sitting, wearing a shiny metallic gold bandeau bikini and gold cuff bracelets, kneeling on the white sand'),
+    ('04_shoulder', 'clothed', 'wearing a shiny metallic gold bandeau bikini and gold cuff bracelets, kneeling on the white sand, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'kneeling on the sand in a shiny metallic gold bikini, untying the gold bikini top'),
+    ('06_loosen', 'clothed', 'kneeling on the sand in a shiny metallic gold bikini, untying the gold bikini top, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, topless, wearing only shiny metallic gold bikini bottoms and gold bracelets, kneeling on the sand'),
+    ('08_mid_walk', 'clothed', 'walking, topless, wearing only shiny metallic gold bikini bottoms and gold bracelets, kneeling on the sand'),
+    ('09_mid_sit', 'clothed', 'sitting, topless, wearing only shiny metallic gold bikini bottoms and gold bracelets, kneeling on the sand'),
+    ('10_mid_shoulder', 'clothed', 'topless, wearing only shiny metallic gold bikini bottoms and gold bracelets, kneeling on the sand, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'topless, pulling down shiny metallic gold bikini bottoms on the sand'),
+    ('12_almost_hips', 'clothed', 'topless, pulling down shiny metallic gold bikini bottoms on the sand, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'topless, pulling down shiny metallic gold bikini bottoms on the sand, around her thighs'),
     ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
-    ('15_hold', 'nude', 'nude, holding the white towel'),
+    ('15_hold', 'nude', 'nude, holding the gold bikini'),
     ('16_nude_stand', 'nude', 'standing nude'),
     ('17_nude_walk', 'nude', 'walking nude'),
     ('18_nude_sit', 'nude', 'sitting nude'),
@@ -1585,28 +1656,28 @@ run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 )
 
 code(
-    r"""# @title 16) Far strip: beach, bikini (20)
+    r"""# @title 16) Far strip: paddock fence, horse (20)
 SHOT_START = 0
 SHOT_END = 20
-PLACE = 'sandy beach at the ocean, bright daylight, blue water and sky behind her'
-SLUG = '16_beach_bikini'
-SEED_BASE = 2300
+PLACE = 'rural paddock, weathered wooden fence, green pasture, a brown horse behind the fence, warm golden-hour light'
+SLUG = '16_paddock_horse'
+SEED_BASE = 3300
 SHOTS = [
-    ('01_stand', 'clothed', 'standing, wearing a dark two-piece bikini'),
-    ('02_walk', 'clothed', 'walking, wearing a dark two-piece bikini'),
-    ('03_sit', 'clothed', 'sitting, wearing a dark two-piece bikini'),
-    ('04_shoulder', 'clothed', 'wearing a dark two-piece bikini, looking back over her shoulder at the camera'),
-    ('05_start', 'clothed', 'standing on the sand, wearing a dark two-piece bikini, untying the bikini top'),
-    ('06_loosen', 'clothed', 'standing on the sand, wearing a dark two-piece bikini, untying the bikini top, the garment loosening'),
-    ('07_mid_stand', 'clothed', 'standing, topless, wearing only dark bikini bottoms'),
-    ('08_mid_walk', 'clothed', 'walking, topless, wearing only dark bikini bottoms'),
-    ('09_mid_sit', 'clothed', 'sitting, topless, wearing only dark bikini bottoms'),
-    ('10_mid_shoulder', 'clothed', 'topless, wearing only dark bikini bottoms, looking back over her shoulder at the camera'),
-    ('11_almost_pull', 'clothed', 'topless, pulling down dark bikini bottoms'),
-    ('12_almost_hips', 'clothed', 'topless, pulling down dark bikini bottoms, pulled to her hips'),
-    ('13_almost_thighs', 'clothed', 'topless, pulling down dark bikini bottoms, around her thighs'),
+    ('01_stand', 'clothed', 'standing, wearing a rust-orange lace bralette and unbuttoned blue jeans, leaning on the wooden fence, a brown horse behind her'),
+    ('02_walk', 'clothed', 'walking, wearing a rust-orange lace bralette and unbuttoned blue jeans, leaning on the wooden fence, a brown horse behind her'),
+    ('03_sit', 'clothed', 'sitting, wearing a rust-orange lace bralette and unbuttoned blue jeans, leaning on the wooden fence, a brown horse behind her'),
+    ('04_shoulder', 'clothed', 'wearing a rust-orange lace bralette and unbuttoned blue jeans, leaning on the wooden fence, a brown horse behind her, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'leaning on the fence in a rust-orange lace bralette, unzipping blue jeans'),
+    ('06_loosen', 'clothed', 'leaning on the fence in a rust-orange lace bralette, unzipping blue jeans, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, wearing a rust-orange lace bralette, jeans pulled open at the hips'),
+    ('08_mid_walk', 'clothed', 'walking, wearing a rust-orange lace bralette, jeans pulled open at the hips'),
+    ('09_mid_sit', 'clothed', 'sitting, wearing a rust-orange lace bralette, jeans pulled open at the hips'),
+    ('10_mid_shoulder', 'clothed', 'wearing a rust-orange lace bralette, jeans pulled open at the hips, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'topless, pushing the jeans down her thighs at the fence'),
+    ('12_almost_hips', 'clothed', 'topless, pushing the jeans down her thighs at the fence, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'topless, pushing the jeans down her thighs at the fence, around her thighs'),
     ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
-    ('15_hold', 'nude', 'nude, holding the dark bikini'),
+    ('15_hold', 'nude', 'nude, holding the jeans'),
     ('16_nude_stand', 'nude', 'standing nude'),
     ('17_nude_walk', 'nude', 'walking nude'),
     ('18_nude_sit', 'nude', 'sitting nude'),
@@ -1617,28 +1688,28 @@ run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 )
 
 code(
-    r"""# @title 17) Far strip: forest, white sundress (20)
+    r"""# @title 17) Far strip: wildflower meadow (20)
 SHOT_START = 0
 SHOT_END = 20
-PLACE = 'green forest with tree trunks and leafy ground, dappled sunlight through the trees'
-SLUG = '17_forest_dress'
-SEED_BASE = 2400
+PLACE = 'tall wildflower meadow with small white daisies, dark green forest behind, soft daylight'
+SLUG = '17_wildflower_meadow'
+SEED_BASE = 3400
 SHOTS = [
-    ('01_stand', 'clothed', 'standing, wearing a short white sundress'),
-    ('02_walk', 'clothed', 'walking, wearing a short white sundress'),
-    ('03_sit', 'clothed', 'sitting, wearing a short white sundress'),
-    ('04_shoulder', 'clothed', 'wearing a short white sundress, looking back over her shoulder at the camera'),
-    ('05_start', 'clothed', 'standing among the trees, slipping a short white sundress off one shoulder'),
-    ('06_loosen', 'clothed', 'standing among the trees, slipping a short white sundress off one shoulder, the garment loosening'),
-    ('07_mid_stand', 'clothed', 'standing, wearing white panties, holding the sundress'),
-    ('08_mid_walk', 'clothed', 'walking, wearing white panties, holding the sundress'),
-    ('09_mid_sit', 'clothed', 'sitting, wearing white panties, holding the sundress'),
-    ('10_mid_shoulder', 'clothed', 'wearing white panties, holding the sundress, looking back over her shoulder at the camera'),
-    ('11_almost_pull', 'clothed', 'pulling down white panties'),
-    ('12_almost_hips', 'clothed', 'pulling down white panties, pulled to her hips'),
-    ('13_almost_thighs', 'clothed', 'pulling down white panties, around her thighs'),
+    ('01_stand', 'clothed', 'standing, wearing a light linen sundress and a chunky brown wooden-bead necklace, standing in the wildflowers'),
+    ('02_walk', 'clothed', 'walking, wearing a light linen sundress and a chunky brown wooden-bead necklace, standing in the wildflowers'),
+    ('03_sit', 'clothed', 'sitting, wearing a light linen sundress and a chunky brown wooden-bead necklace, standing in the wildflowers'),
+    ('04_shoulder', 'clothed', 'wearing a light linen sundress and a chunky brown wooden-bead necklace, standing in the wildflowers, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing in the wildflowers, slipping a light linen sundress off one shoulder, chunky brown wooden-bead necklace'),
+    ('06_loosen', 'clothed', 'standing in the wildflowers, slipping a light linen sundress off one shoulder, chunky brown wooden-bead necklace, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, topless in the wildflowers, fabric at her hips, chunky brown wooden-bead necklace'),
+    ('08_mid_walk', 'clothed', 'walking, topless in the wildflowers, fabric at her hips, chunky brown wooden-bead necklace'),
+    ('09_mid_sit', 'clothed', 'sitting, topless in the wildflowers, fabric at her hips, chunky brown wooden-bead necklace'),
+    ('10_mid_shoulder', 'clothed', 'topless in the wildflowers, fabric at her hips, chunky brown wooden-bead necklace, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'the sundress around her thighs in the wildflowers, chunky brown wooden-bead necklace, otherwise nude'),
+    ('12_almost_hips', 'clothed', 'the sundress around her thighs in the wildflowers, chunky brown wooden-bead necklace, otherwise nude, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'the sundress around her thighs in the wildflowers, chunky brown wooden-bead necklace, otherwise nude, around her thighs'),
     ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
-    ('15_hold', 'nude', 'nude, holding the white sundress'),
+    ('15_hold', 'nude', 'nude, holding the linen sundress'),
     ('16_nude_stand', 'nude', 'standing nude'),
     ('17_nude_walk', 'nude', 'walking nude'),
     ('18_nude_sit', 'nude', 'sitting nude'),
@@ -1649,28 +1720,28 @@ run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 )
 
 code(
-    r"""# @title 18) Far strip: apartment, shirt to plaid (20)
+    r"""# @title 18) Far strip: damask lounge, black lace (20)
 SHOT_START = 0
 SHOT_END = 20
-PLACE = 'classic apartment with herringbone wood parquet, a tall dark antique wardrobe, a leather pouf, large white-framed windows, soft daylight'
-SLUG = '18_plaid_apartment'
-SEED_BASE = 2500
+PLACE = 'upscale lounge, tan damask wallpaper, a beige floral sofa with lavender pillows, light carpet, warm indoor light'
+SLUG = '18_damask_lounge'
+SEED_BASE = 3500
 SHOTS = [
-    ('01_stand', 'clothed', 'standing, wearing an oversized white shirt, barefoot'),
-    ('02_walk', 'clothed', 'walking, wearing an oversized white shirt, barefoot'),
-    ('03_sit', 'clothed', 'sitting, wearing an oversized white shirt, barefoot'),
-    ('04_shoulder', 'clothed', 'wearing an oversized white shirt, barefoot, looking back over her shoulder at the camera'),
-    ('05_start', 'clothed', 'unbuttoning an oversized white shirt, a red and black plaid lingerie set underneath'),
-    ('06_loosen', 'clothed', 'unbuttoning an oversized white shirt, a red and black plaid lingerie set underneath, the garment loosening'),
-    ('07_mid_stand', 'clothed', 'standing, wearing a red and black plaid lingerie set, barefoot, the shirt off'),
-    ('08_mid_walk', 'clothed', 'walking, wearing a red and black plaid lingerie set, barefoot, the shirt off'),
-    ('09_mid_sit', 'clothed', 'sitting, wearing a red and black plaid lingerie set, barefoot, the shirt off'),
-    ('10_mid_shoulder', 'clothed', 'wearing a red and black plaid lingerie set, barefoot, the shirt off, looking back over her shoulder at the camera'),
-    ('11_almost_pull', 'clothed', 'topless, pulling down the plaid panties'),
-    ('12_almost_hips', 'clothed', 'topless, pulling down the plaid panties, pulled to her hips'),
-    ('13_almost_thighs', 'clothed', 'topless, pulling down the plaid panties, around her thighs'),
+    ('01_stand', 'clothed', 'standing, wearing a black lace harness lingerie set, a garter belt, and sheer black thigh-high stockings, kneeling by the sofa'),
+    ('02_walk', 'clothed', 'walking, wearing a black lace harness lingerie set, a garter belt, and sheer black thigh-high stockings, kneeling by the sofa'),
+    ('03_sit', 'clothed', 'sitting, wearing a black lace harness lingerie set, a garter belt, and sheer black thigh-high stockings, kneeling by the sofa'),
+    ('04_shoulder', 'clothed', 'wearing a black lace harness lingerie set, a garter belt, and sheer black thigh-high stockings, kneeling by the sofa, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'kneeling by the sofa in black lace lingerie and stockings, unhooking the harness bra'),
+    ('06_loosen', 'clothed', 'kneeling by the sofa in black lace lingerie and stockings, unhooking the harness bra, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, topless, wearing a black garter belt, black panties, and sheer black thigh-high stockings'),
+    ('08_mid_walk', 'clothed', 'walking, topless, wearing a black garter belt, black panties, and sheer black thigh-high stockings'),
+    ('09_mid_sit', 'clothed', 'sitting, topless, wearing a black garter belt, black panties, and sheer black thigh-high stockings'),
+    ('10_mid_shoulder', 'clothed', 'topless, wearing a black garter belt, black panties, and sheer black thigh-high stockings, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'topless in stockings, pulling down black panties by the sofa'),
+    ('12_almost_hips', 'clothed', 'topless in stockings, pulling down black panties by the sofa, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'topless in stockings, pulling down black panties by the sofa, around her thighs'),
     ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
-    ('15_hold', 'nude', 'nude, holding the white shirt'),
+    ('15_hold', 'nude', 'nude, holding the black lace lingerie'),
     ('16_nude_stand', 'nude', 'standing nude'),
     ('17_nude_walk', 'nude', 'walking nude'),
     ('18_nude_sit', 'nude', 'sitting nude'),
@@ -1681,28 +1752,28 @@ run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 )
 
 code(
-    r"""# @title 19) Far strip: bathtub, white robe (20)
+    r"""# @title 19) Far strip: blinds window, red lingerie (20)
 SHOT_START = 0
 SHOT_END = 20
-PLACE = 'indoor bathroom with a white bathtub, a gold-frame mirror, tile floor, even indoor light'
-SLUG = '19_white_tub'
-SEED_BASE = 2600
+PLACE = 'bright indoor room, floor-to-ceiling windows with white horizontal blinds, light tile floor, daylight through the slats'
+SLUG = '19_blinds_red'
+SEED_BASE = 3600
 SHOTS = [
-    ('01_stand', 'clothed', 'standing, wearing a loose white robe'),
-    ('02_walk', 'clothed', 'walking, wearing a loose white robe'),
-    ('03_sit', 'clothed', 'sitting, wearing a loose white robe'),
-    ('04_shoulder', 'clothed', 'wearing a loose white robe, looking back over her shoulder at the camera'),
-    ('05_start', 'clothed', 'standing by the tub, loosening a loose white robe'),
-    ('06_loosen', 'clothed', 'standing by the tub, loosening a loose white robe, the garment loosening'),
-    ('07_mid_stand', 'clothed', 'standing, the white robe open, otherwise nude'),
-    ('08_mid_walk', 'clothed', 'walking, the white robe open, otherwise nude'),
-    ('09_mid_sit', 'clothed', 'sitting, the white robe open, otherwise nude'),
-    ('10_mid_shoulder', 'clothed', 'the white robe open, otherwise nude, looking back over her shoulder at the camera'),
-    ('11_almost_pull', 'clothed', 'the white robe slipping off her hips'),
-    ('12_almost_hips', 'clothed', 'the white robe slipping off her hips, pulled to her hips'),
-    ('13_almost_thighs', 'clothed', 'the white robe slipping off her hips, around her thighs'),
+    ('01_stand', 'clothed', 'standing, wearing a red lingerie set, black-rimmed glasses, a silver pendant necklace, and black platform heels'),
+    ('02_walk', 'clothed', 'walking, wearing a red lingerie set, black-rimmed glasses, a silver pendant necklace, and black platform heels'),
+    ('03_sit', 'clothed', 'sitting, wearing a red lingerie set, black-rimmed glasses, a silver pendant necklace, and black platform heels'),
+    ('04_shoulder', 'clothed', 'wearing a red lingerie set, black-rimmed glasses, a silver pendant necklace, and black platform heels, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing by the blinds in a red lingerie set and black-rimmed glasses, untying the red panty bows'),
+    ('06_loosen', 'clothed', 'standing by the blinds in a red lingerie set and black-rimmed glasses, untying the red panty bows, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, topless, wearing only red panties, black-rimmed glasses, and black platform heels'),
+    ('08_mid_walk', 'clothed', 'walking, topless, wearing only red panties, black-rimmed glasses, and black platform heels'),
+    ('09_mid_sit', 'clothed', 'sitting, topless, wearing only red panties, black-rimmed glasses, and black platform heels'),
+    ('10_mid_shoulder', 'clothed', 'topless, wearing only red panties, black-rimmed glasses, and black platform heels, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'topless, pulling down red panties, black-rimmed glasses and black heels still on'),
+    ('12_almost_hips', 'clothed', 'topless, pulling down red panties, black-rimmed glasses and black heels still on, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'topless, pulling down red panties, black-rimmed glasses and black heels still on, around her thighs'),
     ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
-    ('15_hold', 'nude', 'nude, holding the white robe'),
+    ('15_hold', 'nude', 'nude, holding the red lingerie'),
     ('16_nude_stand', 'nude', 'standing nude'),
     ('17_nude_walk', 'nude', 'walking nude'),
     ('18_nude_sit', 'nude', 'sitting nude'),
@@ -1713,28 +1784,28 @@ run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 )
 
 code(
-    r"""# @title 20) Far strip: hot tub, bikini (20)
+    r"""# @title 20) Far strip: beach, straw hat (20)
 SHOT_START = 0
 SHOT_END = 20
-PLACE = 'indoor spa with a bubbling hot tub, stone tile, warm lamps, light steam'
-SLUG = '20_hot_tub'
-SEED_BASE = 2700
+PLACE = 'tropical beach, white sand, turquoise ocean with small waves, a rocky headland, bright blue sky, midday sun'
+SLUG = '20_beach_hat'
+SEED_BASE = 3700
 SHOTS = [
-    ('01_stand', 'clothed', 'standing, wearing a dark two-piece bikini, wet highlighted blonde hair'),
-    ('02_walk', 'clothed', 'walking, wearing a dark two-piece bikini, wet highlighted blonde hair'),
-    ('03_sit', 'clothed', 'sitting, wearing a dark two-piece bikini, wet highlighted blonde hair'),
-    ('04_shoulder', 'clothed', 'wearing a dark two-piece bikini, wet highlighted blonde hair, looking back over her shoulder at the camera'),
-    ('05_start', 'clothed', 'in the hot tub, wearing a dark two-piece bikini, untying the bikini top'),
-    ('06_loosen', 'clothed', 'in the hot tub, wearing a dark two-piece bikini, untying the bikini top, the garment loosening'),
-    ('07_mid_stand', 'clothed', 'standing, topless in the hot tub, wearing only dark bikini bottoms'),
-    ('08_mid_walk', 'clothed', 'walking, topless in the hot tub, wearing only dark bikini bottoms'),
-    ('09_mid_sit', 'clothed', 'sitting, topless in the hot tub, wearing only dark bikini bottoms'),
-    ('10_mid_shoulder', 'clothed', 'topless in the hot tub, wearing only dark bikini bottoms, looking back over her shoulder at the camera'),
-    ('11_almost_pull', 'clothed', 'topless, pulling down dark bikini bottoms at the hot tub edge'),
-    ('12_almost_hips', 'clothed', 'topless, pulling down dark bikini bottoms at the hot tub edge, pulled to her hips'),
-    ('13_almost_thighs', 'clothed', 'topless, pulling down dark bikini bottoms at the hot tub edge, around her thighs'),
+    ('01_stand', 'clothed', 'standing, wearing a dark swimsuit and holding a wide-brim straw hat with a black ribbon'),
+    ('02_walk', 'clothed', 'walking, wearing a dark swimsuit and holding a wide-brim straw hat with a black ribbon'),
+    ('03_sit', 'clothed', 'sitting, wearing a dark swimsuit and holding a wide-brim straw hat with a black ribbon'),
+    ('04_shoulder', 'clothed', 'wearing a dark swimsuit and holding a wide-brim straw hat with a black ribbon, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing on the sand, slipping off a dark swimsuit while holding a wide-brim straw hat'),
+    ('06_loosen', 'clothed', 'standing on the sand, slipping off a dark swimsuit while holding a wide-brim straw hat, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, topless, wearing swimsuit bottoms, holding a wide-brim straw hat in front of her'),
+    ('08_mid_walk', 'clothed', 'walking, topless, wearing swimsuit bottoms, holding a wide-brim straw hat in front of her'),
+    ('09_mid_sit', 'clothed', 'sitting, topless, wearing swimsuit bottoms, holding a wide-brim straw hat in front of her'),
+    ('10_mid_shoulder', 'clothed', 'topless, wearing swimsuit bottoms, holding a wide-brim straw hat in front of her, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'otherwise nude, holding a wide-brim straw hat against her body for cover'),
+    ('12_almost_hips', 'clothed', 'otherwise nude, holding a wide-brim straw hat against her body for cover, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'otherwise nude, holding a wide-brim straw hat against her body for cover, around her thighs'),
     ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
-    ('15_hold', 'nude', 'nude, holding the dark bikini'),
+    ('15_hold', 'nude', 'nude, holding the straw hat'),
     ('16_nude_stand', 'nude', 'standing nude'),
     ('17_nude_walk', 'nude', 'walking nude'),
     ('18_nude_sit', 'nude', 'sitting nude'),
@@ -1745,28 +1816,28 @@ run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 )
 
 code(
-    r"""# @title 21) Far strip: greenhouse, white dress (20)
+    r"""# @title 21) Far strip: shoreline poses, red bikini (20)
 SHOT_START = 0
 SHOT_END = 20
-PLACE = 'glass greenhouse full of green plants, soft daylight through the glass roof'
-SLUG = '21_greenhouse'
-SEED_BASE = 2800
+PLACE = 'sandy shoreline with small waves, wet sand, ocean and a rocky cliff in the distance, bright daylight'
+SLUG = '21_shore_poses'
+SEED_BASE = 3800
 SHOTS = [
-    ('01_stand', 'clothed', 'standing, wearing a light white summer dress, barefoot'),
-    ('02_walk', 'clothed', 'walking, wearing a light white summer dress, barefoot'),
-    ('03_sit', 'clothed', 'sitting, wearing a light white summer dress, barefoot'),
-    ('04_shoulder', 'clothed', 'wearing a light white summer dress, barefoot, looking back over her shoulder at the camera'),
-    ('05_start', 'clothed', 'standing among the plants, slipping a light white summer dress down'),
-    ('06_loosen', 'clothed', 'standing among the plants, slipping a light white summer dress down, the garment loosening'),
-    ('07_mid_stand', 'clothed', 'standing, wearing white lingerie, the dress off'),
-    ('08_mid_walk', 'clothed', 'walking, wearing white lingerie, the dress off'),
-    ('09_mid_sit', 'clothed', 'sitting, wearing white lingerie, the dress off'),
-    ('10_mid_shoulder', 'clothed', 'wearing white lingerie, the dress off, looking back over her shoulder at the camera'),
-    ('11_almost_pull', 'clothed', 'topless, pulling down white panties'),
-    ('12_almost_hips', 'clothed', 'topless, pulling down white panties, pulled to her hips'),
-    ('13_almost_thighs', 'clothed', 'topless, pulling down white panties, around her thighs'),
+    ('01_stand', 'clothed', 'standing, wearing a small red triangle bikini, standing at the waterline'),
+    ('02_walk', 'clothed', 'walking, wearing a small red triangle bikini, standing at the waterline'),
+    ('03_sit', 'clothed', 'sitting, wearing a small red triangle bikini, standing at the waterline'),
+    ('04_shoulder', 'clothed', 'wearing a small red triangle bikini, standing at the waterline, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing in the shallow waves in a small red triangle bikini, untying the red bikini top'),
+    ('06_loosen', 'clothed', 'standing in the shallow waves in a small red triangle bikini, untying the red bikini top, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, topless, wearing only red bikini bottoms, kneeling far back on the wet sand'),
+    ('08_mid_walk', 'clothed', 'walking, topless, wearing only red bikini bottoms, kneeling far back on the wet sand'),
+    ('09_mid_sit', 'clothed', 'sitting, topless, wearing only red bikini bottoms, kneeling far back on the wet sand'),
+    ('10_mid_shoulder', 'clothed', 'topless, wearing only red bikini bottoms, kneeling far back on the wet sand, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'topless, pulling down red bikini bottoms at the waterline'),
+    ('12_almost_hips', 'clothed', 'topless, pulling down red bikini bottoms at the waterline, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'topless, pulling down red bikini bottoms at the waterline, around her thighs'),
     ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
-    ('15_hold', 'nude', 'nude, holding the white dress'),
+    ('15_hold', 'nude', 'nude, holding the red bikini'),
     ('16_nude_stand', 'nude', 'standing nude'),
     ('17_nude_walk', 'nude', 'walking nude'),
     ('18_nude_sit', 'nude', 'sitting nude'),
@@ -1777,28 +1848,28 @@ run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 )
 
 code(
-    r"""# @title 22) Far strip: bedroom, black slip (20)
+    r"""# @title 22) Far strip: sandstone cave, camo leggings (20)
 SHOT_START = 0
 SHOT_END = 20
-PLACE = 'bedroom with a made bed, a dark headboard, warm lamps, curtains half open'
-SLUG = '22_bedroom_slip'
-SEED_BASE = 2900
+PLACE = 'shallow sandstone cave, textured light-brown rock walls, fine sand floor, soft daylight from the cave mouth'
+SLUG = '22_sandstone_cave'
+SEED_BASE = 3900
 SHOTS = [
-    ('01_stand', 'clothed', 'standing, wearing a short black slip dress, barefoot'),
-    ('02_walk', 'clothed', 'walking, wearing a short black slip dress, barefoot'),
-    ('03_sit', 'clothed', 'sitting, wearing a short black slip dress, barefoot'),
-    ('04_shoulder', 'clothed', 'wearing a short black slip dress, barefoot, looking back over her shoulder at the camera'),
-    ('05_start', 'clothed', 'standing by the bed, slipping a short black slip dress off one strap'),
-    ('06_loosen', 'clothed', 'standing by the bed, slipping a short black slip dress off one strap, the garment loosening'),
-    ('07_mid_stand', 'clothed', 'standing, wearing a black lingerie set, the slip off'),
-    ('08_mid_walk', 'clothed', 'walking, wearing a black lingerie set, the slip off'),
-    ('09_mid_sit', 'clothed', 'sitting, wearing a black lingerie set, the slip off'),
-    ('10_mid_shoulder', 'clothed', 'wearing a black lingerie set, the slip off, looking back over her shoulder at the camera'),
-    ('11_almost_pull', 'clothed', 'topless, pulling down black panties'),
-    ('12_almost_hips', 'clothed', 'topless, pulling down black panties, pulled to her hips'),
-    ('13_almost_thighs', 'clothed', 'topless, pulling down black panties, around her thighs'),
+    ('01_stand', 'clothed', 'standing, wearing a simple dark tank top and grey-green camouflage leggings, barefoot on the sand'),
+    ('02_walk', 'clothed', 'walking, wearing a simple dark tank top and grey-green camouflage leggings, barefoot on the sand'),
+    ('03_sit', 'clothed', 'sitting, wearing a simple dark tank top and grey-green camouflage leggings, barefoot on the sand'),
+    ('04_shoulder', 'clothed', 'wearing a simple dark tank top and grey-green camouflage leggings, barefoot on the sand, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing in the cave, lifting a dark tank top, camouflage leggings on'),
+    ('06_loosen', 'clothed', 'standing in the cave, lifting a dark tank top, camouflage leggings on, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, topless, wearing grey-green camouflage leggings pulled slightly down on her hips, barefoot'),
+    ('08_mid_walk', 'clothed', 'walking, topless, wearing grey-green camouflage leggings pulled slightly down on her hips, barefoot'),
+    ('09_mid_sit', 'clothed', 'sitting, topless, wearing grey-green camouflage leggings pulled slightly down on her hips, barefoot'),
+    ('10_mid_shoulder', 'clothed', 'topless, wearing grey-green camouflage leggings pulled slightly down on her hips, barefoot, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'topless, pushing camouflage leggings down her thighs in the cave'),
+    ('12_almost_hips', 'clothed', 'topless, pushing camouflage leggings down her thighs in the cave, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'topless, pushing camouflage leggings down her thighs in the cave, around her thighs'),
     ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
-    ('15_hold', 'nude', 'nude, holding the black slip'),
+    ('15_hold', 'nude', 'nude, holding the camouflage leggings'),
     ('16_nude_stand', 'nude', 'standing nude'),
     ('17_nude_walk', 'nude', 'walking nude'),
     ('18_nude_sit', 'nude', 'sitting nude'),
@@ -1807,6 +1878,168 @@ SHOTS = [
 ]
 run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 )
+
+
+code(
+    r"""# @title 23) Explicit set: bright apartment couple (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'modern bright apartment, white walls, large windows, a white bed, a light rug, daylight'
+SLUG = '23_apt_couple'
+SEED_BASE = 4000
+SHOTS = [
+    ('01_stand_panties', 'clothed', 'standing next to an adult man whose face is out of frame, she wears light-blue lace panties, topless, looking at the camera'),
+    ('02_stand_nude', 'nude', 'standing nude next to an adult man whose face is out of frame, close together, looking at the camera'),
+    ('03_hold_him', 'sex', 'standing nude, holding his erect penis with both hands, looking at the camera, an adult man whose face is out of frame'),
+    ('04_kiss_chest', 'sex', 'standing nude, kissing his chest, an adult man whose face is out of frame, daylight from large windows'),
+    ('05_bed_back', 'sex', 'lying on her back nude on the white bed, an adult man whose face is out of frame between her legs, looking at the camera'),
+    ('06_missionary', 'sex', 'missionary sex on the white bed, she looks at the camera, an adult man whose face is out of frame'),
+    ('07_oral_bed', 'sex', 'on the white bed performing oral sex, side view, an adult man whose face is out of frame, her face visible'),
+    ('08_cowgirl', 'sex', 'sitting on top of an adult man whose face is out of frame on the white bed, facing the camera, legs apart, nude'),
+    ('09_cowgirl_lean', 'sex', 'sitting on top of an adult man whose face is out of frame on the white bed, leaning forward, looking at the camera'),
+    ('10_from_behind', 'sex', 'on the white bed on all fours, an adult man whose face is out of frame behind her, she looks back at the camera'),
+    ('11_standing_sex', 'sex', 'standing sex by the window, she looks at the camera, an adult man whose face is out of frame behind her'),
+    ('12_pov_oral', 'sex', 'POV oral sex, camera from his point of view, she looks up at the camera, kneeling, nude'),
+    ('13_oral_close', 'sex', 'close-up of her face performing oral sex, looking at the camera, an adult man whose face is out of frame'),
+    ('14_kneel_ready', 'sex', 'kneeling nude on the rug, looking up, an adult man whose face is out of frame standing in front of her'),
+    ('15_facial_start', 'sex', 'kneeling nude, semen landing on her face, looking at the camera, an adult man whose face is out of frame'),
+    ('16_facial_smear', 'sex', 'close-up of her face with semen on her cheeks and lips, looking at the camera'),
+    ('17_facial_smile', 'sex', 'close-up, she smiles at the camera with semen on her face and chin'),
+    ('18_after_sit', 'nude', 'sitting nude on the white bed after sex, semen on her chest, looking at the camera'),
+    ('19_wide_bed', 'sex', 'wide shot of her and an adult man whose face is out of frame on the white bed, she is nude, daylight'),
+    ('20_face_close', 'sex', 'tight close-up of her face, highlighted blonde hair, brown eyes, semen on her lips, looking at the camera'),
+]
+run_scene_set(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
+
+code(
+    r"""# @title 24) Explicit set: tile room athletic couple (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'indoor room with light tile floor, beige walls, a dark couch with red and black pillows, a potted plant, even indoor light'
+SLUG = '24_tile_athletic'
+SEED_BASE = 4100
+SHOTS = [
+    ('01_shorts_lookback', 'clothed', 'standing, wearing a yellow sports bra and blue-and-white athletic shorts, looking back over her shoulder, an adult man whose face is out of frame behind her'),
+    ('02_lift_top', 'clothed', 'lifting off a yellow sports bra, still wearing blue-and-white athletic shorts, looking at the camera'),
+    ('03_kneel_hold', 'sex', 'kneeling on the tile floor, topless, blue shorts on, holding his erect penis, looking down, an adult man whose face is out of frame'),
+    ('04_kneel_rear', 'clothed', 'kneeling, topless, blue shorts on, an adult man whose face is out of frame hand on her hip, she looks back'),
+    ('05_topless_smile', 'clothed', 'medium shot, topless, blue shorts on, slight smile, looking at the camera'),
+    ('06_shorts_down_rear', 'sex', 'rear view, topless, blue shorts pulled down, looking back, an adult man whose face is out of frame in the foreground POV'),
+    ('07_on_lap', 'sex', 'sitting on his lap, topless, shorts down, looking back over her shoulder, an adult man whose face is out of frame'),
+    ('08_face_open', 'sex', 'close-up of her face and topless chest, mouth open, looking at the camera'),
+    ('09_oral_tongue', 'sex', 'extreme close-up, she performs oral sex, tongue out, an adult man whose face is out of frame'),
+    ('10_oral_eye_contact', 'sex', 'close-up oral sex, she looks into the camera, an adult man whose face is out of frame'),
+    ('11_profile', 'sex', 'close-up profile of her face looking toward the camera, an adult man whose face is out of frame nearby'),
+    ('12_nude_lookback', 'sex', 'full body rear, completely nude, shorts at her ankles, looking back, an adult man whose face is out of frame POV in the foreground'),
+    ('13_kneel_nude', 'sex', 'kneeling nude on the tile, looking at the camera, an adult man whose face is out of frame in front of her'),
+    ('14_facial_kneel', 'sex', 'kneeling nude, semen on her face and chest, looking at the camera, an adult man whose face is out of frame'),
+    ('15_facial_more', 'sex', 'kneeling, more semen on her face, mouth open, looking at the camera'),
+    ('16_facial_smile', 'sex', 'close-up, she smiles at the camera with semen covering her face, hands framing her chin'),
+    ('17_shorts_off', 'nude', 'standing nude, blue shorts on the floor, looking at the camera, couch behind her'),
+    ('18_couch_sit', 'sex', 'sitting nude on the dark couch, an adult man whose face is out of frame beside her, looking at the camera'),
+    ('19_wide_room', 'sex', 'wide shot of the tile room, she kneels nude, an adult man whose face is out of frame standing, plant in the background'),
+    ('20_face_end', 'sex', 'tight close-up of her face, highlighted blonde hair, brown eyes, semen on her lips, smiling'),
+]
+run_scene_set(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
+
+code(
+    r"""# @title 25) Explicit set: POV oral, bedroom (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = "bedroom, a bed with rumpled sheets, indoor light, camera often from the man's point of view"
+SLUG = '25_pov_oral'
+SEED_BASE = 4200
+SHOTS = [
+    ('01_kneel_clothed', 'clothed', 'kneeling on a bed, wearing a black tank top, POV oral sex, looking up at the camera, an adult man whose face is out of frame'),
+    ('02_side_oral', 'sex', 'side view oral sex on a bed, her face in profile, an adult man whose face is out of frame'),
+    ('03_pov_eye', 'sex', 'POV from his point of view, she performs oral sex and looks into the camera'),
+    ('04_hair_hold', 'sex', 'POV oral sex, his hand in her highlighted blonde hair, she looks up'),
+    ('05_topless_kneel', 'sex', 'kneeling topless on the bed, performing oral sex, looking at the camera, an adult man whose face is out of frame'),
+    ('06_both_hands', 'sex', 'she holds his penis with both hands near her mouth, looking at the camera, an adult man whose face is out of frame'),
+    ('07_close_mouth', 'sex', 'close-up of her mouth on his penis, her brown eyes looking up, an adult man whose face is out of frame'),
+    ('08_outdoor_pov', 'sex', 'outdoor POV oral sex on a lounge chair, she looks up at the camera, an adult man whose face is out of frame'),
+    ('09_couch_lean', 'sex', 'leaning over a couch, performing oral sex, looking at the camera, an adult man whose face is out of frame'),
+    ('10_smile_hold', 'sex', 'she smiles at the camera while holding his penis, kneeling, an adult man whose face is out of frame'),
+    ('11_deep', 'sex', 'POV oral sex, closer to her face, she looks up, an adult man whose face is out of frame'),
+    ('12_nude_kneel', 'sex', 'kneeling fully nude, performing oral sex, looking at the camera, an adult man whose face is out of frame'),
+    ('13_profile_open', 'sex', 'profile close-up, her mouth open next to his penis, an adult man whose face is out of frame'),
+    ('14_two_hands_stroke', 'sex', 'lying on her stomach on the bed, stroking him with both hands, smiling at the camera, an adult man whose face is out of frame'),
+    ('15_facial_pov', 'sex', 'POV, semen on her lips, she looks up at the camera, an adult man whose face is out of frame'),
+    ('16_cheek', 'sex', 'close-up, semen on her cheek and mouth, looking at the camera'),
+    ('17_tongue', 'sex', 'close-up, tongue out, semen on her tongue, looking at the camera'),
+    ('18_after_sit', 'nude', 'sitting on the bed after, wiping her mouth, looking at the camera'),
+    ('19_wide_bed', 'sex', 'wider bedroom shot, she kneels nude on the bed, an adult man whose face is out of frame in front of her'),
+    ('20_face_end', 'sex', 'tight close-up of her face, highlighted blonde hair, brown eyes, looking at the camera'),
+]
+run_scene_set(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
+
+code(
+    r"""# @title 26) Explicit set: webcam ring-light POV (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'amateur bedroom, white bed, a black ring light on a stand, a large mirror, warm direct light'
+SLUG = '26_webcam_ring'
+SEED_BASE = 4300
+SHOTS = [
+    ('01_crop_smile', 'clothed', 'lying on a white bed, wearing a black long-sleeve crop top and a black thong, smiling at the camera, ring light behind her, an adult man whose face is out of frame POV'),
+    ('02_two_hands', 'sex', 'on the white bed in a black crop top and black thong, stroking him with both hands, smiling, ring light, an adult man whose face is out of frame POV'),
+    ('03_oral_webcam', 'sex', 'webcam POV oral sex on the white bed, ring light and a mirror in the background, she looks at the camera'),
+    ('04_thong_look', 'sex', 'on her stomach, black thong, looking at the camera while holding him, an adult man whose face is out of frame POV'),
+    ('05_top_off', 'sex', 'crop top off, black thong on, kneeling on the white bed, looking at the camera, ring light'),
+    ('06_nude_stroke', 'sex', 'nude on the white bed, stroking him, smiling at the camera, ring light, an adult man whose face is out of frame POV'),
+    ('07_oral_close', 'sex', 'close-up oral sex, ring light bokeh behind her, she looks up'),
+    ('08_mirror', 'sex', 'shot that includes the mirror, she performs oral sex on the bed, ring light visible'),
+    ('09_from_above', 'sex', 'high angle, she kneels on the white bed performing oral sex, looking up, an adult man whose face is out of frame'),
+    ('10_side_bed', 'sex', 'side of the bed, she performs oral sex, amateur bedroom light, an adult man whose face is out of frame'),
+    ('11_thong_off', 'nude', 'taking off the black thong on the white bed, looking at the camera, ring light'),
+    ('12_all_fours', 'sex', 'on all fours on the white bed, looking at the camera, an adult man whose face is out of frame behind her'),
+    ('13_cowgirl_cam', 'sex', 'sitting on an adult man whose face is out of frame on the white bed, facing the webcam, ring light'),
+    ('14_facial_bed', 'sex', 'kneeling on the white bed, semen on her face, smiling, ring light, an adult man whose face is out of frame'),
+    ('15_facial_close', 'sex', 'close-up, semen on her face, ring light glow, looking at the camera'),
+    ('16_laugh', 'sex', 'she laughs at the camera with semen on her chin, white bed, ring light'),
+    ('17_wipe', 'sex', 'wiping semen with her fingers, looking at the camera, white bed'),
+    ('18_lie_after', 'nude', 'lying on the white bed nude after, looking at the camera, ring light still on'),
+    ('19_wide_room', 'sex', 'wide amateur bedroom, white bed, ring light stand, mirror, she kneels nude, an adult man whose face is out of frame'),
+    ('20_face_end', 'sex', 'tight close-up of her face, highlighted blonde hair, brown eyes, looking at the camera'),
+]
+run_scene_set(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
+
+code(
+    r"""# @title 27) Explicit set: facial close-ups (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'simple indoor close-up, mostly her face, dark or plain background, bright directional light'
+SLUG = '27_facial_close'
+SEED_BASE = 4400
+SHOTS = [
+    ('01_clean_close', 'nude', 'tight close-up portrait, looking at the camera, no extra people'),
+    ('02_mouth_open', 'sex', 'close-up, mouth open, looking up, an adult man whose face is out of frame just out of focus'),
+    ('03_tongue', 'sex', 'close-up, tongue out, looking at the camera'),
+    ('04_penis_near', 'sex', 'close-up of her face next to his erect penis, looking at the camera, an adult man whose face is out of frame'),
+    ('05_first_drop', 'sex', 'close-up, first drop of semen on her lips, looking at the camera'),
+    ('06_cheek', 'sex', 'close-up, semen on her cheek and jaw, looking at the camera'),
+    ('07_forehead', 'sex', 'close-up, semen on her forehead and nose, looking at the camera'),
+    ('08_mouth', 'sex', 'close-up, semen in and around her mouth, looking at the camera'),
+    ('09_eyes_closed', 'sex', 'close-up, eyes closed, semen on her face, head tilted back'),
+    ('10_smile', 'sex', 'close-up, she smiles with semen on her face, looking at the camera'),
+    ('11_high_angle', 'sex', 'high angle looking down at her face, semen on her face, looking up'),
+    ('12_both_hands', 'sex', 'close-up, her hands near her face, semen on fingers and lips'),
+    ('13_heavy', 'sex', 'close-up, face heavily covered in semen, looking at the camera'),
+    ('14_profile', 'sex', 'profile close-up, semen on her cheek and mouth, dark background'),
+    ('15_tongue_out', 'sex', 'close-up, tongue out with semen, brown eyes looking at the camera'),
+    ('16_after_drip', 'sex', 'close-up, semen dripping from her chin, looking at the camera'),
+    ('17_hair', 'sex', 'close-up, highlighted blonde hair messy, semen on her lips, looking at the camera'),
+    ('18_soft_smile', 'sex', 'close-up, softer light, semen on her face, slight smile'),
+    ('19_wipe_lip', 'sex', 'close-up, wiping her lip with a thumb, semen still on her face'),
+    ('20_final', 'sex', 'tight close-up of her face, highlighted blonde hair, brown eyes, semen on her lips, looking at the camera'),
+]
+run_scene_set(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
+
 
 md(
     """## Done
@@ -1814,26 +2047,30 @@ md(
 Locked production LoRA:
 `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 
-Run ONE far-strip cell at a time (20 pictures, about 15-30 min). Keep the tab open.
+Run ONE series cell at a time (20 pictures, about 15-30 min). Keep the tab open.
 
-Cells 13-22 write to:
+Cells 13-22 (far strip) write to:
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/strip_*/`
+
+Cells 23-27 (explicit couple / POV / facial) write to:
+`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/scene_*/`
 
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
 
 Do not write "no scars" in prompts. Flux will draw them.
 Do not train on generated pictures. Do not retrain.
+Two-person shots often glitch on Flux. Change SEED_BASE and rerun that cell.
 
 Also locked:
 `loras/lapetitemilf_flux.safetensors` (v1)
 `loras/lapetitemilf_face.safetensors`
 
 ### Make more pictures
-1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then ONE of cells 13-22.
-2. Cell 10: identity / lingerie / nude. Cell 12: mixed outdoor nudes.
-3. Each of 13-22 is one place, far camera, 20-shot strip. If it dies, set SHOT_START and rerun that cell.
-4. Nude recipe: LoRA 0.75, guidance 2.5. No scar words.
+1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then ONE of cells 13-27.
+2. Cells 13-22: far camera strip. Cells 23-27: explicit couple / POV / facial sets.
+3. If it dies, set SHOT_START and rerun that cell.
+4. Nude/sex recipe: LoRA about 0.7, guidance 2.5. No scar words.
 5. Adult content only. Do not train on generated pictures.
 
 ### If the runtime dies
