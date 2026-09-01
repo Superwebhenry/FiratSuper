@@ -1,29 +1,18 @@
 # Next: generate with locked Flux v2
 
-Training is done. User (2026-08-31): v2 is a hit. Do **not** retrain.
+Training is done. User likes v2. Do **not** retrain.
 
 Locked file: `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 
 ## Make pictures (Colab A100)
 
-Open (reopen the GitHub link if you need the locked notebook):
+Each of cells **13-22** is one series: same place, far camera, 20-shot gradual undress. Run one cell at a time.
 
-https://colab.research.google.com/github/Superwebhenry/FiratSuper/blob/cursor/sd-lora-colab-34fe/notebooks/Flux_LoRA_Training_Colab.ipynb
+User may send replacement series ideas; swap that cell only.
 
-1. A100 GPU. One Google account. Allow ALL.
-2. Cells **1, 2, 3**. New runtime: also **4**. Then **10**.
-3. Do **not** run cells 5-9 (training is locked).
-4. Cell 10: `MODE` = `identity` / `lingerie` / `nude` / `all`. Change `SEED` for new frames.
-5. Cell 12: 20 outdoor nude styles of her (forest, meadow, rocks, path, bench). Not copies of stock photos. Test `END=3` first.
-6. Cell 13: **10 series x 10 shots**. Same place inside a series; pose / angle / distance change. Default runs series 0 only (outdoor shower, 10 pictures). Next: `SERIES_START = 1`, `SERIES_END = 2`. All 100: `SERIES_END = 10` (keep the tab open).
-7. Cell 14: **50 far shots**. Camera stays far. Series 0 = swimsuit strip at the pool (25). Series 1 = evening gown, then black lingerie, then nude (25). Default runs series 0 only. Then `SERIES_START = 1`, `SERIES_END = 2`.
-8. Nude: LoRA **0.75**, guidance **2.5**. No "no scars". Optional cell 11 refine.
-9. Copy keepers to `MyDrive/FiratSuper/keepers/`.
-
-If the tab is still open from training, just run cell 10.
-
-## Later (optional)
-
-ComfyUI: Flux.1 [dev] checkpoint + `lapetitemilf_flux_v2.safetensors`, trigger `ohwx woman`. Do not load SD 1.5 LoRAs on Flux.
-
-Do not feed generated images back into a dataset.
+1. A100. Cells 1, 2, 3. New runtime: also 4. Skip 5-9.
+2. Then **one** of 13-22 (~15-30 min, keep the tab open).
+3. If it dies: set `SHOT_START` in that cell and rerun.
+4. Cell 10 = identity/lingerie/nude. Cell 12 = mixed outdoor nudes.
+5. Nude: LoRA 0.75, guidance 2.5. No "no scars".
+6. Copy keepers to `keepers/`. Do not train on gens.

@@ -48,7 +48,7 @@ High RAM can stay off.
 **Locked LoRA (do not overwrite):** `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. Do not run cells 5-9.
 
-**Generate path:** cells 1, 2, 3, then 10, 12, 13, or 14. If this is a new runtime, also run cell 4 (install only). Cell 11 is optional refine.
+**Generate path:** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22). Skip 5-9. Cell 11 is optional refine. Cell 12 is mixed outdoor nudes.
 
 **Trigger:** `ohwx woman`. Do not write "no scars" in prompts. Adult subject only.
 
@@ -61,8 +61,16 @@ Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. D
 10. Generate and SHOW pictures (identity + lingerie + nude, no filter)
 11. Refine a keeper (img2img, keep frontal)
 12. 20 outdoor nude styles (forest, meadow, rocks, path, bench)
-13. 10 series x 10 shots (same place, new pose / angle / distance)
-14. 50 far shots: swimsuit strip (25) then evening-gown strip (25)
+13. Far strip: pool, dark bikini (20)
+14. Far strip: hotel, evening gown to black lingerie (20)
+15. Far strip: outdoor shower, towel (20)
+16. Far strip: beach, bikini (20)
+17. Far strip: forest, white sundress (20)
+18. Far strip: apartment, shirt to plaid lingerie (20)
+19. Far strip: bathtub, white robe (20)
+20. Far strip: hot tub, bikini (20)
+21. Far strip: greenhouse, white dress (20)
+22. Far strip: bedroom, black slip (20)
 
 ## Drive layout
 ```
@@ -376,7 +384,161 @@ print("LoRA out:", os.path.join(LORAS_DIR, OUTPUT_LORA_NAME))
 print("Free disk: %.1f GB" % free_gb)
 if free_gb < 40:
     raise RuntimeError("Need ~40 GB free for Flux.1-dev. Have %.1f GB." % free_gb)
-print("Drive settings OK.")"""
+
+
+def _purge_old_torchao():
+    import sys
+    import subprocess
+    import importlib
+    try:
+        from importlib.metadata import version
+        ver = version("torchao")
+    except Exception:
+        print("torchao not installed")
+        return
+    print("torchao", ver)
+    nums = []
+    for part in ver.split("."):
+        digits = "".join(ch for ch in part if ch.isdigit())
+        if digits:
+            nums.append(int(digits))
+    while len(nums) < 3:
+        nums.append(0)
+    if tuple(nums[:3]) >= (0, 16, 0):
+        return
+    print("peft needs torchao>=0.16 to load Flux LoRA. Uninstalling", ver)
+    subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "torchao"])
+    for key in list(sys.modules):
+        if key == "torchao" or key.startswith("torchao.") or key.startswith("peft.tuners.lora.torchao"):
+            del sys.modules[key]
+    if "peft.import_utils" in sys.modules:
+        importlib.reload(sys.modules["peft.import_utils"])
+    print("old torchao removed")
+
+
+def ensure_flux_pipe():
+    global pipe
+    import gc
+    import os
+    import torch
+    need_load = True
+    if "pipe" in globals() and pipe is not None:
+        if type(pipe).__name__ == "FluxPipeline":
+            need_load = False
+            print("Using Flux txt2img already in memory.")
+        else:
+            print("In-memory pipe is", type(pipe).__name__, "- loading txt2img.")
+    if not need_load:
+        return pipe
+    lora_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+    if not os.path.isfile(lora_path):
+        local_final = os.path.join(TRAIN_OUTPUT_DIR, LORA_NAME, OUTPUT_LORA_NAME)
+        if os.path.isfile(local_final):
+            lora_path = local_final
+    if not os.path.isfile(lora_path):
+        raise RuntimeError("LoRA not found: " + lora_path)
+    gc.collect()
+    torch.cuda.empty_cache()
+    _purge_old_torchao()
+    from diffusers import FluxPipeline
+    print("Loading FLUX.1-dev + LoRA (no safety checker)...")
+    print("LoRA file:", lora_path)
+    loaded = FluxPipeline.from_pretrained(
+        "black-forest-labs/FLUX.1-dev",
+        torch_dtype=torch.bfloat16,
+        token=os.environ.get("HF_TOKEN"),
+    )
+    if getattr(loaded, "safety_checker", None) is not None:
+        loaded.safety_checker = None
+    if hasattr(loaded, "requires_safety_checker"):
+        loaded.requires_safety_checker = False
+    if getattr(loaded, "watermarker", None) is not None:
+        loaded.watermarker = None
+    try:
+        loaded.load_lora_weights(lora_path)
+    except ImportError as err:
+        print("load_lora_weights ImportError:", err)
+        _purge_old_torchao()
+        loaded.load_lora_weights(lora_path)
+    try:
+        loaded.unfuse_lora()
+    except Exception:
+        pass
+    loaded.enable_model_cpu_offload()
+    pipe = loaded
+    print("LoRA loaded.")
+    return pipe
+
+
+def run_far_strip(slug, place, shots, seed_base, shot_start=0, shot_end=20):
+    import os
+    import torch
+    from datetime import datetime
+    from IPython.display import display
+    if not SUBJECT_IS_ADULT:
+        raise RuntimeError("Adult subject only.")
+    if len(shots) != 20:
+        raise RuntimeError("Need 20 shots in this series. Got %d" % len(shots))
+    if shot_start < 0 or shot_end > 20 or shot_start >= shot_end:
+        raise RuntimeError("SHOT_START/END must be inside 0..20 and START < END")
+    ensure_flux_pipe()
+    far = (
+        "full body from a far camera, she is small in the frame, "
+        "the location fills most of the shot"
+    )
+    ident = (
+        "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
+    )
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    out_dir = os.path.join(EVAL_DIR, "strip_" + slug + "_" + stamp)
+    os.makedirs(out_dir, exist_ok=True)
+    print("Series", slug)
+    print("Shots", shot_start, "to", shot_end, "->", out_dir)
+    print("Do not write scars or surgical in these prompts.")
+    print("Keep this tab open.")
+    saved = []
+    for pidx in range(shot_start, shot_end):
+        shot_slug, kind, action = shots[pidx]
+        if kind == "nude":
+            weight = 0.75
+            guidance = 2.5
+        else:
+            weight = 1.0
+            guidance = 3.5
+        try:
+            pipe.set_adapters(["default"], adapter_weights=[weight])
+        except Exception as err:
+            print("set_adapters:", err)
+        seed = seed_base + pidx
+        prompt = (
+            ident + far + ", " + action + ". " + place +
+            ", photorealistic raw photo, natural skin texture"
+        )
+        print("---", shot_slug, "seed", seed, kind)
+        print(prompt)
+        image = pipe(
+            prompt=prompt,
+            guidance_scale=guidance,
+            height=1024,
+            width=768,
+            num_inference_steps=32,
+            generator=torch.Generator("cuda").manual_seed(seed),
+        ).images[0]
+        path = os.path.join(out_dir, "%s_seed%d.png" % (shot_slug, seed))
+        image.save(path)
+        saved.append(path)
+        print("saved", path)
+        display(image)
+    print("Saved", len(saved), "pictures in", out_dir)
+    if USE_DRIVE_API:
+        for path in saved:
+            upload_project_file(path, os.path.relpath(path, ROOT))
+    print("If it stopped early, set SHOT_START to the next index and rerun this cell.")
+    print("Copy keepers to MyDrive/FiratSuper/keepers/")
+    print("Do not put these pictures back into the training folders.")
+
+
+print("Drive settings OK. Far-strip helper ready for cells 13-22.")"""
 )
 
 code(
@@ -1327,500 +1489,323 @@ print("Do not put these pictures back into the training folders.")"""
 )
 
 code(
-    r"""# @title 13) 10 series x 10 shots (100 pictures)
-import os
-import gc
-import sys
-import subprocess
-import importlib
-import torch
-from datetime import datetime
-from IPython.display import display
-
-# One series = one place. 10 shots = new pose / angle / distance.
-# Run ONE series at a time (10 pictures). Then raise SERIES_START.
-# All 100: SERIES_START = 0 and SERIES_END = 10 (keep the tab open, ~1-2 hours).
-# If it dies mid-series, set SHOT_START to the next index.
-SERIES_START = 0
-SERIES_END = 1
+    r"""# @title 13) Far strip: pool, dark bikini (20)
 SHOT_START = 0
-SHOT_END = 10
-SEED = 900
-STEPS = 32
-
-ID = (
-    "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
-)
-
-POSES = [
-    ("01_full_front", 768, 1024, "full body standing, facing the camera"),
-    ("02_three_quarter", 768, 1024, "full body standing, three-quarter view, looking at the camera"),
-    ("03_over_shoulder", 768, 1024, "full body standing in profile, looking back over her shoulder at the camera"),
-    ("04_waist_up", 768, 1024, "waist-up, facing the camera"),
-    ("05_close_portrait", 768, 1024, "close-up portrait of her face and shoulders, looking at the camera"),
-    ("06_sit", 768, 1024, "sitting, looking at the camera"),
-    ("07_lean", 768, 1024, "leaning in this location, looking at the camera"),
-    ("08_high_angle", 768, 1024, "shot from a slightly high angle looking down"),
-    ("09_side", 768, 1024, "side view, her face turned toward the camera"),
-    ("10_wide", 768, 1024, "full body from farther away so more of the location is visible"),
+SHOT_END = 20
+PLACE = 'private backyard pool, pale stone deck, a sun lounger, bright daylight'
+SLUG = '13_pool_bikini'
+SEED_BASE = 2000
+SHOTS = [
+    ('01_stand', 'clothed', 'standing, wearing a dark two-piece bikini'),
+    ('02_walk', 'clothed', 'walking, wearing a dark two-piece bikini'),
+    ('03_sit', 'clothed', 'sitting, wearing a dark two-piece bikini'),
+    ('04_shoulder', 'clothed', 'wearing a dark two-piece bikini, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing, wearing a dark two-piece bikini, untying the bikini top'),
+    ('06_loosen', 'clothed', 'standing, wearing a dark two-piece bikini, untying the bikini top, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, topless, wearing only dark bikini bottoms'),
+    ('08_mid_walk', 'clothed', 'walking, topless, wearing only dark bikini bottoms'),
+    ('09_mid_sit', 'clothed', 'sitting, topless, wearing only dark bikini bottoms'),
+    ('10_mid_shoulder', 'clothed', 'topless, wearing only dark bikini bottoms, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'topless, pulling down dark bikini bottoms'),
+    ('12_almost_hips', 'clothed', 'topless, pulling down dark bikini bottoms, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'topless, pulling down dark bikini bottoms, around her thighs'),
+    ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
+    ('15_hold', 'nude', 'nude, holding the dark bikini'),
+    ('16_nude_stand', 'nude', 'standing nude'),
+    ('17_nude_walk', 'nude', 'walking nude'),
+    ('18_nude_sit', 'nude', 'sitting nude'),
+    ('19_nude_shoulder', 'nude', 'nude, looking back over her shoulder at the camera'),
+    ('20_nude_farther', 'nude', 'standing nude, camera even farther back'),
 ]
-
-# (slug, kind, place, body)
-# kind: nude -> LoRA 0.75 guidance 2.5 ; lingerie -> LoRA 1.0 guidance 3.5
-SERIES = [
-    (
-        "01_outdoor_shower",
-        "nude",
-        "outdoor shower, dark stacked-stone wall, white outdoor stairs with a metal rail, a shower head pouring water, green plants, bright daylight",
-        "nude, wet skin, wet highlighted blonde hair, water falling over her",
-    ),
-    (
-        "02_plaid_apartment",
-        "lingerie",
-        "classic apartment with herringbone wood parquet, a tall dark antique wardrobe, a leather pouf, a wooden chest, large white-framed windows, soft daylight",
-        "wearing a red and black plaid lingerie set, barefoot",
-    ),
-    (
-        "03_green_forest",
-        "nude",
-        "green forest with tree trunks and leafy ground, dappled sunlight through the trees",
-        "nude, standing among the trees",
-    ),
-    (
-        "04_golden_field",
-        "nude",
-        "open field of dry golden grass, warm late-afternoon sunlight, big sky",
-        "nude in the tall grass",
-    ),
-    (
-        "05_white_bathtub",
-        "nude",
-        "indoor bathroom with a white bathtub, a gold-frame mirror, tile floor, even indoor light",
-        "nude",
-    ),
-    (
-        "06_hotel_window",
-        "lingerie",
-        "hotel bedroom with a wide window, sheer curtains, a made bed with white sheets, soft daylight",
-        "wearing black lace lingerie, barefoot",
-    ),
-    (
-        "07_hot_tub",
-        "nude",
-        "indoor spa with a bubbling hot tub, stone tile, warm lamps, light steam",
-        "nude, wet highlighted blonde hair",
-    ),
-    (
-        "08_sandy_beach",
-        "nude",
-        "sandy beach at the ocean, bright daylight, blue water behind her",
-        "nude on the sand",
-    ),
-    (
-        "09_private_pool",
-        "nude",
-        "private backyard pool, sun lounger, pale stone deck, bright daylight",
-        "nude by the pool",
-    ),
-    (
-        "10_glass_greenhouse",
-        "lingerie",
-        "glass greenhouse full of green plants, soft daylight through the glass roof",
-        "wearing a white lace lingerie set, barefoot",
-    ),
-]
-
-if not SUBJECT_IS_ADULT:
-    raise RuntimeError("Adult subject only.")
-if len(POSES) != 10 or len(SERIES) != 10:
-    raise RuntimeError("Need 10 series and 10 poses.")
-if SERIES_START < 0 or SERIES_END > len(SERIES) or SERIES_START >= SERIES_END:
-    raise RuntimeError("SERIES_START/END must be inside 0..10 and START < END")
-if SHOT_START < 0 or SHOT_END > len(POSES) or SHOT_START >= SHOT_END:
-    raise RuntimeError("SHOT_START/END must be inside 0..10 and START < END")
-
-print("Series", SERIES_START, "to", SERIES_END, "(10 series total).")
-print("Shots", SHOT_START, "to", SHOT_END, "in each series.")
-print("Do not write scars or surgical in these prompts.")
-print("Keep this tab open.")
-
-
-def _purge_old_torchao():
-    try:
-        from importlib.metadata import version
-        ver = version("torchao")
-    except Exception:
-        print("torchao not installed")
-        return
-    print("torchao", ver)
-    nums = []
-    for part in ver.split("."):
-        digits = "".join(ch for ch in part if ch.isdigit())
-        if digits:
-            nums.append(int(digits))
-    while len(nums) < 3:
-        nums.append(0)
-    if tuple(nums[:3]) >= (0, 16, 0):
-        return
-    print("peft needs torchao>=0.16 to load Flux LoRA. Uninstalling", ver)
-    subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "torchao"])
-    for key in list(sys.modules):
-        if key == "torchao" or key.startswith("torchao.") or key.startswith("peft.tuners.lora.torchao"):
-            del sys.modules[key]
-    if "peft.import_utils" in sys.modules:
-        importlib.reload(sys.modules["peft.import_utils"])
-    print("old torchao removed")
-
-
-def _load_txt2img():
-    global pipe
-    lora_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
-    if not os.path.isfile(lora_path):
-        local_final = os.path.join(TRAIN_OUTPUT_DIR, LORA_NAME, OUTPUT_LORA_NAME)
-        if os.path.isfile(local_final):
-            lora_path = local_final
-    if not os.path.isfile(lora_path):
-        raise RuntimeError("LoRA not found: " + lora_path)
-    gc.collect()
-    torch.cuda.empty_cache()
-    _purge_old_torchao()
-    from diffusers import FluxPipeline
-    print("Loading FLUX.1-dev + LoRA (no safety checker)...")
-    print("LoRA file:", lora_path)
-    loaded = FluxPipeline.from_pretrained(
-        "black-forest-labs/FLUX.1-dev",
-        torch_dtype=torch.bfloat16,
-        token=os.environ.get("HF_TOKEN"),
-    )
-    if getattr(loaded, "safety_checker", None) is not None:
-        loaded.safety_checker = None
-    if hasattr(loaded, "requires_safety_checker"):
-        loaded.requires_safety_checker = False
-    if getattr(loaded, "watermarker", None) is not None:
-        loaded.watermarker = None
-    try:
-        loaded.load_lora_weights(lora_path)
-    except ImportError as err:
-        print("load_lora_weights ImportError:", err)
-        _purge_old_torchao()
-        loaded.load_lora_weights(lora_path)
-    try:
-        loaded.unfuse_lora()
-    except Exception:
-        pass
-    loaded.enable_model_cpu_offload()
-    pipe = loaded
-    print("LoRA loaded.")
-
-
-need_load = True
-if "pipe" in globals() and pipe is not None:
-    if type(pipe).__name__ == "FluxPipeline":
-        need_load = False
-        print("Using Flux txt2img already in memory.")
-    else:
-        print("In-memory pipe is", type(pipe).__name__, "- loading txt2img.")
-if need_load:
-    _load_txt2img()
-
-stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-root_out = os.path.join(EVAL_DIR, "series_" + stamp)
-os.makedirs(root_out, exist_ok=True)
-saved = []
-
-for sidx in range(SERIES_START, SERIES_END):
-    slug, kind, place, body = SERIES[sidx]
-    if kind == "nude":
-        weight = 0.75
-        guidance = 2.5
-    else:
-        weight = 1.0
-        guidance = 3.5
-    try:
-        pipe.set_adapters(["default"], adapter_weights=[weight])
-    except Exception as err:
-        print("set_adapters:", err)
-    series_dir = os.path.join(root_out, slug)
-    os.makedirs(series_dir, exist_ok=True)
-    print("==== series", sidx + 1, slug, kind, "====")
-    for pidx in range(SHOT_START, SHOT_END):
-        pose_slug, width, height, pose_text = POSES[pidx]
-        seed = SEED + sidx * 10 + pidx
-        prompt = (
-            ID + pose_text + ", " + body + ". " + place +
-            ", photorealistic raw photo, natural skin texture"
-        )
-        print("---", slug, pose_slug, "seed", seed)
-        print(prompt)
-        image = pipe(
-            prompt=prompt,
-            guidance_scale=guidance,
-            height=height,
-            width=width,
-            num_inference_steps=STEPS,
-            generator=torch.Generator("cuda").manual_seed(seed),
-        ).images[0]
-        fname = "%s_seed%d.png" % (pose_slug, seed)
-        path = os.path.join(series_dir, fname)
-        image.save(path)
-        saved.append(path)
-        print("saved", path)
-        display(image)
-
-print("Saved", len(saved), "pictures in", root_out)
-if USE_DRIVE_API:
-    for path in saved:
-        upload_project_file(path, os.path.relpath(path, ROOT))
-print("Next series: set SERIES_START =", SERIES_END, "and SERIES_END =", min(10, SERIES_END + 1))
-print("Copy keepers to MyDrive/FiratSuper/keepers/")
-print("Do not put these pictures back into the training folders.")"""
+run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 )
 
 code(
-    r"""# @title 14) 50 far shots: swimsuit strip + evening gown strip
-import os
-import gc
-import sys
-import subprocess
-import importlib
-import torch
-from datetime import datetime
-from IPython.display import display
-
-# Two series, 25 far full-body shots each (50 total).
-# Camera stays FAR. No close-ups. Same place inside a series.
-# Default runs series 0 only (swimsuit, 25 pictures). Then series 1 (gown).
-# All 50: SERIES_START = 0 and SERIES_END = 2. Keep the tab open.
-SERIES_START = 0
-SERIES_END = 1
+    r"""# @title 14) Far strip: hotel, evening gown (20)
 SHOT_START = 0
-SHOT_END = 25
-SEED = 1200
-STEPS = 32
-WIDTH = 768
-HEIGHT = 1024
-
-FAR = (
-    "full body from a far camera, she is small in the frame, "
-    "the location fills most of the shot"
-)
-ID = (
-    "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
-)
-
-SWIM_PLACE = (
-    "private backyard pool, pale stone deck, a sun lounger, bright daylight"
-)
-GOWN_PLACE = (
-    "large hotel suite in the evening, tall windows, a sofa, warm lamps, polished floor"
-)
-
-# (slug, kind, action)  kind nude -> LoRA 0.75 g 2.5 ; else LoRA 1.0 g 3.5
-SWIM_SHOTS = [
-    ("01_bikini_stand", "clothed", "standing, wearing a dark two-piece bikini"),
-    ("02_bikini_walk", "clothed", "walking along the deck, wearing a dark two-piece bikini"),
-    ("03_bikini_sit", "clothed", "sitting on the sun lounger, wearing a dark two-piece bikini"),
-    ("04_bikini_pool_edge", "clothed", "standing at the pool edge, wearing a dark two-piece bikini"),
-    ("05_untie_top", "clothed", "standing, wearing a dark two-piece bikini, untying the bikini top"),
-    ("06_strap_down", "clothed", "standing, wearing a dark two-piece bikini, one bikini strap down"),
-    ("07_top_in_hand", "clothed", "topless, holding the bikini top, still wearing dark bikini bottoms"),
-    ("08_topless_stand", "clothed", "topless, wearing only dark bikini bottoms, standing"),
-    ("09_topless_sit", "clothed", "topless, wearing only dark bikini bottoms, sitting on the sun lounger"),
-    ("10_topless_walk", "clothed", "topless, wearing only dark bikini bottoms, walking along the deck"),
-    ("11_thumbs_waist", "clothed", "topless, wearing dark bikini bottoms, thumbs in the waistband pulling down"),
-    ("12_bottoms_hips", "clothed", "topless, dark bikini bottoms pulled down to her hips"),
-    ("13_bottoms_thighs", "clothed", "topless, dark bikini bottoms around her thighs"),
-    ("14_step_out", "clothed", "stepping out of dark bikini bottoms, otherwise nude"),
-    ("15_holding_suit", "nude", "nude, holding the dark bikini in one hand"),
-    ("16_nude_pool_edge", "nude", "standing nude at the pool edge"),
-    ("17_nude_lounger", "nude", "sitting nude on the sun lounger"),
-    ("18_nude_walk", "nude", "walking nude along the deck"),
-    ("19_nude_shallow", "nude", "standing nude in the shallow end of the pool"),
-    ("20_nude_lean", "nude", "leaning nude near the pool"),
-    ("21_nude_side", "nude", "nude, side view, face turned toward the camera"),
-    ("22_nude_shoulder", "nude", "nude, looking back over her shoulder at the camera"),
-    ("23_nude_sit_edge", "nude", "sitting nude on the pool edge with her legs toward the water"),
-    ("24_nude_farther", "nude", "standing nude, camera even farther back"),
-    ("25_nude_back", "nude", "nude, standing with her back partly to the camera, looking back"),
+SHOT_END = 20
+PLACE = 'large hotel suite in the evening, tall windows, a sofa, warm lamps, polished floor'
+SLUG = '14_hotel_gown'
+SEED_BASE = 2100
+SHOTS = [
+    ('01_stand', 'clothed', 'standing, wearing a long black evening gown'),
+    ('02_walk', 'clothed', 'walking, wearing a long black evening gown'),
+    ('03_sit', 'clothed', 'sitting, wearing a long black evening gown'),
+    ('04_shoulder', 'clothed', 'wearing a long black evening gown, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing, wearing a long black evening gown, unzipping the back'),
+    ('06_loosen', 'clothed', 'standing, wearing a long black evening gown, unzipping the back, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, wearing a black bra and black panties, the gown off'),
+    ('08_mid_walk', 'clothed', 'walking, wearing a black bra and black panties, the gown off'),
+    ('09_mid_sit', 'clothed', 'sitting, wearing a black bra and black panties, the gown off'),
+    ('10_mid_shoulder', 'clothed', 'wearing a black bra and black panties, the gown off, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'topless, pulling down black panties'),
+    ('12_almost_hips', 'clothed', 'topless, pulling down black panties, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'topless, pulling down black panties, around her thighs'),
+    ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
+    ('15_hold', 'nude', 'nude, holding the black evening gown'),
+    ('16_nude_stand', 'nude', 'standing nude'),
+    ('17_nude_walk', 'nude', 'walking nude'),
+    ('18_nude_sit', 'nude', 'sitting nude'),
+    ('19_nude_shoulder', 'nude', 'nude, looking back over her shoulder at the camera'),
+    ('20_nude_farther', 'nude', 'standing nude, camera even farther back'),
 ]
+run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
 
-GOWN_SHOTS = [
-    ("01_gown_stand", "clothed", "standing, wearing a long black evening gown"),
-    ("02_gown_walk", "clothed", "walking, wearing a long black evening gown"),
-    ("03_gown_shoulder", "clothed", "wearing a long black evening gown, looking back over her shoulder"),
-    ("04_gown_sit", "clothed", "sitting on the sofa, wearing a long black evening gown"),
-    ("05_gown_unzip", "clothed", "standing, wearing a long black evening gown, unzipping the back"),
-    ("06_gown_strap", "clothed", "wearing a long black evening gown with one strap down"),
-    ("07_gown_slip", "clothed", "the long black evening gown slipping down, black lingerie starting to show"),
-    ("08_gown_waist", "clothed", "the long black evening gown around her waist, wearing a black lingerie set"),
-    ("09_step_from_gown", "clothed", "stepping out of the long black evening gown, wearing a black lingerie set"),
-    ("10_lingerie_hold_gown", "clothed", "wearing a black lingerie set, holding the evening gown"),
-    ("11_lingerie_stand", "clothed", "standing, wearing a black bra and black panties"),
-    ("12_lingerie_walk", "clothed", "walking, wearing a black bra and black panties"),
-    ("13_lingerie_sit", "clothed", "sitting on the sofa, wearing a black bra and black panties"),
-    ("14_unhook_bra", "clothed", "wearing black panties, unhooking a black bra"),
-    ("15_bra_off", "clothed", "topless, wearing only black panties, holding the bra"),
-    ("16_panties_stand", "clothed", "topless, wearing only black panties, standing"),
-    ("17_panties_pull", "clothed", "topless, pulling down black panties"),
-    ("18_panties_thighs", "clothed", "topless, black panties around her thighs"),
-    ("19_step_from_panties", "clothed", "stepping out of black panties, otherwise nude"),
-    ("20_nude_hold_gown", "nude", "nude, holding the black evening gown"),
-    ("21_nude_stand", "nude", "standing nude"),
-    ("22_nude_walk", "nude", "walking nude"),
-    ("23_nude_sit", "nude", "sitting nude on the sofa"),
-    ("24_nude_shoulder", "nude", "nude, looking back over her shoulder at the camera"),
-    ("25_nude_farther", "nude", "standing nude, camera even farther back"),
+code(
+    r"""# @title 15) Far strip: outdoor shower, towel (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'outdoor shower, dark stacked-stone wall, white outdoor stairs with a metal rail, a shower head pouring water, green plants, bright daylight'
+SLUG = '15_outdoor_shower'
+SEED_BASE = 2200
+SHOTS = [
+    ('01_stand', 'clothed', 'standing, wrapped in a white towel, wet highlighted blonde hair, water falling over her'),
+    ('02_walk', 'clothed', 'walking, wrapped in a white towel, wet highlighted blonde hair, water falling over her'),
+    ('03_sit', 'clothed', 'sitting, wrapped in a white towel, wet highlighted blonde hair, water falling over her'),
+    ('04_shoulder', 'clothed', 'wrapped in a white towel, wet highlighted blonde hair, water falling over her, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing under the water, loosening a white towel wrapped around her'),
+    ('06_loosen', 'clothed', 'standing under the water, loosening a white towel wrapped around her, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, the white towel around her hips, topless, wet skin'),
+    ('08_mid_walk', 'clothed', 'walking, the white towel around her hips, topless, wet skin'),
+    ('09_mid_sit', 'clothed', 'sitting, the white towel around her hips, topless, wet skin'),
+    ('10_mid_shoulder', 'clothed', 'the white towel around her hips, topless, wet skin, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'the white towel around her thighs, otherwise nude'),
+    ('12_almost_hips', 'clothed', 'the white towel around her thighs, otherwise nude, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'the white towel around her thighs, otherwise nude, around her thighs'),
+    ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
+    ('15_hold', 'nude', 'nude, holding the white towel'),
+    ('16_nude_stand', 'nude', 'standing nude'),
+    ('17_nude_walk', 'nude', 'walking nude'),
+    ('18_nude_sit', 'nude', 'sitting nude'),
+    ('19_nude_shoulder', 'nude', 'nude, looking back over her shoulder at the camera'),
+    ('20_nude_farther', 'nude', 'standing nude, camera even farther back'),
 ]
+run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
 
-SERIES = [
-    ("01_swimsuit_pool", SWIM_PLACE, SWIM_SHOTS),
-    ("02_evening_gown", GOWN_PLACE, GOWN_SHOTS),
+code(
+    r"""# @title 16) Far strip: beach, bikini (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'sandy beach at the ocean, bright daylight, blue water and sky behind her'
+SLUG = '16_beach_bikini'
+SEED_BASE = 2300
+SHOTS = [
+    ('01_stand', 'clothed', 'standing, wearing a dark two-piece bikini'),
+    ('02_walk', 'clothed', 'walking, wearing a dark two-piece bikini'),
+    ('03_sit', 'clothed', 'sitting, wearing a dark two-piece bikini'),
+    ('04_shoulder', 'clothed', 'wearing a dark two-piece bikini, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing on the sand, wearing a dark two-piece bikini, untying the bikini top'),
+    ('06_loosen', 'clothed', 'standing on the sand, wearing a dark two-piece bikini, untying the bikini top, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, topless, wearing only dark bikini bottoms'),
+    ('08_mid_walk', 'clothed', 'walking, topless, wearing only dark bikini bottoms'),
+    ('09_mid_sit', 'clothed', 'sitting, topless, wearing only dark bikini bottoms'),
+    ('10_mid_shoulder', 'clothed', 'topless, wearing only dark bikini bottoms, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'topless, pulling down dark bikini bottoms'),
+    ('12_almost_hips', 'clothed', 'topless, pulling down dark bikini bottoms, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'topless, pulling down dark bikini bottoms, around her thighs'),
+    ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
+    ('15_hold', 'nude', 'nude, holding the dark bikini'),
+    ('16_nude_stand', 'nude', 'standing nude'),
+    ('17_nude_walk', 'nude', 'walking nude'),
+    ('18_nude_sit', 'nude', 'sitting nude'),
+    ('19_nude_shoulder', 'nude', 'nude, looking back over her shoulder at the camera'),
+    ('20_nude_farther', 'nude', 'standing nude, camera even farther back'),
 ]
+run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
 
-if not SUBJECT_IS_ADULT:
-    raise RuntimeError("Adult subject only.")
-if len(SWIM_SHOTS) != 25 or len(GOWN_SHOTS) != 25:
-    raise RuntimeError("Need 25 shots in each strip series.")
-if SERIES_START < 0 or SERIES_END > len(SERIES) or SERIES_START >= SERIES_END:
-    raise RuntimeError("SERIES_START/END must be inside 0..2 and START < END")
-if SHOT_START < 0 or SHOT_END > 25 or SHOT_START >= SHOT_END:
-    raise RuntimeError("SHOT_START/END must be inside 0..25 and START < END")
+code(
+    r"""# @title 17) Far strip: forest, white sundress (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'green forest with tree trunks and leafy ground, dappled sunlight through the trees'
+SLUG = '17_forest_dress'
+SEED_BASE = 2400
+SHOTS = [
+    ('01_stand', 'clothed', 'standing, wearing a short white sundress'),
+    ('02_walk', 'clothed', 'walking, wearing a short white sundress'),
+    ('03_sit', 'clothed', 'sitting, wearing a short white sundress'),
+    ('04_shoulder', 'clothed', 'wearing a short white sundress, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing among the trees, slipping a short white sundress off one shoulder'),
+    ('06_loosen', 'clothed', 'standing among the trees, slipping a short white sundress off one shoulder, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, wearing white panties, holding the sundress'),
+    ('08_mid_walk', 'clothed', 'walking, wearing white panties, holding the sundress'),
+    ('09_mid_sit', 'clothed', 'sitting, wearing white panties, holding the sundress'),
+    ('10_mid_shoulder', 'clothed', 'wearing white panties, holding the sundress, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'pulling down white panties'),
+    ('12_almost_hips', 'clothed', 'pulling down white panties, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'pulling down white panties, around her thighs'),
+    ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
+    ('15_hold', 'nude', 'nude, holding the white sundress'),
+    ('16_nude_stand', 'nude', 'standing nude'),
+    ('17_nude_walk', 'nude', 'walking nude'),
+    ('18_nude_sit', 'nude', 'sitting nude'),
+    ('19_nude_shoulder', 'nude', 'nude, looking back over her shoulder at the camera'),
+    ('20_nude_farther', 'nude', 'standing nude, camera even farther back'),
+]
+run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
 
-print("Far-camera strip series", SERIES_START, "to", SERIES_END)
-print("Shots", SHOT_START, "to", SHOT_END)
-print("Do not write scars or surgical in these prompts.")
-print("Keep this tab open.")
+code(
+    r"""# @title 18) Far strip: apartment, shirt to plaid (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'classic apartment with herringbone wood parquet, a tall dark antique wardrobe, a leather pouf, large white-framed windows, soft daylight'
+SLUG = '18_plaid_apartment'
+SEED_BASE = 2500
+SHOTS = [
+    ('01_stand', 'clothed', 'standing, wearing an oversized white shirt, barefoot'),
+    ('02_walk', 'clothed', 'walking, wearing an oversized white shirt, barefoot'),
+    ('03_sit', 'clothed', 'sitting, wearing an oversized white shirt, barefoot'),
+    ('04_shoulder', 'clothed', 'wearing an oversized white shirt, barefoot, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'unbuttoning an oversized white shirt, a red and black plaid lingerie set underneath'),
+    ('06_loosen', 'clothed', 'unbuttoning an oversized white shirt, a red and black plaid lingerie set underneath, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, wearing a red and black plaid lingerie set, barefoot, the shirt off'),
+    ('08_mid_walk', 'clothed', 'walking, wearing a red and black plaid lingerie set, barefoot, the shirt off'),
+    ('09_mid_sit', 'clothed', 'sitting, wearing a red and black plaid lingerie set, barefoot, the shirt off'),
+    ('10_mid_shoulder', 'clothed', 'wearing a red and black plaid lingerie set, barefoot, the shirt off, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'topless, pulling down the plaid panties'),
+    ('12_almost_hips', 'clothed', 'topless, pulling down the plaid panties, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'topless, pulling down the plaid panties, around her thighs'),
+    ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
+    ('15_hold', 'nude', 'nude, holding the white shirt'),
+    ('16_nude_stand', 'nude', 'standing nude'),
+    ('17_nude_walk', 'nude', 'walking nude'),
+    ('18_nude_sit', 'nude', 'sitting nude'),
+    ('19_nude_shoulder', 'nude', 'nude, looking back over her shoulder at the camera'),
+    ('20_nude_farther', 'nude', 'standing nude, camera even farther back'),
+]
+run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
 
+code(
+    r"""# @title 19) Far strip: bathtub, white robe (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'indoor bathroom with a white bathtub, a gold-frame mirror, tile floor, even indoor light'
+SLUG = '19_white_tub'
+SEED_BASE = 2600
+SHOTS = [
+    ('01_stand', 'clothed', 'standing, wearing a loose white robe'),
+    ('02_walk', 'clothed', 'walking, wearing a loose white robe'),
+    ('03_sit', 'clothed', 'sitting, wearing a loose white robe'),
+    ('04_shoulder', 'clothed', 'wearing a loose white robe, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing by the tub, loosening a loose white robe'),
+    ('06_loosen', 'clothed', 'standing by the tub, loosening a loose white robe, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, the white robe open, otherwise nude'),
+    ('08_mid_walk', 'clothed', 'walking, the white robe open, otherwise nude'),
+    ('09_mid_sit', 'clothed', 'sitting, the white robe open, otherwise nude'),
+    ('10_mid_shoulder', 'clothed', 'the white robe open, otherwise nude, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'the white robe slipping off her hips'),
+    ('12_almost_hips', 'clothed', 'the white robe slipping off her hips, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'the white robe slipping off her hips, around her thighs'),
+    ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
+    ('15_hold', 'nude', 'nude, holding the white robe'),
+    ('16_nude_stand', 'nude', 'standing nude'),
+    ('17_nude_walk', 'nude', 'walking nude'),
+    ('18_nude_sit', 'nude', 'sitting nude'),
+    ('19_nude_shoulder', 'nude', 'nude, looking back over her shoulder at the camera'),
+    ('20_nude_farther', 'nude', 'standing nude, camera even farther back'),
+]
+run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
 
-def _purge_old_torchao():
-    try:
-        from importlib.metadata import version
-        ver = version("torchao")
-    except Exception:
-        print("torchao not installed")
-        return
-    print("torchao", ver)
-    nums = []
-    for part in ver.split("."):
-        digits = "".join(ch for ch in part if ch.isdigit())
-        if digits:
-            nums.append(int(digits))
-    while len(nums) < 3:
-        nums.append(0)
-    if tuple(nums[:3]) >= (0, 16, 0):
-        return
-    print("peft needs torchao>=0.16 to load Flux LoRA. Uninstalling", ver)
-    subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "torchao"])
-    for key in list(sys.modules):
-        if key == "torchao" or key.startswith("torchao.") or key.startswith("peft.tuners.lora.torchao"):
-            del sys.modules[key]
-    if "peft.import_utils" in sys.modules:
-        importlib.reload(sys.modules["peft.import_utils"])
-    print("old torchao removed")
+code(
+    r"""# @title 20) Far strip: hot tub, bikini (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'indoor spa with a bubbling hot tub, stone tile, warm lamps, light steam'
+SLUG = '20_hot_tub'
+SEED_BASE = 2700
+SHOTS = [
+    ('01_stand', 'clothed', 'standing, wearing a dark two-piece bikini, wet highlighted blonde hair'),
+    ('02_walk', 'clothed', 'walking, wearing a dark two-piece bikini, wet highlighted blonde hair'),
+    ('03_sit', 'clothed', 'sitting, wearing a dark two-piece bikini, wet highlighted blonde hair'),
+    ('04_shoulder', 'clothed', 'wearing a dark two-piece bikini, wet highlighted blonde hair, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'in the hot tub, wearing a dark two-piece bikini, untying the bikini top'),
+    ('06_loosen', 'clothed', 'in the hot tub, wearing a dark two-piece bikini, untying the bikini top, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, topless in the hot tub, wearing only dark bikini bottoms'),
+    ('08_mid_walk', 'clothed', 'walking, topless in the hot tub, wearing only dark bikini bottoms'),
+    ('09_mid_sit', 'clothed', 'sitting, topless in the hot tub, wearing only dark bikini bottoms'),
+    ('10_mid_shoulder', 'clothed', 'topless in the hot tub, wearing only dark bikini bottoms, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'topless, pulling down dark bikini bottoms at the hot tub edge'),
+    ('12_almost_hips', 'clothed', 'topless, pulling down dark bikini bottoms at the hot tub edge, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'topless, pulling down dark bikini bottoms at the hot tub edge, around her thighs'),
+    ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
+    ('15_hold', 'nude', 'nude, holding the dark bikini'),
+    ('16_nude_stand', 'nude', 'standing nude'),
+    ('17_nude_walk', 'nude', 'walking nude'),
+    ('18_nude_sit', 'nude', 'sitting nude'),
+    ('19_nude_shoulder', 'nude', 'nude, looking back over her shoulder at the camera'),
+    ('20_nude_farther', 'nude', 'standing nude, camera even farther back'),
+]
+run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
 
+code(
+    r"""# @title 21) Far strip: greenhouse, white dress (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'glass greenhouse full of green plants, soft daylight through the glass roof'
+SLUG = '21_greenhouse'
+SEED_BASE = 2800
+SHOTS = [
+    ('01_stand', 'clothed', 'standing, wearing a light white summer dress, barefoot'),
+    ('02_walk', 'clothed', 'walking, wearing a light white summer dress, barefoot'),
+    ('03_sit', 'clothed', 'sitting, wearing a light white summer dress, barefoot'),
+    ('04_shoulder', 'clothed', 'wearing a light white summer dress, barefoot, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing among the plants, slipping a light white summer dress down'),
+    ('06_loosen', 'clothed', 'standing among the plants, slipping a light white summer dress down, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, wearing white lingerie, the dress off'),
+    ('08_mid_walk', 'clothed', 'walking, wearing white lingerie, the dress off'),
+    ('09_mid_sit', 'clothed', 'sitting, wearing white lingerie, the dress off'),
+    ('10_mid_shoulder', 'clothed', 'wearing white lingerie, the dress off, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'topless, pulling down white panties'),
+    ('12_almost_hips', 'clothed', 'topless, pulling down white panties, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'topless, pulling down white panties, around her thighs'),
+    ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
+    ('15_hold', 'nude', 'nude, holding the white dress'),
+    ('16_nude_stand', 'nude', 'standing nude'),
+    ('17_nude_walk', 'nude', 'walking nude'),
+    ('18_nude_sit', 'nude', 'sitting nude'),
+    ('19_nude_shoulder', 'nude', 'nude, looking back over her shoulder at the camera'),
+    ('20_nude_farther', 'nude', 'standing nude, camera even farther back'),
+]
+run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
+)
 
-def _load_txt2img():
-    global pipe
-    lora_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
-    if not os.path.isfile(lora_path):
-        local_final = os.path.join(TRAIN_OUTPUT_DIR, LORA_NAME, OUTPUT_LORA_NAME)
-        if os.path.isfile(local_final):
-            lora_path = local_final
-    if not os.path.isfile(lora_path):
-        raise RuntimeError("LoRA not found: " + lora_path)
-    gc.collect()
-    torch.cuda.empty_cache()
-    _purge_old_torchao()
-    from diffusers import FluxPipeline
-    print("Loading FLUX.1-dev + LoRA (no safety checker)...")
-    print("LoRA file:", lora_path)
-    loaded = FluxPipeline.from_pretrained(
-        "black-forest-labs/FLUX.1-dev",
-        torch_dtype=torch.bfloat16,
-        token=os.environ.get("HF_TOKEN"),
-    )
-    if getattr(loaded, "safety_checker", None) is not None:
-        loaded.safety_checker = None
-    if hasattr(loaded, "requires_safety_checker"):
-        loaded.requires_safety_checker = False
-    if getattr(loaded, "watermarker", None) is not None:
-        loaded.watermarker = None
-    try:
-        loaded.load_lora_weights(lora_path)
-    except ImportError as err:
-        print("load_lora_weights ImportError:", err)
-        _purge_old_torchao()
-        loaded.load_lora_weights(lora_path)
-    try:
-        loaded.unfuse_lora()
-    except Exception:
-        pass
-    loaded.enable_model_cpu_offload()
-    pipe = loaded
-    print("LoRA loaded.")
-
-
-need_load = True
-if "pipe" in globals() and pipe is not None:
-    if type(pipe).__name__ == "FluxPipeline":
-        need_load = False
-        print("Using Flux txt2img already in memory.")
-    else:
-        print("In-memory pipe is", type(pipe).__name__, "- loading txt2img.")
-if need_load:
-    _load_txt2img()
-
-stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-root_out = os.path.join(EVAL_DIR, "strip_" + stamp)
-os.makedirs(root_out, exist_ok=True)
-saved = []
-
-for sidx in range(SERIES_START, SERIES_END):
-    slug, place, shots = SERIES[sidx]
-    series_dir = os.path.join(root_out, slug)
-    os.makedirs(series_dir, exist_ok=True)
-    print("==== series", sidx + 1, slug, "====")
-    for pidx in range(SHOT_START, SHOT_END):
-        shot_slug, kind, action = shots[pidx]
-        if kind == "nude":
-            weight = 0.75
-            guidance = 2.5
-        else:
-            weight = 1.0
-            guidance = 3.5
-        try:
-            pipe.set_adapters(["default"], adapter_weights=[weight])
-        except Exception as err:
-            print("set_adapters:", err)
-        seed = SEED + sidx * 25 + pidx
-        prompt = (
-            ID + FAR + ", " + action + ". " + place +
-            ", photorealistic raw photo, natural skin texture"
-        )
-        print("---", slug, shot_slug, "seed", seed, kind)
-        print(prompt)
-        image = pipe(
-            prompt=prompt,
-            guidance_scale=guidance,
-            height=HEIGHT,
-            width=WIDTH,
-            num_inference_steps=STEPS,
-            generator=torch.Generator("cuda").manual_seed(seed),
-        ).images[0]
-        fname = "%s_seed%d.png" % (shot_slug, seed)
-        path = os.path.join(series_dir, fname)
-        image.save(path)
-        saved.append(path)
-        print("saved", path)
-        display(image)
-
-print("Saved", len(saved), "pictures in", root_out)
-if USE_DRIVE_API:
-    for path in saved:
-        upload_project_file(path, os.path.relpath(path, ROOT))
-print("Next series: set SERIES_START =", SERIES_END, "and SERIES_END =", min(2, SERIES_END + 1))
-print("Copy keepers to MyDrive/FiratSuper/keepers/")
-print("Do not put these pictures back into the training folders.")"""
+code(
+    r"""# @title 22) Far strip: bedroom, black slip (20)
+SHOT_START = 0
+SHOT_END = 20
+PLACE = 'bedroom with a made bed, a dark headboard, warm lamps, curtains half open'
+SLUG = '22_bedroom_slip'
+SEED_BASE = 2900
+SHOTS = [
+    ('01_stand', 'clothed', 'standing, wearing a short black slip dress, barefoot'),
+    ('02_walk', 'clothed', 'walking, wearing a short black slip dress, barefoot'),
+    ('03_sit', 'clothed', 'sitting, wearing a short black slip dress, barefoot'),
+    ('04_shoulder', 'clothed', 'wearing a short black slip dress, barefoot, looking back over her shoulder at the camera'),
+    ('05_start', 'clothed', 'standing by the bed, slipping a short black slip dress off one strap'),
+    ('06_loosen', 'clothed', 'standing by the bed, slipping a short black slip dress off one strap, the garment loosening'),
+    ('07_mid_stand', 'clothed', 'standing, wearing a black lingerie set, the slip off'),
+    ('08_mid_walk', 'clothed', 'walking, wearing a black lingerie set, the slip off'),
+    ('09_mid_sit', 'clothed', 'sitting, wearing a black lingerie set, the slip off'),
+    ('10_mid_shoulder', 'clothed', 'wearing a black lingerie set, the slip off, looking back over her shoulder at the camera'),
+    ('11_almost_pull', 'clothed', 'topless, pulling down black panties'),
+    ('12_almost_hips', 'clothed', 'topless, pulling down black panties, pulled to her hips'),
+    ('13_almost_thighs', 'clothed', 'topless, pulling down black panties, around her thighs'),
+    ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),
+    ('15_hold', 'nude', 'nude, holding the black slip'),
+    ('16_nude_stand', 'nude', 'standing nude'),
+    ('17_nude_walk', 'nude', 'walking nude'),
+    ('18_nude_sit', 'nude', 'sitting nude'),
+    ('19_nude_shoulder', 'nude', 'nude, looking back over her shoulder at the camera'),
+    ('20_nude_farther', 'nude', 'standing nude, camera even farther back'),
+]
+run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 )
 
 md(
@@ -1829,16 +1814,9 @@ md(
 Locked production LoRA:
 `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 
-Generations from cell 10:
-`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/`
+Run ONE far-strip cell at a time (20 pictures, about 15-30 min). Keep the tab open.
 
-Outdoor styles from cell 12:
-`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/outdoor_*/`
-
-Series from cell 13 (10 places x 10 shots):
-`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/series_*/`
-
-Far strip series from cell 14 (swimsuit 25 + evening gown 25):
+Cells 13-22 write to:
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/strip_*/`
 
 Copy keepers to:
@@ -1852,22 +1830,18 @@ Also locked:
 `loras/lapetitemilf_face.safetensors`
 
 ### Make more pictures
-1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then cell 10, 12, 13, or 14.
-2. Cell 10: set MODE to `identity`, `lingerie`, `nude`, or `all`. Change SEED for new frames.
-3. Cell 12: 20 outdoor nude styles. Test with END=3 first. Then START=3 END=20.
-4. Cell 13: 10 series x 10 shots. Default runs series 0 only (10 pictures). Then SERIES_START=1 SERIES_END=2, and so on. All 100: SERIES_END=10.
-5. Cell 14: 50 far full-body shots. Series 0 = swimsuit strip by the pool (25). Series 1 = evening gown to black lingerie to nude (25). Default runs series 0 only. Then SERIES_START=1 SERIES_END=2.
-6. Nude recipe: LoRA 0.75, guidance 2.5. No scar words. Optional cell 11 refine.
-7. In ComfyUI later: Flux.1 [dev] + this LoRA, trigger `ohwx woman`. Do not load SD 1.5 LoRAs on Flux.
-8. Adult content only. Do not train on generated pictures.
+1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then ONE of cells 13-22.
+2. Cell 10: identity / lingerie / nude. Cell 12: mixed outdoor nudes.
+3. Each of 13-22 is one place, far camera, 20-shot strip. If it dies, set SHOT_START and rerun that cell.
+4. Nude recipe: LoRA 0.75, guidance 2.5. No scar words.
+5. Adult content only. Do not train on generated pictures.
 
 ### If the runtime dies
-- LoRA is already on Drive. Rerun 1, 2, 3, 10, 11. New runtime: also 4. Skip 5-9.
+- LoRA is already on Drive. Rerun 1, 2, 3, then the series cell. New runtime: also 4. Skip 5-9.
 - Hugging Face 403: accept FLUX.1-dev license, new READ token.
-- Drive popup: Allow ALL, one Google account.
-- Cell 13 crash: files already written stay on Drive. Set SHOT_START or SERIES_START to continue.
-- Cell 14 crash: same. Swimsuit is series 0. Evening gown is series 1."""
+- Drive popup: Allow ALL, one Google account."""
 )
+
 
 
 nb = {
