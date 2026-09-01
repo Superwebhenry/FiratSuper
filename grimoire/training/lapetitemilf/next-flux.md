@@ -6,7 +6,7 @@ Locked file: `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 
 ## Make pictures (Colab A100)
 
-Each of cells **13-22** is one series: same place, far camera, 20-shot gradual undress. Run one cell at a time.
+Each of cells **13-22** is one series from the user's location refs: same place, far camera, 20-shot gradual undress. Run one cell at a time. Identity stays `ohwx woman` (highlighted blonde), not the people in the refs.
 
 User may send replacement series ideas; swap that cell only.
 
