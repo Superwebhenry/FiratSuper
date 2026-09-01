@@ -48,7 +48,7 @@ High RAM can stay off.
 **Locked LoRA (do not overwrite):** `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. Do not run cells 5-9.
 
-**Generate path:** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22 far strip, or 23-27 explicit sets). Skip 5-9.
+**Generate path:** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22 far strip, 23-27 explicit sets, or 28-37 far strip). Skip 5-9.
 
 **Trigger:** `ohwx woman`. Do not write "no scars" in prompts. Adult subject only.
 Do not train on generated pictures. Two-person sex shots often glitch on Flux; rerun with a new SEED_BASE if anatomy breaks.
@@ -77,6 +77,16 @@ Do not train on generated pictures. Two-person sex shots often glitch on Flux; r
 25. Explicit set: POV oral, bedroom (20)
 26. Explicit set: webcam ring-light POV (20)
 27. Explicit set: facial close-ups (20)
+28. Far strip: white bedroom, bikini top (20)
+29. Far strip: white bedroom, bikini + fishnets (20)
+30. Far strip: tile studio, striped socks (20)
+31. Far strip: white sofa, beanie + lip tee (20)
+32. Far strip: grey sofa, metal stairs (20)
+33. Far strip: beige carpet, thigh-high socks (20)
+34. Far strip: window bedroom, white slip (20)
+35. Far strip: window bedroom, black lingerie (20)
+36. Far strip: white bedroom, black lace (20)
+37. Far strip: white sectional, white tee (20)
 
 ## Drive layout
 ```
@@ -609,7 +619,7 @@ def run_scene_set(slug, place, shots, seed_base, shot_start=0, shot_end=20):
     print("Do not put these pictures back into the training folders.")
 
 
-print("Drive settings OK. Helpers ready for cells 13-27.")"""
+print("Drive settings OK. Helpers ready for cells 13-37.")"""
 )
 
 code(
@@ -2041,6 +2051,190 @@ run_scene_set(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 )
 
 
+def far_strip_cell(num, short_title, slug, seed_base, place, clothed, start, mid, almost, hold):
+    code(
+        "# @title %d) Far strip: %s (20)\n"
+        "SHOT_START = 0\n"
+        "SHOT_END = 20\n"
+        "PLACE = %r\n"
+        "SLUG = %r\n"
+        "SEED_BASE = %d\n"
+        "SHOTS = [\n"
+        "    ('01_stand', 'clothed', 'standing, wearing %s'),\n"
+        "    ('02_walk', 'clothed', 'walking, wearing %s'),\n"
+        "    ('03_sit', 'clothed', 'sitting, wearing %s'),\n"
+        "    ('04_shoulder', 'clothed', 'wearing %s, looking back over her shoulder at the camera'),\n"
+        "    ('05_start', 'clothed', '%s'),\n"
+        "    ('06_loosen', 'clothed', '%s, the garment loosening'),\n"
+        "    ('07_mid_stand', 'clothed', 'standing, %s'),\n"
+        "    ('08_mid_walk', 'clothed', 'walking, %s'),\n"
+        "    ('09_mid_sit', 'clothed', 'sitting, %s'),\n"
+        "    ('10_mid_shoulder', 'clothed', '%s, looking back over her shoulder at the camera'),\n"
+        "    ('11_almost_pull', 'clothed', '%s'),\n"
+        "    ('12_almost_hips', 'clothed', '%s, pulled to her hips'),\n"
+        "    ('13_almost_thighs', 'clothed', '%s, around her thighs'),\n"
+        "    ('14_step_out', 'clothed', 'stepping out of the last garment, otherwise nude'),\n"
+        "    ('15_hold', 'nude', 'nude, holding %s'),\n"
+        "    ('16_nude_stand', 'nude', 'standing nude'),\n"
+        "    ('17_nude_walk', 'nude', 'walking nude'),\n"
+        "    ('18_nude_sit', 'nude', 'sitting nude'),\n"
+        "    ('19_nude_shoulder', 'nude', 'nude, looking back over her shoulder at the camera'),\n"
+        "    ('20_nude_farther', 'nude', 'standing nude, camera even farther back'),\n"
+        "]\n"
+        "run_far_strip(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"
+        % (
+            num,
+            short_title,
+            place,
+            slug,
+            seed_base,
+            clothed,
+            clothed,
+            clothed,
+            clothed,
+            start,
+            start,
+            mid,
+            mid,
+            mid,
+            mid,
+            almost,
+            almost,
+            almost,
+            hold,
+        )
+    )
+
+
+WHITE_BED = (
+    "bright white bedroom, a white bed, a small white bedside table with a vase of yellow and blue flowers, bright indoor daylight"
+)
+WINDOW_BED = (
+    "bright modern bedroom, a white tufted headboard, floor-to-ceiling windows, daylight, white bedding"
+)
+
+far_strip_cell(
+    28,
+    "white bedroom, bikini top",
+    "28_white_bed_bikini",
+    4500,
+    WHITE_BED,
+    "a blue-and-white patterned bikini top, matching bikini bottoms, and a thin silver pendant necklace",
+    "standing by the white bed, untying the blue-and-white patterned bikini top, thin silver pendant necklace",
+    "topless, wearing matching bikini bottoms and a thin silver pendant necklace",
+    "topless, pulling down the bikini bottoms, thin silver pendant necklace",
+    "the bikini",
+)
+far_strip_cell(
+    29,
+    "white bedroom, bikini + fishnets",
+    "29_white_bed_fishnets",
+    4600,
+    WHITE_BED,
+    "a blue-and-white patterned bikini top, matching bikini bottoms, a thin silver pendant necklace, and black fishnet stockings",
+    "standing by the white bed, untying the blue-and-white patterned bikini top, black fishnet stockings",
+    "topless, wearing matching bikini bottoms, a thin silver pendant necklace, and black fishnet stockings",
+    "topless, pulling down the bikini bottoms over black fishnet stockings",
+    "the bikini",
+)
+far_strip_cell(
+    30,
+    "tile studio, striped socks",
+    "30_studio_socks",
+    4700,
+    "bright studio, light tile floor, a large plush blue rug, light wood paneled walls, even studio daylight",
+    "a blue bikini top, a blue bikini bottom, and blue-and-white striped knee-high socks",
+    "standing on the blue rug, untying the blue bikini top, blue-and-white striped knee-high socks",
+    "topless, wearing a blue bikini bottom and blue-and-white striped knee-high socks",
+    "topless, pulling down the blue bikini bottom, blue-and-white striped knee-high socks still on",
+    "the bikini",
+)
+far_strip_cell(
+    31,
+    "white sofa, beanie + lip tee",
+    "31_beanie_liptee",
+    4800,
+    "bright room, large gray floor tiles, a large white leather sofa, even daylight",
+    "a red knit beanie, a white t-shirt with a big red lip graphic, and panties",
+    "standing by the white leather sofa, lifting the white lip-graphic t-shirt, red knit beanie on",
+    "topless, wearing a red knit beanie and panties",
+    "topless, pulling down panties, red knit beanie still on",
+    "the t-shirt",
+)
+far_strip_cell(
+    32,
+    "grey sofa, metal stairs",
+    "32_grey_sofa_stairs",
+    4900,
+    "modern apartment, a large grey sofa, a metal stair railing, indoor leafy plants, dark grey tile floor, bright indoor light",
+    "a simple black tank top and black panties",
+    "standing by the grey sofa, lifting the black tank top",
+    "topless, wearing black panties",
+    "topless, pulling down black panties",
+    "the black tank",
+)
+far_strip_cell(
+    33,
+    "beige carpet, thigh-high socks",
+    "33_thighhigh_carpet",
+    5000,
+    "bedroom with tan beige carpet, rumpled light sheets, a dark leather tufted headboard, beige walls, indoor daylight",
+    "a small white top, white thigh-high socks with pink stripes, and panties",
+    "standing by the bed, slipping the small white top off one shoulder, white thigh-high socks with pink stripes",
+    "topless, wearing white thigh-high socks with pink stripes and panties",
+    "topless, pulling down panties, white thigh-high socks with pink stripes still on",
+    "the white top",
+)
+far_strip_cell(
+    34,
+    "window bedroom, white slip",
+    "34_window_slip",
+    5100,
+    WINDOW_BED,
+    "a simple white slip",
+    "standing by the windows, slipping a white slip off one shoulder",
+    "topless, the white slip at her hips",
+    "the white slip around her thighs, otherwise nude",
+    "the white slip",
+)
+far_strip_cell(
+    35,
+    "window bedroom, black lingerie",
+    "35_window_sofa",
+    5200,
+    "bright modern bedroom, a white tufted headboard, floor-to-ceiling windows, a white leather sofa, daylight, white bedding",
+    "a black lingerie set",
+    "standing by the windows, unhooking the black lingerie bra",
+    "topless, wearing black panties",
+    "topless, pulling down black panties",
+    "the black lingerie",
+)
+far_strip_cell(
+    36,
+    "white bedroom, black lace",
+    "36_flower_lace",
+    5300,
+    "bright white bedroom, a white bed, a prominent vase of yellow and blue flowers on the bedside table, bright indoor daylight",
+    "a black lace lingerie set",
+    "standing by the flower vase, unhooking the black lace bra",
+    "topless, wearing black lace panties",
+    "topless, pulling down black lace panties",
+    "the black lace lingerie",
+)
+far_strip_cell(
+    37,
+    "white sectional, white tee",
+    "37_sectional_tee",
+    5400,
+    "bright room with white walls, large gray floor tiles, a large white leather sectional sofa, even daylight",
+    "a plain white t-shirt and panties",
+    "standing by the white leather sectional, lifting the plain white t-shirt",
+    "topless, wearing panties",
+    "topless, pulling down panties",
+    "the white t-shirt",
+)
+
+
 md(
     """## Done
 
@@ -2050,6 +2244,9 @@ Locked production LoRA:
 Run ONE series cell at a time (20 pictures, about 15-30 min). Keep the tab open.
 
 Cells 13-22 (far strip) write to:
+`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/strip_*/`
+
+Cells 28-37 (far strip) write to:
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/strip_*/`
 
 Cells 23-27 (explicit couple / POV / facial) write to:
@@ -2067,8 +2264,8 @@ Also locked:
 `loras/lapetitemilf_face.safetensors`
 
 ### Make more pictures
-1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then ONE of cells 13-27.
-2. Cells 13-22: far camera strip. Cells 23-27: explicit couple / POV / facial sets.
+1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then ONE of cells 13-37.
+2. Cells 13-22 and 28-37: far camera strip. Cells 23-27: explicit couple / POV / facial sets.
 3. If it dies, set SHOT_START and rerun that cell.
 4. Nude/sex recipe: LoRA about 0.7, guidance 2.5. No scar words.
 5. Adult content only. Do not train on generated pictures.
