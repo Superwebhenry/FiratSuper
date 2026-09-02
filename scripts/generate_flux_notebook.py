@@ -649,6 +649,7 @@ except Exception:
 
 if not token:
     token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
+token = token.strip() if token else token
 if not token:
     token = getpass.getpass("HF READ token: ").strip()
 if not token:
