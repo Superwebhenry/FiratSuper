@@ -36,7 +36,7 @@ def code(source: str) -> None:
 md(
     """# FiratSuper Flux LoRA (Colab A100)
 
-**Training is done.** Use this notebook to **generate** with the locked v2 LoRA.
+**Training is done for her LoRA.** Generate with locked v2 (cells 13-40). Optional new path: train a **separate** male LoRA (cells 41-45), then 5-shot genital close-ups (46-48).
 
 **Runtime:** Runtime > Change runtime type > **A100 GPU**. Do not pick T4. Do not pick TPU.
 High RAM can stay off.
@@ -48,11 +48,13 @@ High RAM can stay off.
 **Locked LoRA (do not overwrite):** `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. Do not run cells 5-9.
 
-**Generate path:** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22 far strip, 23-27 explicit sets, 28-37 far strip, or 38-40 explicit couple with visible genitals and semen). Skip 5-9.
+**Generate path (woman LoRA only):** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22 far strip, 23-27 explicit sets, 28-37 far strip, or 38-40 explicit couple). Skip 5-9. Cells 13-40 still load only `lapetitemilf_flux_v2`.
 
-**Trigger:** `ohwx woman`. Do not write "no scars" in prompts. Adult subject only.
+**Male LoRA path (new, does not touch v2):** cells **41-45** train `henry_penis_flux_v1` from `ADD_HENRY_BODY_PHOTOS` (26 real waist-down photos, trigger `hrmale`). Then cells **46-48** are three 5-shot extreme close-ups (genital / oral / facial) with **both** LoRAs and **short** prompts that lead with penis/semen so CLIP-77 cannot drop them.
+
+**Trigger:** `ohwx woman` (her LoRA). Male trigger: `hrmale`. Do not write "no scars" in prompts. Adult subject only.
 Do not train on generated pictures. Two-person sex shots often glitch on Flux; rerun with a new SEED_BASE if anatomy breaks.
-**Chest look is prompt-only.** v2 LoRA stays locked. Do not train on gens. Use ADD_FLUX_CHEST only if he later asks for v3.
+**Chest look is prompt-only.** v2 LoRA stays locked. Do not retrain v2. Do not train on gens. Use ADD_FLUX_CHEST only if he later asks for v3.
 
 ## Cells
 1. A100 GPU check
@@ -91,13 +93,23 @@ Do not train on generated pictures. Two-person sex shots often glitch on Flux; r
 38. Explicit set: white room penis visible (20)
 39. Explicit set: grey sofa semen (20)
 40. Explicit set: genital close and facial (20)
+41. Male LoRA: copy 26 KEEP photos + write hrmale captions
+42. Male LoRA: write Ostris YAML (new filename, not v2)
+43. Male LoRA: dry run (5 steps)
+44. Male LoRA: full train -> henry_penis_flux_v1
+45. Male LoRA: copy to Drive/loras/ (will not overwrite v2)
+46. Dual LoRA 5-shot: extreme genital close-up
+47. Dual LoRA 5-shot: oral on penis close-up
+48. Dual LoRA 5-shot: facial, semen + glans
 
 ## Drive layout
 ```
 MyDrive/FiratSuper/
 |-- ADD_FLUX_PHOTOS/                      # 31 keepers + .txt captions
 |-- ADD_FLUX_CHEST/                       # 7 chest keepers + .txt (skip unpaired)
+|-- ADD_HENRY_BODY_PHOTOS/                # real male body photos (cell 41 filters to 26)
 |-- loras/lapetitemilf_flux_v2.safetensors # LOCKED production LoRA
+|-- loras/henry_penis_flux_v1.safetensors  # male LoRA from cells 41-45
 |-- loras/lapetitemilf_flux.safetensors    # v1, locked
 |-- loras/lapetitemilf_face.safetensors    # locked
 |-- output/lapetitemilf/flux_eval_v2/      # generations from cell 10
@@ -147,6 +159,7 @@ MYDRIVE = os.path.join(MOUNT, "MyDrive")
 FIRATSUPER_DRIVE_ID = "18UE4fijDjq8ggmkDYjaUpRQXVDE0cqYt"
 FLUX_INBOX_ID = "1oLtTmwg2kt-Jn6zuci06ipRQoK6AOFVZ"
 FLUX_CHEST_ID = "1iEmUvagFQVJ2TArN_7ee4Af4TUti1hZw"
+HENRY_BODY_ID = "1CmFmJVtOW-a39rRndSZ4PDJc8iJIX3sm"
 USE_DRIVE_API = False
 DRIVE_SERVICE = None
 
@@ -312,6 +325,13 @@ def sync_flux_via_api(local_root):
         chest_id,
         os.path.join(local_root, "ADD_FLUX_CHEST"),
     )
+    henry = api_find_child(service, FIRATSUPER_DRIVE_ID, "ADD_HENRY_BODY_PHOTOS")
+    henry_id = henry["id"] if henry else HENRY_BODY_ID
+    api_download_folder(
+        service,
+        henry_id,
+        os.path.join(local_root, "ADD_HENRY_BODY_PHOTOS"),
+    )
     for sub in ("output", "loras", "logs", "keepers"):
         os.makedirs(os.path.join(local_root, sub), exist_ok=True)
     return service
@@ -381,6 +401,7 @@ else:
 
 INBOX_DIR = os.path.join(ROOT, "ADD_FLUX_PHOTOS")
 CHEST_DIR = os.path.join(ROOT, "ADD_FLUX_CHEST")
+HENRY_INBOX_DIR = os.path.join(ROOT, "ADD_HENRY_BODY_PHOTOS")
 LORAS_DIR = os.path.join(ROOT, "loras")
 KEEPERS_DIR = os.path.join(ROOT, "keepers")
 EVAL_DIR = os.path.join(ROOT, "output", PROJECT_NAME, "flux_eval_v2")
@@ -388,19 +409,34 @@ SAMPLES_DIR = os.path.join(ROOT, "output", PROJECT_NAME, "flux_samples_v2")
 DATASET_DIR = "/content/dataset"
 TRAIN_OUTPUT_DIR = "/content/output"
 CONFIG_PATH = "/content/lapetitemilf_flux.yaml"
+HENRY_LORA_NAME = "henry_penis_flux_v1"
+HENRY_TRIGGER = "hrmale"
+HENRY_EXPECTED = 26
+HENRY_TRAIN_STEPS = 2000
+HENRY_DATASET_DIR = "/content/dataset_henry"
+HENRY_CONFIG_PATH = "/content/henry_penis_flux.yaml"
+HENRY_OUTPUT_LORA = HENRY_LORA_NAME + ".safetensors"
+if HENRY_OUTPUT_LORA in PROTECTED_LORAS:
+    raise RuntimeError("Male LoRA name is on the lock list. Pick a new filename.")
+if HENRY_LORA_NAME == LORA_NAME or HENRY_OUTPUT_LORA == OUTPUT_LORA_NAME:
+    raise RuntimeError("Male LoRA must not reuse the locked v2 filename.")
 os.makedirs(LORAS_DIR, exist_ok=True)
 os.makedirs(KEEPERS_DIR, exist_ok=True)
 os.makedirs(EVAL_DIR, exist_ok=True)
 os.makedirs(SAMPLES_DIR, exist_ok=True)
 os.makedirs(DATASET_DIR, exist_ok=True)
+os.makedirs(HENRY_DATASET_DIR, exist_ok=True)
 os.makedirs(TRAIN_OUTPUT_DIR, exist_ok=True)
 
 free_gb = shutil.disk_usage("/content").free / 1024**3
 print("ROOT:", ROOT)
 print("Inbox:", INBOX_DIR)
 print("Chest:", CHEST_DIR)
+print("Henry inbox:", HENRY_INBOX_DIR)
 print("Local dataset:", DATASET_DIR)
-print("LoRA out:", os.path.join(LORAS_DIR, OUTPUT_LORA_NAME))
+print("Henry dataset:", HENRY_DATASET_DIR)
+print("LoRA out:", os.path.join(LORAS_DIR, OUTPUT_LORA_NAME), "(LOCKED)")
+print("Male LoRA out:", os.path.join(LORAS_DIR, HENRY_OUTPUT_LORA))
 print("Free disk: %.1f GB" % free_gb)
 if free_gb < 40:
     raise RuntimeError("Need ~40 GB free for Flux.1-dev. Have %.1f GB." % free_gb)
@@ -490,6 +526,116 @@ def ensure_flux_pipe():
     return pipe
 
 
+def ensure_flux_dual_pipe():
+    # v2 stays adapter 'default'. Male file loads as adapter 'hrmale'. Cells 13-40 keep default only.
+    ensure_flux_pipe()
+    male_path = os.path.join(LORAS_DIR, HENRY_OUTPUT_LORA)
+    if not os.path.isfile(male_path):
+        local_final = os.path.join(TRAIN_OUTPUT_DIR, HENRY_LORA_NAME, HENRY_OUTPUT_LORA)
+        if os.path.isfile(local_final):
+            male_path = local_final
+    if not os.path.isfile(male_path):
+        raise RuntimeError(
+            "Male LoRA not found: " + male_path +
+            " Run cells 41-45 first. Do not retrain lapetitemilf_flux_v2."
+        )
+    if getattr(pipe, "_henry_adapter_loaded", False):
+        print("Male adapter already on this pipe:", male_path)
+        return pipe
+    print("Loading second LoRA (male, adapter hrmale):", male_path)
+    try:
+        pipe.load_lora_weights(male_path, adapter_name="hrmale")
+    except TypeError as err:
+        raise RuntimeError(
+            "This diffusers build cannot stack two LoRAs (%s). "
+            "Runtime > Restart session, rerun cells 1-4, then 46." % err
+        )
+    pipe._henry_adapter_loaded = True
+    print("Stacked LoRAs: default=%s + hrmale=%s" % (OUTPUT_LORA_NAME, HENRY_OUTPUT_LORA))
+    return pipe
+
+
+def write_henry_yaml(path, steps, dry):
+    sample_flag = "true" if dry else "false"
+    skip_first = "true"
+    save_every = 10000 if dry else SAVE_EVERY
+    sample_every = 10000 if dry else SAMPLE_EVERY
+    lines = [
+        "job: extension",
+        "config:",
+        '  name: "%s"' % HENRY_LORA_NAME,
+        "  process:",
+        "    - type: sd_trainer",
+        '      training_folder: "%s"' % TRAIN_OUTPUT_DIR,
+        "      device: cuda:0",
+        '      trigger_word: "%s"' % HENRY_TRIGGER,
+        "      network:",
+        "        type: lora",
+        "        linear: %d" % NETWORK_DIM,
+        "        linear_alpha: %d" % NETWORK_ALPHA,
+        "      save:",
+        "        dtype: float16",
+        "        save_every: %d" % save_every,
+        "        max_step_saves_to_keep: 4",
+        "        push_to_hub: false",
+        "      datasets:",
+        '        - folder_path: "%s"' % HENRY_DATASET_DIR,
+        "          caption_ext: txt",
+        "          caption_dropout_rate: 0.05",
+        "          shuffle_tokens: false",
+        "          cache_latents_to_disk: true",
+        "          resolution: [512, 768, 1024]",
+        "      train:",
+        "        batch_size: 1",
+        "        steps: %d" % steps,
+        "        gradient_accumulation_steps: 1",
+        "        train_unet: true",
+        "        train_text_encoder: false",
+        "        gradient_checkpointing: true",
+        "        noise_scheduler: flowmatch",
+        "        optimizer: adamw8bit",
+        "        lr: %.0e" % LEARNING_RATE,
+        "        skip_first_sample: %s" % skip_first,
+        "        disable_sampling: %s" % sample_flag,
+        "        ema_config:",
+        "          use_ema: true",
+        "          ema_decay: 0.99",
+        "        dtype: bf16",
+        "      model:",
+        '        name_or_path: "black-forest-labs/FLUX.1-dev"',
+        "        is_flux: true",
+        "        quantize: true",
+        "      sample:",
+        "        sampler: flowmatch",
+        "        sample_every: %d" % sample_every,
+        "        sample_start_step: 0",
+        "        width: 1024",
+        "        height: 1024",
+        "        prompts:",
+        '          - "hrmale, erect penis close-up, visible glans, veined shaft, photorealistic raw photo"',
+        '          - "hrmale, erect penis, glans and shaft veins, waist-down close-up, photorealistic photo"',
+        '          - "hrmale, side view erect penis, glans, shaft, natural skin texture, photorealistic"',
+        '          - "hrmale, looking down at an erect penis, glans and veins, photorealistic raw photo"',
+        '        neg: ""',
+        "        seed: 42",
+        "        walk_seed: true",
+        "        guidance_scale: 4",
+        "        sample_steps: 20",
+        "meta:",
+        '  name: "[name]"',
+        '  version: "1.0"',
+        "",
+    ]
+    text = "\n".join(lines)
+    if any(ord(ch) > 127 for ch in text):
+        raise RuntimeError("YAML is not ASCII")
+    if LORA_NAME in text or OUTPUT_LORA_NAME in text:
+        raise RuntimeError("Henry YAML must not name the locked v2 LoRA.")
+    with open(path, "w", encoding="ascii") as fh:
+        fh.write(text)
+    print("Wrote", path, "steps=%d dry=%s name=%s" % (steps, dry, HENRY_LORA_NAME))
+
+
 def run_far_strip(slug, place, shots, seed_base, shot_start=0, shot_end=20):
     import os
     import torch
@@ -559,28 +705,52 @@ def run_far_strip(slug, place, shots, seed_base, shot_start=0, shot_end=20):
     print("Do not put these pictures back into the training folders.")
 
 
-def run_scene_set(slug, place, shots, seed_base, shot_start=0, shot_end=20):
+def run_scene_set(
+    slug,
+    place,
+    shots,
+    seed_base,
+    shot_start=0,
+    shot_end=20,
+    ident=None,
+    adapter_names=None,
+    adapter_weights=None,
+    height=1024,
+    width=768,
+):
     import os
     import torch
     from datetime import datetime
     from IPython.display import display
     if not SUBJECT_IS_ADULT:
         raise RuntimeError("Adult subject only.")
-    if len(shots) != 20:
-        raise RuntimeError("Need 20 shots in this series. Got %d" % len(shots))
-    if shot_start < 0 or shot_end > 20 or shot_start >= shot_end:
-        raise RuntimeError("SHOT_START/END must be inside 0..20 and START < END")
-    ensure_flux_pipe()
-    ident = (
-        "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
-        "fair pale skin, natural soft teardrop breasts, medium circular pinkish-tan textured areolae, prominent nipples, "
-    )
+    nshots = len(shots)
+    if nshots < 1:
+        raise RuntimeError("Need at least 1 shot in this series.")
+    if shot_start < 0 or shot_end > nshots or shot_start >= shot_end:
+        raise RuntimeError(
+            "SHOT_START/END must be inside 0..%d and START < END" % nshots
+        )
+    use_male = adapter_names is not None and "hrmale" in adapter_names
+    if use_male:
+        ensure_flux_dual_pipe()
+    else:
+        ensure_flux_pipe()
+    if ident is None:
+        ident = (
+            "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
+            "fair pale skin, natural soft teardrop breasts, medium circular pinkish-tan textured areolae, prominent nipples, "
+        )
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_dir = os.path.join(EVAL_DIR, "scene_" + slug + "_" + stamp)
     os.makedirs(out_dir, exist_ok=True)
     print("Scene set", slug)
     print("Shots", shot_start, "to", shot_end, "->", out_dir)
-    print("Two-person shots often glitch on Flux. That is the base model, not a bad LoRA.")
+    if use_male:
+        print("Adapters:", adapter_names, adapter_weights)
+        print("Prompts lead with genital/facial words (CLIP 77).")
+    else:
+        print("Two-person shots often glitch on Flux. That is the base model, not a bad LoRA.")
     print("Do not write scars or surgical in these prompts.")
     print("Keep this tab open.")
     saved = []
@@ -592,22 +762,31 @@ def run_scene_set(slug, place, shots, seed_base, shot_start=0, shot_end=20):
         else:
             weight = 0.9
             guidance = 3.0
+        if adapter_names is None:
+            names = ["default"]
+            weights = [weight]
+        else:
+            names = list(adapter_names)
+            if adapter_weights is None:
+                weights = [weight] * len(names)
+            else:
+                weights = list(adapter_weights)
         try:
-            pipe.set_adapters(["default"], adapter_weights=[weight])
+            pipe.set_adapters(names, adapter_weights=weights)
         except Exception as err:
             print("set_adapters:", err)
         seed = seed_base + pidx
-        prompt = (
-            ident + action + ". " + place +
-            ", photorealistic raw photo, natural skin texture"
-        )
-        print("---", shot_slug, "seed", seed, kind, "lora", weight)
+        if ident:
+            prompt = ident + action + ". " + place + ", photorealistic raw photo, natural skin texture"
+        else:
+            prompt = action + ". " + place + ", photorealistic raw photo, natural skin texture"
+        print("---", shot_slug, "seed", seed, kind, "lora", names, weights)
         print(prompt)
         image = pipe(
             prompt=prompt,
             guidance_scale=guidance,
-            height=1024,
-            width=768,
+            height=height,
+            width=width,
             num_inference_steps=32,
             generator=torch.Generator("cuda").manual_seed(seed),
         ).images[0]
@@ -625,7 +804,7 @@ def run_scene_set(slug, place, shots, seed_base, shot_start=0, shot_end=20):
     print("Do not put these pictures back into the training folders.")
 
 
-print("Drive settings OK. Helpers ready for cells 13-40.")"""
+print("Drive settings OK. Helpers ready for cells 13-40 and 41-48.")"""
 )
 
 code(
@@ -2344,12 +2523,365 @@ run_scene_set(SLUG, PLACE, SHOTS, SEED_BASE, SHOT_START, SHOT_END)"""
 
 
 md(
+    """## Male penis LoRA (cells 41-45) then 5-shot dual generate (46-48)
+
+v2 stays locked. Do not run cells 5-9. These cells write `henry_penis_flux_v1.safetensors` only.
+
+Dataset: `ADD_HENRY_BODY_PHOTOS` (26 real waist-down photos). Trigger: `hrmale`.
+Never train on Flux outputs. After 41-45, run **one** of 46 / 47 / 48 (5 pictures each).
+Cells 46-48 load **both** LoRAs and use short prompts that start with penis/semen/mouth."""
+)
+
+code(
+    r"""# @title 41) Male LoRA: copy 26 KEEP photos + hrmale captions
+import os
+import shutil
+
+if HENRY_OUTPUT_LORA in PROTECTED_LORAS:
+    raise RuntimeError("Male LoRA name is protected. Do not train.")
+if OUTPUT_LORA_NAME in (HENRY_OUTPUT_LORA,):
+    raise RuntimeError("Refusing to reuse the locked v2 filename.")
+
+IMG_EXT = {".jpg", ".jpeg", ".png", ".webp"}
+SKIP_NAMES = {".drive_upload.json", ".ds_store", "thumbs.db"}
+HENRY_EXCLUDE = {
+    "IMG-20231126-WA0035.jpg",
+    "20260509_072024(1).jpg",
+    "20251227_185216_1.jpg",
+    "20260509_121218(1).jpg",
+    "20260807_122635(1).jpg",
+    "20260711_083049(2).jpg",
+    "20260711_082212(2).jpg",
+    "20250906_135503(1).jpg",
+}
+HENRY_KEEP = {
+    "20250906_135503.jpg": "hrmale, erect penis, visible glans, veined shaft, looking down POV, tiled floor, waist-down close-up, photorealistic photo",
+    "20250906_140426.jpg": "hrmale, erect penis, visible glans, veined shaft, looking down at the lap, waist-down close-up, photorealistic photo",
+    "20251227_185216.jpg": "hrmale, erect penis held at the base, visible glans, veined shaft, lying on a bed, waist-down close-up, photorealistic photo",
+    "InShot_20260212_193432944.jpg": "hrmale, erect penis side view, visible glans, veined shaft, waist-down close-up, photorealistic photo",
+    "20260228_074019.jpg": "hrmale, erect penis, visible glans, veined shaft, standing waist-down close-up, photorealistic photo",
+    "20260228_080247(1).jpg": "hrmale, erect penis side profile, visible glans, veined shaft, standing waist-down, photorealistic photo",
+    "20260328_075339(2).jpg": "hrmale, erect penis side view, visible glans, veined shaft, outdoor daylight, waist-down close-up, photorealistic photo",
+    "20260328_075339(3).jpg": "hrmale, erect penis side view, glans and shaft veins, outdoor balcony, waist-down close-up, photorealistic photo",
+    "20260328_075339(4).jpg": "hrmale, erect penis side view, visible glans, veined shaft, balcony daylight, waist-down, photorealistic photo",
+    "20260329_013617.jpg": "hrmale, erect penis side view, visible glans, veined shaft, waist-down close-up, photorealistic photo",
+    "20260329_013617(1).jpg": "hrmale, erect penis, visible glans, veined shaft, front close-up, photorealistic photo",
+    "20260509_064836.jpg": "hrmale, erect penis, visible glans, veined shaft, standing waist-down, photorealistic photo",
+    "20260509_072024.jpg": "hrmale, erect penis, visible glans, veined shaft, lying down, waist-down close-up, photorealistic photo",
+    "20260509_072024(2).jpg": "hrmale, erect penis looking down, visible glans, veined shaft, thighs in frame, photorealistic photo",
+    "20260509_121218.jpg": "hrmale, erect penis looking down, visible glans, veined shaft, waist-down close-up, photorealistic photo",
+    "20260711_082212.jpg": "hrmale, erect penis extreme close-up, glans, veined shaft, photorealistic photo",
+    "20260711_083049.jpg": "hrmale, erect penis looking down, visible glans, veined shaft, waist-down close-up, photorealistic photo",
+    "20260711_083049(1).jpg": "hrmale, erect penis looking down, glans and shaft veins, tiled floor, photorealistic photo",
+    "20260711_113135.jpg": "hrmale, extreme close-up of the glans, shaft veins, photorealistic photo",
+    "20260807_122635.jpg": "hrmale, erect penis side profile, visible glans, veined shaft, standing close-up, photorealistic photo",
+    "20260807_122635(2).jpg": "hrmale, erect penis side view, visible glans, veined shaft, standing close-up, photorealistic photo",
+    "20260815_222042.jpg": "hrmale, erect penis looking down POV, visible glans, veined shaft, waist-down close-up, photorealistic photo",
+    "DJI_20250802_221407_72_null_video(1).jpg": "hrmale, erect penis side view, visible glans, veined shaft, waist-down close-up, photorealistic photo",
+    "Dalia V2 Part 2.jpg": "hrmale, erect penis looking down, visible glans, veined shaft, close-up, photorealistic photo",
+    "Dalia V2 Part 2(1).jpg": "hrmale, extreme close-up of the glans and shaft, photorealistic photo",
+    "Dalia V2 Part 2(2).jpg": "hrmale, extreme close-up of the glans and veined shaft, photorealistic photo",
+}
+
+need_sync = False
+if not os.path.isdir(HENRY_INBOX_DIR) or (not os.listdir(HENRY_INBOX_DIR)):
+    need_sync = True
+if need_sync:
+    print("Copying ADD_HENRY_BODY_PHOTOS via Drive API...")
+    service = DRIVE_SERVICE or _api_service()
+    found = api_find_child(service, FIRATSUPER_DRIVE_ID, "ADD_HENRY_BODY_PHOTOS")
+    folder_id = found["id"] if found else HENRY_BODY_ID
+    api_download_folder(service, folder_id, HENRY_INBOX_DIR)
+
+if not os.path.isdir(HENRY_INBOX_DIR):
+    raise RuntimeError("Missing male photo folder: " + HENRY_INBOX_DIR)
+
+if os.path.isdir(HENRY_DATASET_DIR):
+    shutil.rmtree(HENRY_DATASET_DIR)
+os.makedirs(HENRY_DATASET_DIR, exist_ok=True)
+
+print("Woman dataset folder left untouched:", DATASET_DIR)
+print("Locked LoRA left untouched:", OUTPUT_LORA_NAME)
+
+pairs = []
+skipped = []
+for name in sorted(os.listdir(HENRY_INBOX_DIR)):
+    if name.startswith("."):
+        continue
+    if name.lower() in SKIP_NAMES:
+        skipped.append(name + " (skip file)")
+        continue
+    path = os.path.join(HENRY_INBOX_DIR, name)
+    if os.path.isdir(path):
+        skipped.append(name + "/")
+        continue
+    stem, ext = os.path.splitext(name)
+    low = name.lower()
+    if "flux_eval" in low or "_seed" in low or low.startswith("scene_") or low.startswith("strip_"):
+        skipped.append(name + " (looks generated, never train)")
+        continue
+    if ext.lower() not in IMG_EXT:
+        skipped.append(name + " (not image)")
+        continue
+    if name in HENRY_EXCLUDE:
+        skipped.append(name + " (exclude)")
+        continue
+    if name not in HENRY_KEEP:
+        skipped.append(name + " (not in 26 KEEP)")
+        continue
+    caption = HENRY_KEEP[name]
+    if not caption.lower().startswith("hrmale"):
+        raise RuntimeError("Caption must start with hrmale: " + name)
+    if "ohwx" in caption.lower() or "lapetitemilf" in caption.lower():
+        raise RuntimeError("Male captions must not use ohwx / LaPetiteMilf: " + name)
+    dest_img = os.path.join(HENRY_DATASET_DIR, name)
+    dest_txt = os.path.join(HENRY_DATASET_DIR, stem + ".txt")
+    shutil.copy2(path, dest_img)
+    with open(dest_txt, "w", encoding="ascii") as fh:
+        fh.write(caption + "\n")
+    pairs.append((name, caption))
+
+print("Kept", len(pairs), "male photos")
+if skipped:
+    print("Skipped:")
+    for row in skipped:
+        print(" ", row)
+
+missing = sorted(set(HENRY_KEEP) - set(p[0] for p in pairs))
+if missing:
+    raise RuntimeError("KEEP photos missing from Drive folder: " + ", ".join(missing))
+if len(pairs) != HENRY_EXPECTED:
+    raise RuntimeError("Need %d unique KEEP photos. Got %d" % (HENRY_EXPECTED, len(pairs)))
+
+print("--- sample caption ---")
+print(pairs[0][0])
+print(pairs[0][1])
+print("----------------------")
+print("Male Gate 1 GO. Local folder:", HENRY_DATASET_DIR)
+print("Does not overwrite", OUTPUT_LORA_NAME)"""
+)
+
+code(
+    r"""# @title 42) Male LoRA: write Ostris YAML (henry_penis_flux_v1)
+if HENRY_OUTPUT_LORA in PROTECTED_LORAS:
+    raise RuntimeError("Male LoRA name is protected.")
+write_henry_yaml(HENRY_CONFIG_PATH, HENRY_TRAIN_STEPS, dry=False)
+print("--- YAML name/dataset ---")
+with open(HENRY_CONFIG_PATH, "r", encoding="ascii") as fh:
+    for i, line in enumerate(fh):
+        if i >= 45:
+            break
+        print(line.rstrip("\n"))
+print("YAML file is", HENRY_CONFIG_PATH)
+print("Locked v2 YAML path left untouched:", CONFIG_PATH)
+print("Output name:", HENRY_LORA_NAME, "trigger:", HENRY_TRIGGER)"""
+)
+
+code(
+    r"""# @title 43) Male LoRA: dry run (5 steps)
+import os
+import subprocess
+import sys
+
+if HENRY_OUTPUT_LORA in PROTECTED_LORAS:
+    raise RuntimeError("Male LoRA name is protected.")
+if not os.path.isdir("/content/ai-toolkit"):
+    raise RuntimeError("ai-toolkit missing. Run cell 4, then rerun this cell. Do not run cells 5-9.")
+n_txt = len([n for n in os.listdir(HENRY_DATASET_DIR) if n.endswith(".txt")])
+if n_txt != HENRY_EXPECTED:
+    raise RuntimeError("Run cell 41 first. Need %d captions, got %d" % (HENRY_EXPECTED, n_txt))
+write_henry_yaml(HENRY_CONFIG_PATH, DRY_RUN_STEPS, dry=True)
+print("Male dry run: %d steps. Downloads FLUX.1-dev the first time." % DRY_RUN_STEPS)
+print("This does not write", OUTPUT_LORA_NAME)
+cmd = [sys.executable, "run.py", HENRY_CONFIG_PATH]
+print("+", " ".join(cmd))
+subprocess.check_call(cmd, cwd="/content/ai-toolkit")
+write_henry_yaml(HENRY_CONFIG_PATH, HENRY_TRAIN_STEPS, dry=False)
+print("Male dry run OK. YAML restored to", HENRY_TRAIN_STEPS, "steps.")
+print("Next: cell 44 full train. Keep this tab open.")"""
+)
+
+code(
+    r"""# @title 44) Male LoRA: full train henry_penis_flux_v1
+import os
+import subprocess
+import sys
+import torch
+
+if HENRY_OUTPUT_LORA in PROTECTED_LORAS:
+    raise RuntimeError("Male LoRA name is protected.")
+if HENRY_LORA_NAME == LORA_NAME:
+    raise RuntimeError("Refusing to train into the locked v2 name.")
+if not os.path.isdir("/content/ai-toolkit"):
+    raise RuntimeError("ai-toolkit missing. Run cell 4, then this cell. Do not run cells 5-9.")
+write_henry_yaml(HENRY_CONFIG_PATH, HENRY_TRAIN_STEPS, dry=False)
+print("Male full train:", HENRY_TRAIN_STEPS, "steps on", torch.cuda.get_device_name(0))
+print("Writes /content/output/%s/  NOT  %s" % (HENRY_LORA_NAME, OUTPUT_LORA_NAME))
+print("Keep this tab open.")
+cmd = [sys.executable, "run.py", HENRY_CONFIG_PATH]
+print("+", " ".join(cmd))
+subprocess.check_call(cmd, cwd="/content/ai-toolkit")
+print("Male training finished.")
+print("Next: cell 45 copies henry_penis_flux_v1.safetensors to Drive/loras/")"""
+)
+
+code(
+    r"""# @title 45) Male LoRA: copy henry_penis_flux_v1 to Drive (not v2)
+import os
+import glob
+from IPython.display import display, Image as IPyImage
+
+if HENRY_OUTPUT_LORA in PROTECTED_LORAS:
+    raise RuntimeError("Refusing to write a protected LoRA name.")
+if HENRY_OUTPUT_LORA == OUTPUT_LORA_NAME:
+    raise RuntimeError("Refusing to overwrite locked v2.")
+
+run_dir = os.path.join(TRAIN_OUTPUT_DIR, HENRY_LORA_NAME)
+candidates = []
+final_path = os.path.join(run_dir, HENRY_OUTPUT_LORA)
+if os.path.isfile(final_path):
+    candidates.append(final_path)
+candidates.extend(sorted(glob.glob(os.path.join(run_dir, "*.safetensors"))))
+preferred = [p for p in candidates if os.path.basename(p) == HENRY_OUTPUT_LORA]
+if not preferred:
+    preferred = [p for p in candidates if "step" not in os.path.basename(p).lower()]
+if not preferred:
+    preferred = candidates
+if not preferred:
+    raise RuntimeError("No .safetensors found in " + run_dir)
+
+src = preferred[0]
+base = os.path.basename(src)
+if base in PROTECTED_LORAS or base == OUTPUT_LORA_NAME:
+    raise RuntimeError("Refusing to copy a locked LoRA: " + base)
+print("Using:", src, "size_mb=%.1f" % (os.path.getsize(src) / 1024**2))
+
+dest_rel = "loras/" + HENRY_OUTPUT_LORA
+upload_project_file(src, dest_rel)
+print("Male LoRA saved as", dest_rel)
+print("Locked file was not touched:", OUTPUT_LORA_NAME)
+
+sample_dir = os.path.join(run_dir, "samples")
+shown = 0
+if os.path.isdir(sample_dir):
+    for name in sorted(os.listdir(sample_dir)):
+        path = os.path.join(sample_dir, name)
+        if os.path.splitext(name)[1].lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+            continue
+        print(path)
+        display(IPyImage(filename=path, width=384))
+        shown += 1
+        if shown >= 8:
+            break
+print("Next: cells 46-48 generate 5-shot genital/oral/facial with BOTH LoRAs.")
+print("Do not put generated pictures into ADD_HENRY_BODY_PHOTOS.")"""
+)
+
+md(
+    """## Dual LoRA 5-shot close-ups (cells 46-48)
+
+Need `henry_penis_flux_v1.safetensors` from cell 45 (or already on Drive).
+Each cell: **5** pictures, short prompts, penis/mouth/face fill the frame.
+Loads locked v2 **and** the male LoRA. Does not change cells 13-40."""
+)
+
+code(
+    r"""# @title 46) Dual LoRA 5-shot: extreme genital close-up
+SHOT_START = 0
+SHOT_END = 5
+PLACE = "extreme close-up, frame filled by penis and vulva"
+SLUG = "46_genital_close"
+SEED_BASE = 6100
+SHOTS = [
+    ("01_glans_vulva", "sex", "hrmale erect penis glans and veined shaft against ohwx woman vulva, extreme close-up"),
+    ("02_shaft_labia", "sex", "hrmale erect veined shaft along ohwx woman labia, glans visible, extreme close-up"),
+    ("03_glans_entering", "sex", "hrmale erect penis glans entering ohwx woman vulva, shaft veins, extreme close-up"),
+    ("04_pressed_close", "sex", "hrmale erect penis pressed to ohwx woman vulva, glans and shaft fill the frame"),
+    ("05_side_join", "sex", "hrmale erect penis beside ohwx woman vulva, visible glans, veins, shaft, extreme close-up"),
+]
+run_scene_set(
+    SLUG,
+    PLACE,
+    SHOTS,
+    SEED_BASE,
+    SHOT_START,
+    SHOT_END,
+    ident="",
+    adapter_names=["default", "hrmale"],
+    adapter_weights=[0.7, 0.85],
+    height=1024,
+    width=1024,
+)"""
+)
+
+code(
+    r"""# @title 47) Dual LoRA 5-shot: oral on penis close-up
+SHOT_START = 0
+SHOT_END = 5
+PLACE = "extreme close-up, frame filled by penis and mouth"
+SLUG = "47_oral_close"
+SEED_BASE = 6200
+SHOTS = [
+    ("01_glans_lips", "sex", "hrmale erect penis glans on ohwx woman lips, shaft veins, extreme close-up"),
+    ("02_in_mouth", "sex", "hrmale erect penis in ohwx woman mouth, visible glans and shaft, she looks up"),
+    ("03_tongue_glans", "sex", "hrmale glans, ohwx woman tongue, veined shaft, extreme close-up"),
+    ("04_lips_shaft", "sex", "hrmale veined shaft in ohwx woman lips, glans visible, extreme close-up"),
+    ("05_open_mouth", "sex", "hrmale erect penis at ohwx woman open mouth, glans and veins, extreme close-up"),
+]
+run_scene_set(
+    SLUG,
+    PLACE,
+    SHOTS,
+    SEED_BASE,
+    SHOT_START,
+    SHOT_END,
+    ident="",
+    adapter_names=["default", "hrmale"],
+    adapter_weights=[0.7, 0.85],
+    height=1024,
+    width=1024,
+)"""
+)
+
+code(
+    r"""# @title 48) Dual LoRA 5-shot: facial, semen plus glans
+SHOT_START = 0
+SHOT_END = 5
+PLACE = "extreme close-up, frame filled by smiling face and glans"
+SLUG = "48_facial_glans"
+SEED_BASE = 6300
+SHOTS = [
+    ("01_semen_glans", "sex", "thick white semen on ohwx woman smiling face, hrmale glans visible, extreme close-up"),
+    ("02_semen_lips", "sex", "thick white semen on ohwx woman lips, hrmale erect glans beside her mouth, extreme close-up"),
+    ("03_semen_cheek", "sex", "thick white semen on ohwx woman smiling cheek, hrmale glans and shaft in frame"),
+    ("04_semen_chin", "sex", "thick white semen on ohwx woman chin and mouth, hrmale glans visible, extreme close-up"),
+    ("05_semen_tongue", "sex", "thick white semen on ohwx woman tongue, hrmale glans at her lips, smile"),
+]
+run_scene_set(
+    SLUG,
+    PLACE,
+    SHOTS,
+    SEED_BASE,
+    SHOT_START,
+    SHOT_END,
+    ident="",
+    adapter_names=["default", "hrmale"],
+    adapter_weights=[0.7, 0.85],
+    height=1024,
+    width=1024,
+)"""
+)
+
+md(
     """## Done
 
 Locked production LoRA:
 `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 
-Run ONE series cell at a time (20 pictures, about 15-30 min). Keep the tab open.
+Male LoRA (cells 41-45, does not overwrite v2):
+`MyDrive/FiratSuper/loras/henry_penis_flux_v1.safetensors`
+
+Run ONE series cell at a time. Keep the tab open.
 
 Cells 13-22 (far strip) write to:
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/strip_*/`
@@ -2363,11 +2895,14 @@ Cells 23-27 (explicit couple / POV / facial) write to:
 Cells 38-40 (explicit couple, visible penis, semen) write to:
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/scene_*/`
 
+Cells 46-48 (5-shot genital / oral / facial, both LoRAs, short prompts) write to:
+`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/scene_*/`
+
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
 
 Do not write "no scars" in prompts. Flux will draw them.
-Do not train on generated pictures. Do not retrain.
+Do not train on generated pictures. Do not retrain v2.
 Two-person shots often glitch on Flux. Change SEED_BASE and rerun that cell.
 
 Also locked:
@@ -2375,14 +2910,16 @@ Also locked:
 `loras/lapetitemilf_face.safetensors`
 
 ### Make more pictures
-1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then ONE of cells 13-40.
-2. Cells 13-22 and 28-37: far camera strip. Cells 23-27 and 38-40: explicit couple / POV / facial sets.
-3. If it dies, set SHOT_START and rerun that cell.
-4. Nude/sex recipe: LoRA about 0.7, guidance 2.5. No scar words.
-5. Adult content only. Do not train on generated pictures.
+1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then ONE of cells 13-40 (v2 only).
+2. Male LoRA once: cells 41, 42, 43, 44, 45. Then ONE of cells 46-48 (both LoRAs, 5 shots).
+3. Cells 13-22 and 28-37: far camera strip. Cells 23-27 and 38-40: explicit couple / POV / facial sets (20).
+4. If it dies, set SHOT_START and rerun that cell.
+5. Nude/sex recipe: woman LoRA about 0.7, male LoRA about 0.85, guidance 2.5. No scar words.
+6. Adult content only. Do not train on generated pictures.
 
 ### If the runtime dies
-- LoRA is already on Drive. Rerun 1, 2, 3, then the series cell. New runtime: also 4. Skip 5-9.
+- v2 LoRA is already on Drive. Rerun 1, 2, 3, then the series cell. New runtime: also 4. Skip 5-9.
+- After male train, `henry_penis_flux_v1.safetensors` is on Drive. Skip 41-45 next time.
 - Hugging Face 403: accept FLUX.1-dev license, new READ token.
 - Drive popup: Allow ALL, one Google account."""
 )

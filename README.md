@@ -17,6 +17,7 @@
 5. תאים **1, 2, 3**. ריצה חדשה: גם **4**. אחר כך **תא אחד מ־13 עד 40**. אל תריצי 5–9.
 6. תאים 13–22 ו-28–37 = מקום אחד, מצלמה רחוקה, הורדה. תאים 23–27 ו-38–40 = סטים זוגיים / POV / facial.
 7. עירום: LoRA 0.75, guidance 2.5. בלי scars. שומרים ל-`keepers/`
+8. LoRA זכר **חדש** (לא דורס v2): תאים **41–45** פעם אחת, אחר כך תא **46 או 47 או 48** (5 תמונות close-up).
 
 ## דאטאסט Flux v2 (Gate 1 GO)
 
@@ -48,6 +49,7 @@
 5. תאים 1, 2, 3. ריצה חדשה: גם 4. אחר כך תא אחד מ־13 עד 40. אופציונלי: 10–12.
 6. הקובץ כבר ב-Drive: `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 7. כל תא 13–22 = 20 תמונות רחוקות, הורדה הדרגתית. מבוגרת בלבד.
+8. LoRA זכר: אחרי 41–45, תא 46 או 47 או 48 (5 תמונות, שני LoRA).
 
 ## מבנה Google Drive
 
@@ -55,8 +57,10 @@
 MyDrive/FiratSuper/
 |-- ADD_FLUX_PHOTOS/                         ← 31 תמונות + captions
 |-- ADD_FLUX_CHEST/                          ← 7 שומרים + captions (v2)
+|-- ADD_HENRY_BODY_PHOTOS/                   ← תמונות גוף זכר (תא 41 בוחר 26)
 |-- datasets/lapetitemilf/10_ohwx_woman/     ← דאטאסט SD ישן, לא לגעת
 |-- loras/lapetitemilf_flux_v2.safetensors    ← נעול (ייצור)
+|-- loras/henry_penis_flux_v1.safetensors     ← LoRA זכר (תאים 41-45)
 |-- loras/lapetitemilf_flux.safetensors      ← v1, מוגן, אל תדרוס
 |-- loras/lapetitemilf_face.safetensors      ← מוגן, אל תדרוס
 |-- output/lapetitemilf/flux_eval_v2/        ← תמונות מתא 10
@@ -88,11 +92,21 @@ MyDrive/FiratSuper/
 
 הוראות קצרות: [`workflows/README.md`](workflows/README.md)
 
+## LoRA זכר (תאים 41–48)
+
+`lapetitemilf_flux_v2` נשאר נעול. אל תריצי 5–9.
+
+1. אותה מחברת, A100, תאים 1–4.
+2. תאים **41, 42, 43, 44, 45** — אימון `henry_penis_flux_v1` מ-`ADD_HENRY_BODY_PHOTOS` (26 תמונות אמיתיות, טריגר `hrmale`).
+3. אחר כך **תא אחד**: 46 = vulva+penis, 47 = פה על הפין, 48 = facial עם semen ו-glans. 5 תמונות כל אחד.
+4. שני ה-LoRA נטענים. הפרומפט קצר ומתחיל באיבר / semen כדי ש-CLIP לא יחתוך.
+
 ## דרישות
 
 - Colab Pro עם **A100**
 - Hugging Face token עם גישה ל-FLUX.1-dev
 - תיקיות `ADD_FLUX_PHOTOS` + `ADD_FLUX_CHEST` ב-Drive (38 זוגות)
+- `ADD_HENRY_BODY_PHOTOS` לאימון LoRA הזכר (תאים 41–45)
 
 ## SD 1.5 (ארכיון)
 
