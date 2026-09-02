@@ -626,7 +626,7 @@ def write_henry_yaml(path, steps, dry):
         '  version: "1.0"',
         "",
     ]
-    text = "\n".join(lines)
+    text = chr(10).join(lines)
     if any(ord(ch) > 127 for ch in text):
         raise RuntimeError("YAML is not ASCII")
     if LORA_NAME in text or OUTPUT_LORA_NAME in text:
