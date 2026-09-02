@@ -826,9 +826,26 @@ try:
 except Exception:
     token = None
 
+if isinstance(token, dict):
+    picked = token.get("value")
+    if not picked:
+        for item in token.values():
+            if isinstance(item, str) and item:
+                picked = item
+                break
+    token = picked
+token = str(token).strip() if token else token
 if not token:
     token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGING_FACE_HUB_TOKEN")
-token = token.strip() if token else token
+    if isinstance(token, dict):
+        picked = token.get("value")
+        if not picked:
+            for item in token.values():
+                if isinstance(item, str) and item:
+                    picked = item
+                    break
+        token = picked
+    token = str(token).strip() if token else token
 if not token:
     token = getpass.getpass("HF READ token: ").strip()
 if not token:
