@@ -52,6 +52,7 @@ Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. D
 
 **Trigger:** `ohwx woman`. Do not write "no scars" in prompts. Adult subject only.
 Do not train on generated pictures. Two-person sex shots often glitch on Flux; rerun with a new SEED_BASE if anatomy breaks.
+**Chest look is prompt-only.** v2 LoRA stays locked. Do not train on gens. Use ADD_FLUX_CHEST only if he later asks for v3.
 
 ## Cells
 1. A100 GPU check
@@ -507,6 +508,7 @@ def run_far_strip(slug, place, shots, seed_base, shot_start=0, shot_end=20):
     )
     ident = (
         "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
+        "fair pale skin, natural soft teardrop breasts, medium circular pinkish-tan textured areolae, prominent nipples, "
     )
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_dir = os.path.join(EVAL_DIR, "strip_" + slug + "_" + stamp)
@@ -571,6 +573,7 @@ def run_scene_set(slug, place, shots, seed_base, shot_start=0, shot_end=20):
     ensure_flux_pipe()
     ident = (
         "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
+        "fair pale skin, natural soft teardrop breasts, medium circular pinkish-tan textured areolae, prominent nipples, "
     )
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     out_dir = os.path.join(EVAL_DIR, "scene_" + slug + "_" + stamp)
@@ -1224,18 +1227,20 @@ print("LoRA loaded.")
 PROMPTS = {
     "identity": (
         "ohwx woman, close-up portrait of an adult woman with long highlighted "
-        "blonde hair and brown eyes, looking at the camera, photorealistic raw photo, "
+        "blonde hair and brown eyes, fair pale skin, looking at the camera, photorealistic raw photo, "
         "natural skin texture, sharp eyes, soft even lighting"
     ),
     "lingerie": (
         "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
+        "fair pale skin, "
         "full body standing, black lace lingerie, looking at the camera, indoor fashion photo, "
         "photorealistic, natural skin texture, soft even lighting"
     ),
     "nude": (
         "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
+        "fair pale skin, natural soft teardrop breasts, medium circular pinkish-tan textured areolae, prominent nipples, "
         "waist-up, facing the camera, square frontal view, standing nude, "
-        "looking at the camera, soft even indoor lighting, photorealistic raw photo, smooth skin"
+        "looking at the camera, soft even indoor lighting, photorealistic raw photo, natural skin texture"
     ),
 }
 
@@ -1330,8 +1335,9 @@ print("source:", src_path, base.size)
 
 prompt = (
     "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
+    "fair pale skin, natural soft teardrop breasts, medium circular pinkish-tan textured areolae, prominent nipples, "
     "waist-up, facing the camera, square frontal view, standing nude, "
-    "looking at the camera, soft even indoor lighting, photorealistic raw photo, smooth skin"
+    "looking at the camera, soft even indoor lighting, photorealistic raw photo, natural skin texture"
 )
 print("prompt:", prompt)
 print("Do not put the words scars or surgical in this prompt.")
@@ -1420,6 +1426,7 @@ NUDE_LORA_WEIGHT = 0.75
 
 ID = (
     "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, "
+    "fair pale skin, natural soft teardrop breasts, medium circular pinkish-tan textured areolae, prominent nipples, "
 )
 
 STYLES = [
