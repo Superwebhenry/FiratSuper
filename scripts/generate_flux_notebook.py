@@ -640,6 +640,22 @@ def write_henry_yaml(path, steps, dry):
     print("Wrote", path, "steps=%d dry=%s name=%s" % (steps, dry, HENRY_LORA_NAME))
 
 
+def set_pipe_adapters(pipe, names, weights):
+    names = list(names)
+    weights = list(weights)
+    try:
+        pipe.set_adapters(names, adapter_weights=weights)
+        return names
+    except (ValueError, KeyError) as err:
+        alt = ["default_0" if n == "default" else n for n in names]
+        if alt == names:
+            print("set_adapters:", err)
+            raise
+        print("set_adapters: default missing, using default_0")
+        pipe.set_adapters(alt, adapter_weights=weights)
+        return alt
+
+
 def run_far_strip(slug, place, shots, seed_base, shot_start=0, shot_end=20):
     import os
     import torch
@@ -676,10 +692,7 @@ def run_far_strip(slug, place, shots, seed_base, shot_start=0, shot_end=20):
         else:
             weight = 1.0
             guidance = 3.5
-        try:
-            pipe.set_adapters(["default"], adapter_weights=[weight])
-        except Exception as err:
-            print("set_adapters:", err)
+        set_pipe_adapters(pipe, ["default"], [weight])
         seed = seed_base + pidx
         prompt = (
             ident + far + ", " + action + ". " + place +
@@ -775,10 +788,7 @@ def run_scene_set(
                 weights = [weight] * len(names)
             else:
                 weights = list(adapter_weights)
-        try:
-            pipe.set_adapters(names, adapter_weights=weights)
-        except Exception as err:
-            print("set_adapters:", err)
+        names = set_pipe_adapters(pipe, names, weights)
         seed = seed_base + pidx
         if ident:
             prompt = ident + action + ". " + place + ", photorealistic raw photo, natural skin texture"
@@ -1414,7 +1424,7 @@ try:
 except Exception:
     pass
 try:
-    pipe.set_adapters(["default"], adapter_weights=[LORA_WEIGHT])
+    set_pipe_adapters(pipe, ["default"], [LORA_WEIGHT])
 except Exception as err:
     print("set_adapters skipped:", err)
     try:
@@ -1461,10 +1471,7 @@ for kind in selected:
     prompt = PROMPTS[kind]
     weight = NUDE_LORA_WEIGHT if kind == "nude" else LORA_WEIGHT
     guidance = NUDE_GUIDANCE if kind == "nude" else GUIDANCE
-    try:
-        pipe.set_adapters(["default"], adapter_weights=[weight])
-    except Exception as err:
-        print("set_adapters:", err)
+    set_pipe_adapters(pipe, ["default"], [weight])
     for i in range(NUM_PER_PROMPT):
         seed = SEED + idx
         print("gen", kind, "seed", seed, "guidance", guidance, "lora", weight)
@@ -1572,7 +1579,7 @@ except Exception as err:
     print("img2img offload:", err)
 
 try:
-    img2img.set_adapters(["default"], adapter_weights=[NUDE_LORA_WEIGHT])
+    set_pipe_adapters(img2img, ["default"], [NUDE_LORA_WEIGHT])
 except Exception as err:
     print("set_adapters:", err)
 
@@ -1740,10 +1747,7 @@ if "pipe" in globals() and pipe is not None:
 if need_load:
     _load_txt2img()
 
-try:
-    pipe.set_adapters(["default"], adapter_weights=[NUDE_LORA_WEIGHT])
-except Exception as err:
-    print("set_adapters:", err)
+set_pipe_adapters(pipe, ["default"], [NUDE_LORA_WEIGHT])
 
 stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 out_dir = os.path.join(EVAL_DIR, "outdoor_" + stamp)
@@ -3021,11 +3025,8 @@ if not SUBJECT_IS_ADULT:
     raise RuntimeError("Adult subject only.")
 
 ensure_flux_pipe()
-try:
-    pipe.set_adapters(["default"], adapter_weights=[1.0])
-except Exception as err:
-    print("set_adapters:", err)
-print("Female-only: lapetitemilf_flux_v2 at 1.0. Male LoRA not loaded for this cell.")
+used = set_pipe_adapters(pipe, ["default"], [1.0])
+print("Female-only: lapetitemilf_flux_v2 at 1.0. Adapter:", used, "Male LoRA not loaded for this cell.")
 
 stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 out_dir = os.path.join(KEEPERS_DIR, "scene_" + SLUG + "_" + stamp)
