@@ -36,7 +36,7 @@ def code(source: str) -> None:
 md(
     """# FiratSuper Flux LoRA (Colab A100)
 
-**Training is done for her LoRA.** Generate with locked v2 (cells 13-40). Optional new path: train a **separate** male LoRA (cells 41-45), then 5-shot genital close-ups (46-48).
+**Training is done for her LoRA.** Generate with locked v2 (cells 13-40). Optional new path: train a **separate** male LoRA (cells 41-45), then dual close-ups. Cells 46-48 were rejected (keep as history). Use **49-51**.
 
 **Runtime:** Runtime > Change runtime type > **A100 GPU**. Do not pick T4. Do not pick TPU.
 High RAM can stay off.
@@ -50,7 +50,7 @@ Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. D
 
 **Generate path (woman LoRA only):** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22 far strip, 23-27 explicit sets, 28-37 far strip, or 38-40 explicit couple). Skip 5-9. Cells 13-40 still load only `lapetitemilf_flux_v2`.
 
-**Male LoRA path (new, does not touch v2):** cells **41-45** train `henry_penis_flux_v1` from `ADD_HENRY_BODY_PHOTOS` (26 real waist-down photos, trigger `hrmale`). Then cells **46-48** are three 5-shot extreme close-ups (genital / oral / facial) with **both** LoRAs and **short** prompts that lead with penis/semen so CLIP-77 cannot drop them.
+**Male LoRA path (does not touch v2):** cells **41-45** train `henry_penis_flux_v1` once (already on Drive -- do not retrain). Cells **46-48** are rejected history; do not rerun them. Cells **49-51** are the retry: identity tokens first (`ohwx woman` + highlighted blonde + brown eyes), then `hrmale` + anatomy, v2 weight 1.0 / male 0.7.
 
 **Trigger:** `ohwx woman` (her LoRA). Male trigger: `hrmale`. Do not write "no scars" in prompts. Adult subject only.
 Do not train on generated pictures. Two-person sex shots often glitch on Flux; rerun with a new SEED_BASE if anatomy breaks.
@@ -98,9 +98,12 @@ Do not train on generated pictures. Two-person sex shots often glitch on Flux; r
 43. Male LoRA: dry run (5 steps)
 44. Male LoRA: full train -> henry_penis_flux_v1
 45. Male LoRA: copy to Drive/loras/ (will not overwrite v2)
-46. Dual LoRA 5-shot: extreme genital close-up
-47. Dual LoRA 5-shot: oral on penis close-up
-48. Dual LoRA 5-shot: facial, semen + glans
+46. Dual LoRA 5-shot: extreme genital close-up (REJECTED -- keep for history)
+47. Dual LoRA 5-shot: oral on penis close-up (REJECTED -- keep for history)
+48. Dual LoRA 5-shot: facial, semen + glans (REJECTED -- keep for history)
+49. Dual LoRA 5-shot retry: genital close, identity first
+50. Dual LoRA 5-shot retry: oral close, identity first
+51. Dual LoRA 5-shot retry: facial, semen + glans, identity first
 
 ## Drive layout
 ```
@@ -804,7 +807,7 @@ def run_scene_set(
     print("Do not put these pictures back into the training folders.")
 
 
-print("Drive settings OK. Helpers ready for cells 13-40 and 41-48.")"""
+print("Drive settings OK. Helpers ready for cells 13-40 and 41-51.")"""
 )
 
 code(
@@ -2890,6 +2893,105 @@ run_scene_set(
 )
 
 md(
+    """## Dual LoRA retry (cells 49-51)
+
+Cells 46-48 were rejected. Leave those Drive folders alone.
+Do not retrain v2. Do not retrain `henry_penis_flux_v1`.
+Identity first (ohwx, highlighted blonde, brown eyes), then hrmale + anatomy.
+Woman LoRA 1.0, male LoRA 0.7. Five shots each."""
+)
+
+code(
+    r"""# @title 49) Dual LoRA 5-shot retry: genital close, identity first
+SHOT_START = 0
+SHOT_END = 5
+PLACE = "extreme close-up"
+SLUG = "49_id_genital"
+SEED_BASE = 6400
+IDENT = "ohwx woman, an adult woman, long highlighted blonde hair, brown eyes, fair pale skin, "
+SHOTS = [
+    ("01_glans_vulva", "sex", "hrmale erect penis, visible glans and veined shaft, at her vulva"),
+    ("02_shaft_labia", "sex", "hrmale erect penis, veined shaft along her labia, glans visible"),
+    ("03_glans_entering", "sex", "hrmale erect penis, glans entering her vulva, shaft veins visible"),
+    ("04_pressed_close", "sex", "hrmale erect penis pressed to her vulva, glans and shaft in frame"),
+    ("05_side_join", "sex", "hrmale erect penis beside her vulva, visible glans, veins, shaft"),
+]
+run_scene_set(
+    SLUG,
+    PLACE,
+    SHOTS,
+    SEED_BASE,
+    SHOT_START,
+    SHOT_END,
+    ident=IDENT,
+    adapter_names=["default", "hrmale"],
+    adapter_weights=[1.0, 0.7],
+    height=1024,
+    width=1024,
+)"""
+)
+
+code(
+    r"""# @title 50) Dual LoRA 5-shot retry: oral close, identity first
+SHOT_START = 0
+SHOT_END = 5
+PLACE = "extreme close-up"
+SLUG = "50_id_oral"
+SEED_BASE = 6500
+IDENT = "ohwx woman, an adult woman, long highlighted blonde hair, brown eyes, fair pale skin, "
+SHOTS = [
+    ("01_lips_at_glans", "sex", "hrmale erect penis, her mouth and the glans as two distinct objects, lips at the tip"),
+    ("02_mouth_on_shaft", "sex", "hrmale erect penis, her open mouth around the shaft, glans still visible, two bodies"),
+    ("03_penis_beside_mouth", "sex", "hrmale erect penis beside her open mouth, separate glans and lips, she looks up"),
+    ("04_hand_and_mouth", "sex", "hrmale erect penis, she holds the shaft, her mouth next to the glans, two distinct objects"),
+    ("05_lips_side_shaft", "sex", "hrmale erect penis, her lips on one side of the shaft, glans and mouth separate"),
+]
+run_scene_set(
+    SLUG,
+    PLACE,
+    SHOTS,
+    SEED_BASE,
+    SHOT_START,
+    SHOT_END,
+    ident=IDENT,
+    adapter_names=["default", "hrmale"],
+    adapter_weights=[1.0, 0.7],
+    height=1024,
+    width=1024,
+)"""
+)
+
+code(
+    r"""# @title 51) Dual LoRA 5-shot retry: facial, semen plus glans
+SHOT_START = 0
+SHOT_END = 5
+PLACE = "extreme close-up"
+SLUG = "51_id_facial"
+SEED_BASE = 6600
+IDENT = "ohwx woman, an adult woman, long highlighted blonde hair, brown eyes, fair pale skin, "
+SHOTS = [
+    ("01_semen_glans", "sex", "hrmale erect penis, thick white semen on her smiling face, glans in the same frame"),
+    ("02_semen_lips", "sex", "hrmale erect penis, thick white semen on her lips, glans beside her mouth"),
+    ("03_semen_cheek", "sex", "hrmale erect penis, thick white semen on her cheek, glans and shaft visible"),
+    ("04_semen_chin", "sex", "hrmale erect penis, thick white semen on her chin, glans in frame, she smiles"),
+    ("05_semen_mouth", "sex", "hrmale erect penis, thick white semen on her mouth, glans at her cheek, she smiles"),
+]
+run_scene_set(
+    SLUG,
+    PLACE,
+    SHOTS,
+    SEED_BASE,
+    SHOT_START,
+    SHOT_END,
+    ident=IDENT,
+    adapter_names=["default", "hrmale"],
+    adapter_weights=[1.0, 0.7],
+    height=1024,
+    width=1024,
+)"""
+)
+
+md(
     """## Done
 
 Locked production LoRA:
@@ -2912,14 +3014,17 @@ Cells 23-27 (explicit couple / POV / facial) write to:
 Cells 38-40 (explicit couple, visible penis, semen) write to:
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/scene_*/`
 
-Cells 46-48 (5-shot genital / oral / facial, both LoRAs, short prompts) write to:
-`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/scene_*/`
+Cells 46-48 (REJECTED history -- do not rerun; leave those Drive folders):
+`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/scene_46_*` / `scene_47_*` / `scene_48_*`
+
+Cells 49-51 (retry: identity first, v2 1.0 / male 0.7) write to:
+`MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/scene_49_*` / `scene_50_*` / `scene_51_*`
 
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
 
 Do not write "no scars" in prompts. Flux will draw them.
-Do not train on generated pictures. Do not retrain v2.
+Do not train on generated pictures. Do not retrain v2. Do not retrain henry_penis_flux_v1.
 Two-person shots often glitch on Flux. Change SEED_BASE and rerun that cell.
 
 Also locked:
@@ -2928,10 +3033,10 @@ Also locked:
 
 ### Make more pictures
 1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then ONE of cells 13-40 (v2 only).
-2. Male LoRA once: cells 41, 42, 43, 44, 45. Then ONE of cells 46-48 (both LoRAs, 5 shots).
+2. Male LoRA is already on Drive. Skip 41-45. Skip rejected 46-48. Run ONE of cells 49-51.
 3. Cells 13-22 and 28-37: far camera strip. Cells 23-27 and 38-40: explicit couple / POV / facial sets (20).
 4. If it dies, set SHOT_START and rerun that cell.
-5. Nude/sex recipe: woman LoRA about 0.7, male LoRA about 0.85, guidance 2.5. No scar words.
+5. Dual retry recipe (49-51): woman LoRA 1.0, male LoRA 0.7, guidance 2.5. No scar words.
 6. Adult content only. Do not train on generated pictures.
 
 ### If the runtime dies
