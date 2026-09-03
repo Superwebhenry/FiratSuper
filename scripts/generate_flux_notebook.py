@@ -36,7 +36,7 @@ def code(source: str) -> None:
 md(
     """# FiratSuper Flux LoRA (Colab A100)
 
-**Training is done for her LoRA.** Generate with locked v2 (cells 13-40). Optional new path: train a **separate** male LoRA (cells 41-45), then dual close-ups. Cells 46-48 were rejected (keep as history). Use **49-51**.
+**Training is done for her LoRA.** Generate with locked v2 (cells 13-40). Dual close-ups 46-51 were rejected (keep as history). **Cell 52** is a 2-shot face-only v2 identity check. Do not retrain.
 
 **Runtime:** Runtime > Change runtime type > **A100 GPU**. Do not pick T4. Do not pick TPU.
 High RAM can stay off.
@@ -50,7 +50,7 @@ Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. D
 
 **Generate path (woman LoRA only):** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22 far strip, 23-27 explicit sets, 28-37 far strip, or 38-40 explicit couple). Skip 5-9. Cells 13-40 still load only `lapetitemilf_flux_v2`.
 
-**Male LoRA path (does not touch v2):** cells **41-45** train `henry_penis_flux_v1` once (already on Drive -- do not retrain). Cells **46-48** are rejected history; do not rerun them. Cells **49-51** are the retry: identity tokens first (`ohwx woman` + highlighted blonde + brown eyes), then `hrmale` + anatomy, v2 weight 1.0 / male 0.7.
+**Male LoRA path (does not touch v2):** cells **41-45** train `henry_penis_flux_v1` once (already on Drive -- do not retrain). Cells **46-51** are rejected history; do not rerun them. **Cell 52** loads only locked v2 at 1.0 (no male LoRA) for a 2-shot face identity check.
 
 **Trigger:** `ohwx woman` (her LoRA). Male trigger: `hrmale`. Do not write "no scars" in prompts. Adult subject only.
 Do not train on generated pictures. Two-person sex shots often glitch on Flux; rerun with a new SEED_BASE if anatomy breaks.
@@ -101,9 +101,10 @@ Do not train on generated pictures. Two-person sex shots often glitch on Flux; r
 46. Dual LoRA 5-shot: extreme genital close-up (REJECTED -- keep for history)
 47. Dual LoRA 5-shot: oral on penis close-up (REJECTED -- keep for history)
 48. Dual LoRA 5-shot: facial, semen + glans (REJECTED -- keep for history)
-49. Dual LoRA 5-shot retry: genital close, identity first
-50. Dual LoRA 5-shot retry: oral close, identity first
-51. Dual LoRA 5-shot retry: facial, semen + glans, identity first
+49. Dual LoRA 5-shot retry: genital close, identity first (REJECTED -- keep for history)
+50. Dual LoRA 5-shot retry: oral close, identity first (REJECTED -- keep for history)
+51. Dual LoRA 5-shot retry: facial, semen + glans, identity first (REJECTED -- keep for history)
+52. Face-only v2 identity check (2 shots, no male LoRA)
 
 ## Drive layout
 ```
@@ -2893,12 +2894,10 @@ run_scene_set(
 )
 
 md(
-    """## Dual LoRA retry (cells 49-51)
+    """## Dual LoRA retry (cells 49-51) -- REJECTED history
 
-Cells 46-48 were rejected. Leave those Drive folders alone.
-Do not retrain v2. Do not retrain `henry_penis_flux_v1`.
-Identity first (ohwx, highlighted blonde, brown eyes), then hrmale + anatomy.
-Woman LoRA 1.0, male LoRA 0.7. Five shots each."""
+Do not run 49-51. Leave those Drive folders alone.
+Do not retrain v2. Do not retrain `henry_penis_flux_v1`."""
 )
 
 code(
@@ -2992,6 +2991,80 @@ run_scene_set(
 )
 
 md(
+    """Skip 5-9. This cell is face-only v2. Do not run 49-51."""
+)
+
+code(
+    r"""# @title 52) Face-only v2 identity check (2 shots)
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 2
+SLUG = "52_face_id_check"
+SEED_BASE = 6700
+PLACE = "medium close face, full head in frame, shoulders visible"
+IDENT = "ohwx woman, an adult woman, long highlighted blonde hair, brown eyes, "
+SHOTS = [
+    ("01_face_smile", "face", "natural smile, looking at the camera, fair pale skin"),
+    ("02_face_look", "face", "soft smile, looking at the camera, fair pale skin"),
+]
+BANNED = (
+    "glans", "vulva", "penis", "semen", "shaft", "oral", "genital", "hrmale",
+)
+
+if SHOT_END != 2 or len(SHOTS) != 2:
+    raise RuntimeError("Cell 52 must be exactly 2 face shots.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+
+ensure_flux_pipe()
+try:
+    pipe.set_adapters(["default"], adapter_weights=[1.0])
+except Exception as err:
+    print("set_adapters:", err)
+print("Female-only: lapetitemilf_flux_v2 at 1.0. Male LoRA not loaded for this cell.")
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+out_dir = os.path.join(KEEPERS_DIR, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Face id check", SLUG, "->", out_dir)
+print("Do not overwrite 46-51 folders.")
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, action = SHOTS[pidx]
+    prompt = IDENT + action + ". " + PLACE + ", photorealistic raw photo, natural skin texture"
+    low = prompt.lower()
+    hit = [w for w in BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 52 prompt has banned words: " + ", ".join(hit))
+    seed = SEED_BASE + pidx
+    print("---", shot_slug, "seed", seed, "lora default 1.0")
+    print(prompt)
+    image = pipe(
+        prompt=prompt,
+        guidance_scale=3.5,
+        height=1024,
+        width=768,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    ).images[0]
+    path = os.path.join(out_dir, "%s_seed%d.png" % (shot_slug, seed))
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+print("Saved", len(saved), "face stills in", out_dir)
+if USE_DRIVE_API:
+    for path in saved:
+        upload_project_file(path, os.path.relpath(path, ROOT))
+print("Copy extra keepers to MyDrive/FiratSuper/keepers/")
+print("Do not put these pictures back into the training folders.")"""
+)
+
+md(
     """## Done
 
 Locked production LoRA:
@@ -3017,8 +3090,11 @@ Cells 38-40 (explicit couple, visible penis, semen) write to:
 Cells 46-48 (REJECTED history -- do not rerun; leave those Drive folders):
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/scene_46_*` / `scene_47_*` / `scene_48_*`
 
-Cells 49-51 (retry: identity first, v2 1.0 / male 0.7) write to:
+Cells 49-51 (REJECTED history -- do not rerun; leave those Drive folders):
 `MyDrive/FiratSuper/output/lapetitemilf/flux_eval_v2/scene_49_*` / `scene_50_*` / `scene_51_*`
+
+Cell 52 (face-only v2, 2 shots, no male LoRA) writes to:
+`MyDrive/FiratSuper/keepers/scene_52_face_id_check_*/`
 
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
@@ -3033,10 +3109,10 @@ Also locked:
 
 ### Make more pictures
 1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then ONE of cells 13-40 (v2 only).
-2. Male LoRA is already on Drive. Skip 41-45. Skip rejected 46-48. Run ONE of cells 49-51.
+2. Male LoRA is already on Drive. Skip 41-45. Skip rejected 46-51. Run cell 52 for a face-only v2 check.
 3. Cells 13-22 and 28-37: far camera strip. Cells 23-27 and 38-40: explicit couple / POV / facial sets (20).
 4. If it dies, set SHOT_START and rerun that cell.
-5. Dual retry recipe (49-51): woman LoRA 1.0, male LoRA 0.7, guidance 2.5. No scar words.
+5. Cell 52: v2 only at 1.0, two face stills, no hrmale. No scar words.
 6. Adult content only. Do not train on generated pictures.
 
 ### If the runtime dies
