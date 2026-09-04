@@ -108,6 +108,7 @@ Do not train on generated pictures. Two-person sex shots often glitch on Flux; r
 53. (live Colab face retry -- do not change)
 54. Face-only v2, keeper-steered identity (2 shots)
 55. Face-only v2 identity options (10 shots)
+56. Waist-hold chest-locked stills (6 shots, v2 only)
 
 ## Drive layout
 ```
@@ -3272,6 +3273,115 @@ print("Do not put these pictures back into ADD_* or training folders.")"""
 )
 
 md(
+    """Skip 5-9. Cell 56 is waist-hold chest-locked v2 stills. Do not train. No male LoRA."""
+)
+
+code(
+    r"""# @title 56) Waist-hold chest-locked stills (6 shots, v2 only)
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 6
+SLUG = "56_waist_hold_chest"
+SEEDS = [6000, 6001, 6002, 6003, 6004, 6005]
+LORA_W = 1.15
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+    "head fully in frame, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+)
+CHEST = (
+    "fair pale skin, natural soft teardrop breasts, "
+    "medium circular pinkish-tan textured areolae, prominent nipples, "
+)
+PLACE = "waist-up still, chest visible, full head in frame"
+SHOTS = [
+    ("01_hold_smile", "face", "both hands at her waist, looking at the camera, soft smile"),
+    ("02_hold_look", "face", "both hands at her waist, looking at the camera, calm look"),
+    ("03_hold_soft", "face", "hands resting at her waist, looking at the camera, soft smile"),
+    ("04_hold_open", "face", "both hands at her waist, looking at the camera, natural smile"),
+    ("05_hold_three_q", "face", "hands at her waist, slight three-quarter, looking at the camera, soft smile"),
+    ("06_hold_front", "face", "both hands at her waist, front view, looking at the camera, soft smile"),
+]
+BANNED = (
+    "glans", "vulva", "penis", "semen", "shaft", "oral", "genital", "hrmale",
+)
+
+if SHOT_END != 6 or len(SHOTS) != 6 or len(SEEDS) != 6:
+    raise RuntimeError("Cell 56 must be exactly 6 waist-hold shots.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+
+print("Prompt-only face+chest steer. Do not train. Do not load keeper files as a dataset.")
+ensure_flux_pipe()
+used = set_pipe_adapters(pipe, ["default"], [LORA_W])
+print("Female-only v2. Adapter:", used, "weight", LORA_W)
+print("Male LoRA not loaded.")
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, action = SHOTS[pidx]
+    prompt = (
+        IDENT + FACE + CHEST + action + ". " + PLACE +
+        ", photorealistic raw photo, natural skin texture"
+    )
+    low = prompt.lower()
+    hit = [w for w in BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 56 prompt has banned words: " + ", ".join(hit))
+    seed = SEEDS[pidx]
+    print("---", shot_slug, "seed", seed, "lora", used, LORA_W)
+    print(prompt)
+    image = pipe(
+        prompt=prompt,
+        guidance_scale=3.5,
+        height=1024,
+        width=768,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    ).images[0]
+    path = os.path.join(out_dir, "%s_seed%d.png" % (shot_slug, seed))
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+print("Saved", len(saved), "waist-hold stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        upload_project_file(path, os.path.relpath(path, ROOT))
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    if found:
+        print("Drive folder id:", found["id"])
+        print("Drive URL: https://drive.google.com/drive/folders/" + found["id"])
+    else:
+        print("Drive folder id: generate parent", gen_folder)
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
     """## Done
 
 Locked production LoRA:
@@ -3308,6 +3418,9 @@ Cell 54 (face-only v2, keeper-steered, 2 shots) writes to:
 
 Cell 55 (face-only v2 identity options, 10 shots) writes to:
 `MyDrive/FiratSuper/generate/scene_55_face_options_*/`
+
+Cell 56 (waist-hold chest-locked, 6 shots, v2 only) writes to:
+`MyDrive/FiratSuper/generate/scene_56_waist_hold_chest_*/`
 
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
