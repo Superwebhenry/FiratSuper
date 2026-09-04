@@ -50,7 +50,7 @@ Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. D
 
 **Generate path (woman LoRA only):** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22 far strip, 23-27 explicit sets, 28-37 far strip, or 38-40 explicit couple). Skip 5-9. Cells 13-40 still load only `lapetitemilf_flux_v2`.
 
-**Male LoRA path (does not touch v2):** cells **41-45** train `henry_penis_flux_v1` once (already on Drive -- do not retrain). Cells **46-51** are rejected history; do not rerun them. **Cell 52** loads only locked v2 at 1.0 (no male LoRA) for a 2-shot face identity check.
+**Male LoRA path (does not touch v2):** cells **41-45** are the first male train (KEEP list includes Dalia -- do not rerun). Cells **57-61** retrain/overwrite `henry_penis_flux_v1` from all `ADD_HENRY_BODY_PHOTOS` except documented exclusions. Cells **46-51** are rejected history; do not rerun them. **Cell 52** loads only locked v2 at 1.0 (no male LoRA) for a 2-shot face identity check. **Cell 62** is face+chest scene stills (v2 only @ 1.15, keepers 01-04, no male LoRA).
 
 **Trigger:** `ohwx woman` (her LoRA). Male trigger: `hrmale`. Do not write "no scars" in prompts. Adult subject only.
 Do not train on generated pictures. Two-person sex shots often glitch on Flux; rerun with a new SEED_BASE if anatomy breaks.
@@ -109,15 +109,21 @@ Do not train on generated pictures. Two-person sex shots often glitch on Flux; r
 54. Face-only v2, keeper-steered identity (2 shots)
 55. Face-only v2 identity options (10 shots)
 56. Waist-hold chest-locked stills (6 shots, v2 only)
+57. Retrain male LoRA: copy all photos except exclusions + hrmale captions
+58. Retrain male LoRA: write Ostris YAML (not v2)
+59. Retrain male LoRA: dry run (5 steps)
+60. Retrain male LoRA: full train -> overwrite henry_penis_flux_v1
+61. Retrain male LoRA: copy overwrite to Drive/loras/ (will not overwrite v2)
+62. Face+chest scene stills (6 shots, v2 only, keepers 01-04)
 
 ## Drive layout
 ```
 MyDrive/FiratSuper/
 |-- ADD_FLUX_PHOTOS/                      # 31 keepers + .txt captions
 |-- ADD_FLUX_CHEST/                       # 7 chest keepers + .txt (skip unpaired)
-|-- ADD_HENRY_BODY_PHOTOS/                # real male body photos (cell 41 filters to 26)
+|-- ADD_HENRY_BODY_PHOTOS/                # real male body photos (cell 57 uses all except exclusions)
 |-- loras/lapetitemilf_flux_v2.safetensors # LOCKED production LoRA
-|-- loras/henry_penis_flux_v1.safetensors  # male LoRA from cells 41-45
+|-- loras/henry_penis_flux_v1.safetensors  # male LoRA (retrain via cells 57-61)
 |-- loras/lapetitemilf_flux.safetensors    # v1, locked
 |-- loras/lapetitemilf_face.safetensors    # locked
 |-- output/lapetitemilf/flux_eval_v2/      # generations from cell 10
@@ -3382,12 +3388,454 @@ print("Do not put these pictures back into ADD_* or training folders.")"""
 )
 
 md(
+    """## Retrain male LoRA (cells 57-61) then face+chest scenes (62)
+
+v2 stays locked. Do not run cells 5-9. Do not rerun cells 41-45 (old KEEP list includes Dalia).
+Cells 57-61 overwrite `henry_penis_flux_v1.safetensors` only.
+Dataset: all images in `ADD_HENRY_BODY_PHOTOS` except documented exclusions. Trigger: `hrmale`.
+Cell 62 is v2-only stills (no male LoRA)."""
+)
+
+code(
+    r"""# @title 57) Retrain male LoRA: copy all photos except exclusions + hrmale captions
+# Dataset folder (Drive): ADD_HENRY_BODY_PHOTOS
+#   id 1CmFmJVtOW-a39rRndSZ4PDJc8iJIX3sm
+# Output LoRA (overwrite in cell 61): MyDrive/FiratSuper/loras/henry_penis_flux_v1.safetensors
+# Trigger: hrmale
+# Does NOT write lapetitemilf_flux_v2.safetensors (PROTECTED_LORAS).
+# Does NOT edit cells 41-45.
+#
+# Exclusions (skip these files):
+#   IMG-20231126-WA0035.jpg  -- wrong person (gold ring, dense chest hair)
+#   any filename containing "Dalia" -- wrong subject (cell 41 KEEP included Dalia; drop now)
+#   20260509_072024(1).jpg, 20251227_185216_1.jpg, 20260509_121218(1).jpg,
+#     20260807_122635(1).jpg, 20260711_083049(2).jpg, 20260711_082212(2).jpg,
+#     20250906_135503(1).jpg -- blur / duplicate (same as original henry_exclude)
+#   names with flux_eval, _seed, scene_, strip_ -- generated stills, not photos
+# Remaining images in ADD_HENRY_BODY_PHOTOS are used (not a 26-file whitelist).
+import os
+import shutil
+
+if HENRY_OUTPUT_LORA in PROTECTED_LORAS:
+    raise RuntimeError("Male LoRA name is protected. Do not train.")
+if OUTPUT_LORA_NAME in (HENRY_OUTPUT_LORA,):
+    raise RuntimeError("Refusing to reuse the locked v2 filename.")
+
+IMG_EXT = {".jpg", ".jpeg", ".png", ".webp"}
+SKIP_NAMES = {".drive_upload.json", ".ds_store", "thumbs.db"}
+HENRY_EXCLUDE_RETRAIN = {
+    "IMG-20231126-WA0035.jpg",  # wrong person
+    "20260509_072024(1).jpg",
+    "20251227_185216_1.jpg",
+    "20260509_121218(1).jpg",
+    "20260807_122635(1).jpg",
+    "20260711_083049(2).jpg",
+    "20260711_082212(2).jpg",
+    "20250906_135503(1).jpg",
+}
+HENRY_CAPTIONS = {
+    "20250906_135503.jpg": "hrmale, erect penis, visible glans, veined shaft, looking down POV, tiled floor, waist-down close-up, photorealistic photo",
+    "20250906_140426.jpg": "hrmale, erect penis, visible glans, veined shaft, looking down at the lap, waist-down close-up, photorealistic photo",
+    "20251227_185216.jpg": "hrmale, erect penis held at the base, visible glans, veined shaft, lying on a bed, waist-down close-up, photorealistic photo",
+    "InShot_20260212_193432944.jpg": "hrmale, erect penis side view, visible glans, veined shaft, waist-down close-up, photorealistic photo",
+    "20260228_074019.jpg": "hrmale, erect penis, visible glans, veined shaft, standing waist-down close-up, photorealistic photo",
+    "20260228_080247(1).jpg": "hrmale, erect penis side profile, visible glans, veined shaft, standing waist-down, photorealistic photo",
+    "20260328_075339(2).jpg": "hrmale, erect penis side view, visible glans, veined shaft, outdoor daylight, waist-down close-up, photorealistic photo",
+    "20260328_075339(3).jpg": "hrmale, erect penis side view, glans and shaft veins, outdoor balcony, waist-down close-up, photorealistic photo",
+    "20260328_075339(4).jpg": "hrmale, erect penis side view, visible glans, veined shaft, balcony daylight, waist-down, photorealistic photo",
+    "20260329_013617.jpg": "hrmale, erect penis side view, visible glans, veined shaft, waist-down close-up, photorealistic photo",
+    "20260329_013617(1).jpg": "hrmale, erect penis, visible glans, veined shaft, front close-up, photorealistic photo",
+    "20260509_064836.jpg": "hrmale, erect penis, visible glans, veined shaft, standing waist-down, photorealistic photo",
+    "20260509_072024.jpg": "hrmale, erect penis, visible glans, veined shaft, lying down, waist-down close-up, photorealistic photo",
+    "20260509_072024(2).jpg": "hrmale, erect penis looking down, visible glans, veined shaft, thighs in frame, photorealistic photo",
+    "20260509_121218.jpg": "hrmale, erect penis looking down, visible glans, veined shaft, waist-down close-up, photorealistic photo",
+    "20260711_082212.jpg": "hrmale, erect penis extreme close-up, glans, veined shaft, photorealistic photo",
+    "20260711_083049.jpg": "hrmale, erect penis looking down, visible glans, veined shaft, waist-down close-up, photorealistic photo",
+    "20260711_083049(1).jpg": "hrmale, erect penis looking down, glans and shaft veins, tiled floor, photorealistic photo",
+    "20260711_113135.jpg": "hrmale, extreme close-up of the glans, shaft veins, photorealistic photo",
+    "20260807_122635.jpg": "hrmale, erect penis side profile, visible glans, veined shaft, standing close-up, photorealistic photo",
+    "20260807_122635(2).jpg": "hrmale, erect penis side view, visible glans, veined shaft, standing close-up, photorealistic photo",
+    "20260815_222042.jpg": "hrmale, erect penis looking down POV, visible glans, veined shaft, waist-down close-up, photorealistic photo",
+    "DJI_20250802_221407_72_null_video(1).jpg": "hrmale, erect penis side view, visible glans, veined shaft, waist-down close-up, photorealistic photo",
+}
+HENRY_FALLBACK = (
+    "hrmale, erect penis, visible glans, veined shaft, waist-down close-up, photorealistic photo"
+)
+HENRY_MIN_PAIRS = 20
+
+need_sync = False
+if not os.path.isdir(HENRY_INBOX_DIR) or (not os.listdir(HENRY_INBOX_DIR)):
+    need_sync = True
+if need_sync:
+    print("Copying ADD_HENRY_BODY_PHOTOS via Drive API...")
+    service = DRIVE_SERVICE or _api_service()
+    found = api_find_child(service, FIRATSUPER_DRIVE_ID, "ADD_HENRY_BODY_PHOTOS")
+    folder_id = found["id"] if found else HENRY_BODY_ID
+    api_download_folder(service, folder_id, HENRY_INBOX_DIR)
+
+if not os.path.isdir(HENRY_INBOX_DIR):
+    raise RuntimeError("Missing male photo folder: " + HENRY_INBOX_DIR)
+
+if os.path.isdir(HENRY_DATASET_DIR):
+    shutil.rmtree(HENRY_DATASET_DIR)
+os.makedirs(HENRY_DATASET_DIR, exist_ok=True)
+
+print("Woman dataset folder left untouched:", DATASET_DIR)
+print("Locked LoRA left untouched:", OUTPUT_LORA_NAME)
+print("Inbox:", HENRY_INBOX_DIR, "id", HENRY_BODY_ID)
+
+pairs = []
+skipped = []
+for name in sorted(os.listdir(HENRY_INBOX_DIR)):
+    if name.startswith("."):
+        continue
+    if name.lower() in SKIP_NAMES:
+        skipped.append(name + " (skip file)")
+        continue
+    path = os.path.join(HENRY_INBOX_DIR, name)
+    if os.path.isdir(path):
+        skipped.append(name + "/")
+        continue
+    stem, ext = os.path.splitext(name)
+    low = name.lower()
+    if "flux_eval" in low or "_seed" in low or low.startswith("scene_") or low.startswith("strip_"):
+        skipped.append(name + " (looks generated, never train)")
+        continue
+    if ext.lower() not in IMG_EXT:
+        skipped.append(name + " (not image)")
+        continue
+    if name in HENRY_EXCLUDE_RETRAIN:
+        reason = "wrong person" if name == "IMG-20231126-WA0035.jpg" else "blur/duplicate"
+        skipped.append(name + " (" + reason + ")")
+        continue
+    if "dalia" in low:
+        skipped.append(name + " (Dalia, wrong subject)")
+        continue
+    caption = HENRY_CAPTIONS.get(name, HENRY_FALLBACK)
+    if not caption.lower().startswith("hrmale"):
+        raise RuntimeError("Caption must start with hrmale: " + name)
+    if "ohwx" in caption.lower() or "lapetitemilf" in caption.lower():
+        raise RuntimeError("Male captions must not use ohwx / LaPetiteMilf: " + name)
+    dest_img = os.path.join(HENRY_DATASET_DIR, name)
+    dest_txt = os.path.join(HENRY_DATASET_DIR, stem + ".txt")
+    shutil.copy2(path, dest_img)
+    with open(dest_txt, "w", encoding="ascii") as fh:
+        fh.write(caption + "\n")
+    pairs.append((name, caption))
+
+print("Kept", len(pairs), "male photos (all except exclusions)")
+if skipped:
+    print("Skipped:")
+    for row in skipped:
+        print(" ", row)
+if len(pairs) < HENRY_MIN_PAIRS:
+    raise RuntimeError(
+        "Need at least %d Henry photos after exclusions, got %d. "
+        "Add more photos to ADD_HENRY_BODY_PHOTOS (id %s)."
+        % (HENRY_MIN_PAIRS, len(pairs), HENRY_BODY_ID)
+    )
+
+print("--- sample caption ---")
+print(pairs[0][0])
+print(pairs[0][1])
+print("----------------------")
+print("Male retrain Gate 1 GO. Local folder:", HENRY_DATASET_DIR)
+print("Does not overwrite", OUTPUT_LORA_NAME)
+print("Cell 57 done. Next: cell 58 (YAML), then 59 dry run, then 60 train.")"""
+)
+
+code(
+    r"""# @title 58) Retrain male LoRA: write Ostris YAML (henry_penis_flux_v1)
+if HENRY_OUTPUT_LORA in PROTECTED_LORAS:
+    raise RuntimeError("Male LoRA name is protected.")
+if HENRY_LORA_NAME == LORA_NAME or HENRY_OUTPUT_LORA == OUTPUT_LORA_NAME:
+    raise RuntimeError("Refusing to write a v2 config.")
+write_henry_yaml(HENRY_CONFIG_PATH, HENRY_TRAIN_STEPS, dry=False)
+print("--- YAML name/dataset ---")
+with open(HENRY_CONFIG_PATH, "r", encoding="ascii") as fh:
+    text = fh.read()
+for i, line in enumerate(text.splitlines()):
+    if i >= 45:
+        break
+    print(line)
+if 'folder_path: "%s"' % HENRY_DATASET_DIR not in text:
+    raise RuntimeError("YAML dataset path is wrong")
+if 'trigger_word: "%s"' % HENRY_TRIGGER not in text:
+    raise RuntimeError("YAML trigger is wrong")
+if 'name: "%s"' % HENRY_LORA_NAME not in text:
+    raise RuntimeError("YAML name is wrong")
+if "steps: %d" % HENRY_TRAIN_STEPS not in text:
+    raise RuntimeError("YAML steps is wrong")
+if "lapetitemilf" in text.lower():
+    raise RuntimeError("Henry YAML must not mention lapetitemilf")
+print("YAML file is", HENRY_CONFIG_PATH)
+print("Locked v2 YAML path left untouched:", CONFIG_PATH)
+print("Output name:", HENRY_LORA_NAME, "trigger:", HENRY_TRIGGER, "steps:", HENRY_TRAIN_STEPS)
+print("Cell 58 done. Next: cell 59 dry run.")"""
+)
+
+code(
+    r"""# @title 59) Retrain male LoRA: dry run (5 steps)
+import os
+import subprocess
+import sys
+
+if HENRY_OUTPUT_LORA in PROTECTED_LORAS:
+    raise RuntimeError("Male LoRA name is protected.")
+if not os.path.isdir("/content/ai-toolkit"):
+    raise RuntimeError("ai-toolkit missing. Run cell 4, then rerun this cell. Do not run cells 5-9.")
+n_txt = len([n for n in os.listdir(HENRY_DATASET_DIR) if n.endswith(".txt")])
+print("caption files", n_txt)
+if n_txt < 20:
+    raise RuntimeError("Run cell 57 first. Need at least 20 captions, got %d" % n_txt)
+write_henry_yaml(HENRY_CONFIG_PATH, DRY_RUN_STEPS, dry=True)
+print("Male dry run: %d steps. Downloads FLUX.1-dev the first time." % DRY_RUN_STEPS)
+print("This does not write", OUTPUT_LORA_NAME)
+cmd = [sys.executable, "run.py", HENRY_CONFIG_PATH]
+print("+", " ".join(cmd))
+subprocess.check_call(cmd, cwd="/content/ai-toolkit")
+write_henry_yaml(HENRY_CONFIG_PATH, HENRY_TRAIN_STEPS, dry=False)
+print("Male dry run OK. YAML restored to", HENRY_TRAIN_STEPS, "steps.")
+print("Next: cell 60 full train (2000 steps). Keep this tab open.")"""
+)
+
+code(
+    r"""# @title 60) Retrain male LoRA: full train henry_penis_flux_v1
+import os
+import subprocess
+import sys
+import torch
+
+if HENRY_OUTPUT_LORA in PROTECTED_LORAS:
+    raise RuntimeError("Male LoRA name is protected.")
+if HENRY_LORA_NAME == LORA_NAME:
+    raise RuntimeError("Refusing to train into the locked v2 name.")
+if not os.path.isdir("/content/ai-toolkit"):
+    raise RuntimeError("ai-toolkit missing. Run cell 4, then this cell. Do not run cells 5-9.")
+gpu = torch.cuda.get_device_name(0)
+print("GPU:", gpu)
+if "A100" not in gpu.upper() and "H100" not in gpu.upper():
+    raise RuntimeError("A100 only. Got: " + gpu)
+n_txt = len([n for n in os.listdir(HENRY_DATASET_DIR) if n.endswith(".txt")])
+if n_txt < 20:
+    raise RuntimeError("Run cell 57 first. Need at least 20 captions, got %d" % n_txt)
+write_henry_yaml(HENRY_CONFIG_PATH, HENRY_TRAIN_STEPS, dry=False)
+print("Male full train:", HENRY_TRAIN_STEPS, "steps on", gpu)
+print("Writes /content/output/%s/  NOT  %s" % (HENRY_LORA_NAME, OUTPUT_LORA_NAME))
+print("Keep this tab open.")
+cmd = [sys.executable, "run.py", HENRY_CONFIG_PATH]
+print("+", " ".join(cmd))
+subprocess.check_call(cmd, cwd="/content/ai-toolkit")
+print("Male training finished.")
+print("Next: cell 61 copies/overwrites henry_penis_flux_v1.safetensors on Drive/loras/")"""
+)
+
+code(
+    r"""# @title 61) Retrain male LoRA: overwrite Drive henry_penis_flux_v1 (not v2)
+import os
+import glob
+from IPython.display import display, Image as IPyImage
+
+if HENRY_OUTPUT_LORA in PROTECTED_LORAS:
+    raise RuntimeError("Refusing to write a protected LoRA name.")
+if HENRY_OUTPUT_LORA == OUTPUT_LORA_NAME:
+    raise RuntimeError("Refusing to overwrite locked v2.")
+
+run_dir = os.path.join(TRAIN_OUTPUT_DIR, HENRY_LORA_NAME)
+candidates = []
+final_path = os.path.join(run_dir, HENRY_OUTPUT_LORA)
+if os.path.isfile(final_path):
+    candidates.append(final_path)
+candidates.extend(sorted(glob.glob(os.path.join(run_dir, "*.safetensors"))))
+preferred = [p for p in candidates if os.path.basename(p) == HENRY_OUTPUT_LORA]
+if not preferred:
+    preferred = [p for p in candidates if "step" not in os.path.basename(p).lower()]
+if not preferred:
+    preferred = candidates
+if not preferred:
+    raise RuntimeError("No .safetensors found in " + run_dir)
+
+src = preferred[0]
+base = os.path.basename(src)
+if base in PROTECTED_LORAS or base == OUTPUT_LORA_NAME:
+    raise RuntimeError("Refusing to copy a locked LoRA: " + base)
+if "lapetitemilf" in base.lower():
+    raise RuntimeError("Refusing to copy a lapetitemilf file: " + base)
+print("Using:", src, "size_mb=%.1f" % (os.path.getsize(src) / 1024**2))
+
+dest_rel = "loras/" + HENRY_OUTPUT_LORA
+dest_abs = os.path.join(ROOT, dest_rel)
+if os.path.basename(dest_abs) in PROTECTED_LORAS:
+    raise RuntimeError("Refusing destination protected LoRA: " + dest_abs)
+if dest_abs == os.path.join(LORAS_DIR, OUTPUT_LORA_NAME):
+    raise RuntimeError("Refusing to overwrite locked v2 destination.")
+if os.path.basename(dest_abs) != HENRY_OUTPUT_LORA:
+    raise RuntimeError("Destination must be " + HENRY_OUTPUT_LORA)
+
+upload_project_file(src, dest_rel)
+print("Male LoRA overwritten at", dest_abs)
+print("Drive path: MyDrive/FiratSuper/loras/" + HENRY_OUTPUT_LORA)
+print("bytes", os.path.getsize(dest_abs) if os.path.isfile(dest_abs) else os.path.getsize(src))
+print("Locked file was not touched:", OUTPUT_LORA_NAME)
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+if os.path.isfile(v2_path):
+    print("v2 still at", v2_path, "bytes", os.path.getsize(v2_path))
+
+sample_dir = os.path.join(run_dir, "samples")
+shown = 0
+if os.path.isdir(sample_dir):
+    for name in sorted(os.listdir(sample_dir)):
+        path = os.path.join(sample_dir, name)
+        if os.path.splitext(name)[1].lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+            continue
+        print(path)
+        display(IPyImage(filename=path, width=384))
+        shown += 1
+        if shown >= 8:
+            break
+print("Cell 61 done. Male LoRA path:", dest_abs)
+print("Do not put generated pictures into ADD_HENRY_BODY_PHOTOS.")
+print("v2 LoRA was not trained and was not overwritten.")"""
+)
+
+md(
+    """Skip 5-9. Cell 62 is face+chest scene stills (not waist-hold-only). Do not train. No male LoRA."""
+)
+
+code(
+    r"""# @title 62) Face+chest scene stills (6 shots, v2 only, keepers 01-04)
+# Flux v2 only @ 1.15 (default -> default_0). No male LoRA. No penis/semen/hrmale.
+# Face steered only by locked keepers: 01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok.
+# Chest lock: fair pale skin, natural soft teardrop breasts, medium circular
+# pinkish-tan textured areolae, prominent nipples (chest_real).
+# Writes MyDrive/FiratSuper/generate/scene_62_face_chest_scenes_<timestamp>/
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 6
+SLUG = "62_face_chest_scenes"
+SEEDS = [6100, 6101, 6102, 6103, 6104, 6105]
+LORA_W = 1.15
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+    "head fully in frame, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+)
+CHEST = (
+    "fair pale skin, natural soft teardrop breasts, "
+    "medium circular pinkish-tan textured areolae, prominent nipples, "
+)
+PLACE = "full head in frame, chest visible"
+SHOTS = [
+    ("01_lingerie", "scene", "standing in black lace lingerie, bedroom, looking at the camera"),
+    ("02_lingerie_alt", "scene", "standing in white lace bra and panties, hotel room, looking at the camera"),
+    ("03_standing_pose", "scene", "standing with one hand on hip, indoor daylight, looking at the camera"),
+    ("04_standing_pose_alt", "scene", "standing three-quarter view, weight on one leg, living room, looking at the camera"),
+    ("05_seated_smile", "scene", "seated on a sofa, smiling at the camera, casual indoor"),
+    ("06_standing_smile", "scene", "standing, smiling at the camera, indoor daylight"),
+]
+BANNED = (
+    "glans", "vulva", "penis", "semen", "shaft", "oral", "genital", "hrmale",
+)
+
+if SHOT_END != 6 or len(SHOTS) != 6 or len(SEEDS) != 6:
+    raise RuntimeError("Cell 62 must be exactly 6 scene stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+
+print("Prompt-only face+chest steer. Do not train. Do not load keeper files as a dataset.")
+print("Not waist-hold-only. No male LoRA.")
+ensure_flux_pipe()
+used = set_pipe_adapters(pipe, ["default"], [LORA_W])
+print("Female-only v2. Adapter:", used, "weight", LORA_W)
+print("Male LoRA not loaded.")
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, action = SHOTS[pidx]
+    prompt = (
+        IDENT + FACE + CHEST + action + ". " + PLACE +
+        ", photorealistic raw photo, natural skin texture"
+    )
+    low = prompt.lower()
+    hit = [w for w in BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 62 prompt has banned words: " + ", ".join(hit))
+    for lock in (
+        "01_face_ok",
+        "04_face_ok",
+        "fair pale skin",
+        "natural soft teardrop breasts",
+        "medium circular pinkish-tan textured areolae",
+        "prominent nipples",
+        "full head in frame",
+    ):
+        if lock not in low:
+            raise RuntimeError("Cell 62 prompt missing lock: " + lock)
+    seed = SEEDS[pidx]
+    print("---", shot_slug, "seed", seed, "lora", used, LORA_W)
+    print(prompt)
+    image = pipe(
+        prompt=prompt,
+        guidance_scale=3.5,
+        height=1024,
+        width=768,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    ).images[0]
+    path = os.path.join(out_dir, "%s_seed%d.png" % (shot_slug, seed))
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+print("Saved", len(saved), "scene stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    if found:
+        fid = found["id"]
+        print("Drive folder id:", fid)
+        print("Drive URL: https://drive.google.com/drive/folders/" + fid)
+    else:
+        print("Drive folder id: generate parent", gen_folder)
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_62_DIR", out_dir)
+print("DRIVE_FOLDER_ID", fid)
+print("Cell 62 done. Henry: open that Drive folder and pick keepers.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
     """## Done
 
 Locked production LoRA:
 `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 
-Male LoRA (cells 41-45, does not overwrite v2):
+Male LoRA (cells 57-61 overwrite v1, does not overwrite v2):
 `MyDrive/FiratSuper/loras/henry_penis_flux_v1.safetensors`
 
 Run ONE series cell at a time. Keep the tab open.
@@ -3422,11 +3870,18 @@ Cell 55 (face-only v2 identity options, 10 shots) writes to:
 Cell 56 (waist-hold chest-locked, 6 shots, v2 only) writes to:
 `MyDrive/FiratSuper/generate/scene_56_waist_hold_chest_*/`
 
+Cells 57-61 retrain/overwrite henry_penis_flux_v1 from ADD_HENRY_BODY_PHOTOS
+(all images except wrong-person, Dalia, blur/dups). v2 stays untouched.
+
+Cell 62 (face+chest scene stills, 6 shots, v2 only, keepers 01-04) writes to:
+`MyDrive/FiratSuper/generate/scene_62_face_chest_scenes_*/`
+
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
 
 Do not write "no scars" in prompts. Flux will draw them.
-Do not train on generated pictures. Do not retrain v2. Do not retrain henry_penis_flux_v1.
+Do not train on generated pictures. Do not retrain v2. Do not rerun cells 41-45.
+Retrain male LoRA only with cells 57-61.
 Two-person shots often glitch on Flux. Change SEED_BASE and rerun that cell.
 
 Also locked:
@@ -3435,15 +3890,15 @@ Also locked:
 
 ### Make more pictures
 1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then ONE of cells 13-40 (v2 only).
-2. Male LoRA is already on Drive. Skip 41-45. Skip rejected 46-51. Face check: cell 52 or cell 54 (keeper-steered).
+2. Retrain male LoRA: skip 41-45. Run 57, 58, 59, 60, 61 in order. Skip rejected 46-51.
 3. Cells 13-22 and 28-37: far camera strip. Cells 23-27 and 38-40: explicit couple / POV / facial sets (20).
 4. If it dies, set SHOT_START and rerun that cell.
-5. Cell 52: v2 at 1.0. Cell 54: v2 at 1.15, keeper-steered face stills, writes to generate/. No hrmale. No scar words.
+5. Cell 52: v2 at 1.0. Cell 54: v2 at 1.15, keeper-steered. Cell 56: waist-hold chest-locked. Cell 62: face+chest scenes. No hrmale. No scar words.
 6. Adult content only. Do not train on generated pictures.
 
 ### If the runtime dies
 - v2 LoRA is already on Drive. Rerun 1, 2, 3, then the series cell. New runtime: also 4. Skip 5-9.
-- After male train, `henry_penis_flux_v1.safetensors` is on Drive. Skip 41-45 next time.
+- Male retrain: if cell 60 finished, run 61 to copy. If not, rerun 57-61. Skip 41-45.
 - Hugging Face 403: accept FLUX.1-dev license, new READ token.
 - Drive popup: Allow ALL, one Google account."""
 )
