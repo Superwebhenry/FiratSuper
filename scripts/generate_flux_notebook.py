@@ -105,6 +105,8 @@ Do not train on generated pictures. Two-person sex shots often glitch on Flux; r
 50. Dual LoRA 5-shot retry: oral close, identity first (REJECTED -- keep for history)
 51. Dual LoRA 5-shot retry: facial, semen + glans, identity first (REJECTED -- keep for history)
 52. Face-only v2 identity check (2 shots, no male LoRA)
+53. (live Colab face retry -- do not change)
+54. Face-only v2, keeper-steered identity (2 shots)
 
 ## Drive layout
 ```
@@ -3066,6 +3068,103 @@ print("Do not put these pictures back into the training folders.")"""
 )
 
 md(
+    """Skip 5-9. Cell 54 is face-only v2 steered by keeper stills. Do not train. Do not run 49-51."""
+)
+
+code(
+    r"""# @title 54) Face-only v2, keeper-steered identity (2 shots)
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 2
+SLUG = "54_face_keepers_steer"
+SEEDS = [5800, 5801]
+LORA_W = 1.15
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+    "natural soft smile, face clearly visible, head fully in frame, "
+)
+STEER = (
+    "matching the face identity of keeper stills "
+    "08_face_open_seed4107, 02_three_quarter_seed901, 05_topless_smile_seed4104"
+)
+PLACE = "medium close face, shoulders visible"
+SHOTS = [
+    ("01_face_front", "face", "looking at the camera, brown eyes, highlighted blonde hair, soft natural smile"),
+    ("02_face_three_q", "face", "three-quarter face, looking at the camera, brown eyes, highlighted blonde, soft natural smile"),
+]
+BANNED = (
+    "glans", "vulva", "penis", "semen", "shaft", "oral", "genital", "hrmale",
+)
+
+if SHOT_END != 2 or len(SHOTS) != 2 or len(SEEDS) != 2:
+    raise RuntimeError("Cell 54 must be exactly 2 face shots.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+
+print("Prompt-only steer. Do not train. Do not load keeper files as a dataset.")
+ensure_flux_pipe()
+used = set_pipe_adapters(pipe, ["default"], [LORA_W])
+print("Female-only v2. Adapter:", used, "weight", LORA_W)
+print("Male LoRA not loaded.")
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+if "keepers" in gen_parent or "loras" in gen_parent.split(os.sep) or "ADD_" in gen_parent:
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, action = SHOTS[pidx]
+    prompt = IDENT + action + ". " + STEER + ". " + PLACE + ", photorealistic raw photo, natural skin texture"
+    low = prompt.lower()
+    hit = [w for w in BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 54 prompt has banned words: " + ", ".join(hit))
+    seed = SEEDS[pidx]
+    print("---", shot_slug, "seed", seed, "lora", used, LORA_W)
+    print(prompt)
+    image = pipe(
+        prompt=prompt,
+        guidance_scale=3.5,
+        height=1024,
+        width=768,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    ).images[0]
+    path = os.path.join(out_dir, "%s_seed%d.png" % (shot_slug, seed))
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+print("Saved", len(saved), "face stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        upload_project_file(path, os.path.relpath(path, ROOT))
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    if found:
+        print("Drive folder id:", found["id"])
+        print("Drive URL: https://drive.google.com/drive/folders/" + found["id"])
+    else:
+        print("Drive folder id: generate parent", gen_folder)
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
     """## Done
 
 Locked production LoRA:
@@ -3097,6 +3196,9 @@ Cells 49-51 (REJECTED history -- do not rerun; leave those Drive folders):
 Cell 52 (face-only v2, 2 shots, no male LoRA) writes to:
 `MyDrive/FiratSuper/keepers/scene_52_face_id_check_*/`
 
+Cell 54 (face-only v2, keeper-steered, 2 shots) writes to:
+`MyDrive/FiratSuper/generate/scene_54_face_keepers_steer_*/`
+
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
 
@@ -3110,10 +3212,10 @@ Also locked:
 
 ### Make more pictures
 1. A100. Cells 1, 2, 3. New runtime: also cell 4. Then ONE of cells 13-40 (v2 only).
-2. Male LoRA is already on Drive. Skip 41-45. Skip rejected 46-51. Run cell 52 for a face-only v2 check.
+2. Male LoRA is already on Drive. Skip 41-45. Skip rejected 46-51. Face check: cell 52 or cell 54 (keeper-steered).
 3. Cells 13-22 and 28-37: far camera strip. Cells 23-27 and 38-40: explicit couple / POV / facial sets (20).
 4. If it dies, set SHOT_START and rerun that cell.
-5. Cell 52: v2 only at 1.0, two face stills, no hrmale. No scar words.
+5. Cell 52: v2 at 1.0. Cell 54: v2 at 1.15, keeper-steered face stills, writes to generate/. No hrmale. No scar words.
 6. Adult content only. Do not train on generated pictures.
 
 ### If the runtime dies
