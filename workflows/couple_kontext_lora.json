@@ -1,0 +1,267 @@
+{
+  "id": "lapetitemilf-couple-kontext",
+  "revision": 0,
+  "last_node_id": 4,
+  "last_link_id": 2,
+  "version": 0.4,
+  "groups": [],
+  "config": {},
+  "extra": {
+    "frontendVersion": "1.49.6"
+  },
+  "nodes": [
+    {
+      "id": 1,
+      "type": "MarkdownNote",
+      "pos": [
+        -420,
+        80
+      ],
+      "size": [
+        380,
+        280
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "# Couple identity (Kontext)\n\n1. Load the couple photo in Load Image.\n2. Paste your Hugging Face READ token into hf_token.\n3. Queue once. First run downloads FLUX.1 Kontext.\n\nAccept the license: https://huggingface.co/black-forest-labs/FLUX.1-Kontext-dev\n"
+      ],
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 2,
+      "type": "LoadImage",
+      "pos": [
+        0,
+        80
+      ],
+      "size": [
+        320,
+        320
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            1
+          ],
+          "slot_index": 0
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "example.png",
+        "image"
+      ]
+    },
+    {
+      "id": 3,
+      "type": "RCFluxKontext",
+      "pos": [
+        360,
+        80
+      ],
+      "size": [
+        400,
+        430
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "control_image",
+          "type": "IMAGE",
+          "link": 1
+        },
+        {
+          "name": "prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "prompt"
+          },
+          "link": null
+        },
+        {
+          "name": "width",
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          },
+          "link": null
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": null
+        },
+        {
+          "name": "sample_steps",
+          "type": "INT",
+          "widget": {
+            "name": "sample_steps"
+          },
+          "link": null
+        },
+        {
+          "name": "guidance_scale",
+          "type": "FLOAT",
+          "widget": {
+            "name": "guidance_scale"
+          },
+          "link": null
+        },
+        {
+          "name": "seed",
+          "type": "INT",
+          "widget": {
+            "name": "seed"
+          },
+          "link": null
+        },
+        {
+          "name": "offload_mode",
+          "type": "COMBO",
+          "widget": {
+            "name": "offload_mode"
+          },
+          "link": null
+        },
+        {
+          "name": "lora_path",
+          "type": "STRING",
+          "widget": {
+            "name": "lora_path"
+          },
+          "link": null
+        },
+        {
+          "name": "lora_scale",
+          "type": "FLOAT",
+          "widget": {
+            "name": "lora_scale"
+          },
+          "link": null
+        },
+        {
+          "name": "hf_token",
+          "type": "STRING",
+          "widget": {
+            "name": "hf_token"
+          },
+          "link": null
+        },
+        {
+          "name": "negative_prompt",
+          "type": "STRING",
+          "widget": {
+            "name": "negative_prompt"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "links": [
+            2
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RCFluxKontext",
+        "aux_id": "runcomfy-com/ai-toolkit-inference"
+      },
+      "widgets_values": [
+        "ohwx woman, an adult woman with long highlighted blonde hair and brown eyes, photorealistic, keep the man and the room unchanged, replace only the woman, same pose, same clothes lighting",
+        1024,
+        1024,
+        25,
+        4.0,
+        42,
+        "fixed",
+        "model",
+        "/workspace/ComfyUI/models/loras/lapetitemilf_flux_v2.safetensors",
+        1.0,
+        "",
+        ""
+      ]
+    },
+    {
+      "id": 4,
+      "type": "SaveImage",
+      "pos": [
+        800,
+        80
+      ],
+      "size": [
+        320,
+        380
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 2
+        },
+        {
+          "name": "filename_prefix",
+          "type": "STRING",
+          "widget": {
+            "name": "filename_prefix"
+          },
+          "link": null
+        }
+      ],
+      "outputs": [],
+      "properties": {
+        "Node name for S&R": "SaveImage"
+      },
+      "widgets_values": [
+        "couple_kontext"
+      ]
+    }
+  ],
+  "links": [
+    [
+      1,
+      2,
+      0,
+      3,
+      0,
+      "IMAGE"
+    ],
+    [
+      2,
+      3,
+      0,
+      4,
+      0,
+      "IMAGE"
+    ]
+  ]
+}

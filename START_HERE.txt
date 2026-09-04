@@ -1,0 +1,10 @@
+FiratSuper — TRAIN_V6
+=====================
+
+Colab JSON error on V5 is fixed. Open TRAIN_V6 only.
+
+Steps:
+1. Runtime -> Disconnect and delete runtime
+2. Runtime -> T4 GPU
+3. Run cells 1-4, then 7 (DRY_RUN = False)
+4. After Training finished: cells 8 and 9

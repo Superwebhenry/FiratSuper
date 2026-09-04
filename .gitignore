@@ -1,0 +1,6 @@
+tmp_chest/
+tmp_*/
+.drive_upload.json
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
