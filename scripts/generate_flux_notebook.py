@@ -50,7 +50,7 @@ Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. D
 
 **Generate path (woman LoRA only):** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22 far strip, 23-27 explicit sets, 28-37 far strip, or 38-40 explicit couple). Skip 5-9. Cells 13-40 still load only `lapetitemilf_flux_v2`.
 
-**Male LoRA path (does not touch v2):** cells **41-45** are the first male train (KEEP list includes Dalia -- do not rerun). Cells **57-61** retrain/overwrite `henry_penis_flux_v1` from all `ADD_HENRY_BODY_PHOTOS` except documented exclusions. Cells **46-51** are rejected history; do not rerun them. **Cell 52** loads only locked v2 at 1.0 (no male LoRA) for a 2-shot face identity check. **Cell 62** is face+chest scene stills (v2 only @ 1.15, keepers 01-04, no male LoRA). **Cells 63-65** are historical generate-only (63 solo; 64-65 couple with feminine male chest / wrong nipples -- leave them). **Cell 66** is generate-only chest/nipple fix. Do not train. Do not overwrite v2 or the male LoRA file.
+**Male LoRA path (does not touch v2):** cells **41-45** are the first male train (KEEP list includes Dalia -- do not rerun). Cells **57-61** retrain/overwrite `henry_penis_flux_v1` from all `ADD_HENRY_BODY_PHOTOS` except documented exclusions. Cells **46-51** are rejected history; do not rerun them. **Cell 52** loads only locked v2 at 1.0 (no male LoRA) for a 2-shot face identity check. **Cell 62** is face+chest scene stills (v2 only @ 1.15, keepers 01-04, no male LoRA). **Cells 63-65** are historical generate-only (63 solo; 64-65 couple with feminine male chest / wrong nipples -- leave them). **Cell 66** is generate-only chest/nipple couple fix. **Cell 67** is generate-only woman I2V still (v2 only, no male LoRA) for the Video bot. Do not train. Do not overwrite v2 or the male LoRA file.
 
 **Trigger:** `ohwx woman` (her LoRA). Male trigger: `hrmale`. Do not write "no scars" in prompts. Adult subject only.
 Do not train on generated pictures. Two-person sex shots often glitch on Flux; rerun with a new SEED_BASE if anatomy breaks.
@@ -119,6 +119,7 @@ Do not train on generated pictures. Two-person sex shots often glitch on Flux; r
 64. Male couple preview -- two people + v2 face lock (6 shots, load only, HISTORICAL)
 65. Male couple preview -- no breast bleed (6 shots, load only, HISTORICAL)
 66. Chest/nipple fix -- male flat + woman chest_real (6 shots, load only)
+67. I2V still -- woman only, waist-up lingerie (2 seeds, v2 only)
 
 ## Drive layout
 ```
@@ -131,7 +132,7 @@ MyDrive/FiratSuper/
 |-- loras/lapetitemilf_flux.safetensors    # v1, locked
 |-- loras/lapetitemilf_face.safetensors    # locked
 |-- output/lapetitemilf/flux_eval_v2/      # generations from cell 10
-|-- generate/                             # generate-only stills (54-56, 62-66)
+|-- generate/                             # generate-only stills (54-56, 62-67)
 `-- keepers/                              # copy keepers here (01_face_ok-04_face_ok, chest_real)
 ```"""
 )
@@ -4610,12 +4611,180 @@ print("Do not put these pictures back into ADD_* or training folders.")"""
 )
 
 md(
+    """Skip 5-9. Skip training. Skip 41-45, 46-51, 57-61. Leave 63-66 as their own runs. This cell is woman-only.
+
+**Cell 67 -- I2V still -- woman only, waist-up lingerie.** Load locked `lapetitemilf_flux_v2` only. Do not load `henry_penis_flux_v1`. Do not train. Do not overwrite any `.safetensors`.
+
+**Run:** A100 preferred. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell** (separate from cell 66). Do not run while training cells are running.
+
+v2 @ 1.15. Face keepers 01-04. chest_real lock. Full head + headroom for 704x544 letterbox. Soft lingerie bedroom. Seeds 6700-6701.
+Primary: Video bot stills folder `1cPHexNDhpMNy5uUww5fkzeWTp97oKsKe`. Copy also under `MyDrive/FiratSuper/generate/scene_67_i2v_still_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df. \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 67** (\u05e0\u05e4\u05e8\u05d3 \u05de\u05ea\u05d0 66)."""
+)
+
+code(
+    r"""# @title 67) I2V still -- woman only, waist-up lingerie
+# Generate-only. Woman ONLY. Load locked v2. Do NOT load henry_penis / hrmale.
+# Do NOT train. Do NOT overwrite any .safetensors.
+# Full head + headroom for later 704x544 letterbox. Waist-up medium shot.
+# chest_real lock. Do not copy chest-ref outfits (glasses, gold necklace,
+# black tank, gold curtains).
+# Primary Drive stills parent: 1cPHexNDhpMNy5uUww5fkzeWTp97oKsKe
+# Also writes MyDrive/FiratSuper/generate/scene_67_i2v_still_<timestamp>/
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+I2V_STILLS_ID = "1cPHexNDhpMNy5uUww5fkzeWTp97oKsKe"
+SHOT_START = 0
+SHOT_END = 2
+SLUG = "67_i2v_still"
+SEEDS = [6700, 6701]
+LORA_W = 1.15
+NEG = (
+    "glasses, gold necklace, black tank, gold curtains, "
+    "chin crop, missing top of head, hrmale, man, couple, penis"
+)
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+)
+CHEST = (
+    "fair pale skin, natural teardrop hang, slim torso, "
+    "medium circular pinkish-tan areolae with Montgomery texture, "
+    "prominent nipples, matching chest_real, "
+)
+PLACE = (
+    "full head in frame, space above the hair, waist-up medium shot, "
+    "soft pale lace lingerie, intimate bedroom, looking at the camera, "
+    "photorealistic raw photo, natural skin texture"
+)
+SHOTS = [
+    ("i2v_still_waist_lingerie", "scene", "standing waist-up"),
+    ("i2v_still_waist_lingerie", "scene", "standing waist-up"),
+]
+BANNED = (
+    "hrmale", "penis", "glans", "semen", "glasses", "gold necklace",
+    "black tank", "gold curtains", "chin crop",
+)
+
+if SHOT_END != 2 or len(SHOTS) != 2 or len(SEEDS) != 2:
+    raise RuntimeError("Cell 67 must be exactly 2 I2V stills (two seeds).")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+if not os.path.isfile(v2_path):
+    raise RuntimeError("Load-only: missing " + v2_path + " (will not train).")
+print("LOAD ONLY", OUTPUT_LORA_NAME, "bytes", os.path.getsize(v2_path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+print("Woman-only I2V still. Do not load henry_penis_flux_v1. Do not set hrmale.")
+print("Prompt-only face+chest steer. Not a dataset.")
+ensure_flux_pipe()
+used = set_pipe_adapters(pipe, ["default"], [LORA_W])
+print("Female-only v2. Adapter:", used, "weight", LORA_W)
+print("Male LoRA not loaded for this cell.")
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("I2V stills parent:", I2V_STILLS_ID)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, action = SHOTS[pidx]
+    used = set_pipe_adapters(pipe, ["default"], [LORA_W])
+    prompt = IDENT + FACE + CHEST + action + ". " + PLACE
+    low = prompt.lower()
+    hit = [w for w in BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 67 prompt has banned words: " + ", ".join(hit))
+    for lock in (
+        "ohwx woman",
+        "01_face_ok",
+        "04_face_ok",
+        "fair pale skin",
+        "natural teardrop hang",
+        "slim torso",
+        "medium circular pinkish-tan areolae",
+        "Montgomery texture",
+        "prominent nipples",
+        "chest_real",
+        "full head in frame",
+        "space above the hair",
+        "waist-up medium shot",
+        "soft pale lace lingerie",
+    ):
+        if lock not in prompt and lock not in low:
+            raise RuntimeError("Cell 67 prompt missing lock: " + lock)
+    seed = SEEDS[pidx]
+    fname = "%s_seed%d.png" % (shot_slug, seed)
+    print("---", fname, "seed", seed, "lora", used, LORA_W)
+    print(prompt)
+    image = pipe(
+        prompt=prompt,
+        negative_prompt=NEG,
+        guidance_scale=3.5,
+        height=768,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    ).images[0]
+    path = os.path.join(out_dir, fname)
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "I2V stills in", out_dir)
+print("Drive copy: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 67.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+i2v_ids = []
+try:
+    service = DRIVE_SERVICE or _api_service()
+    for path in saved:
+        name = os.path.basename(path)
+        if name.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 67.")
+        fid = api_upload_file(service, path, I2V_STILLS_ID, name)
+        i2v_ids.append(fid)
+        print("I2V stills parent uploaded:", name, fid)
+    print("I2V stills folder: https://drive.google.com/drive/folders/" + I2V_STILLS_ID)
+except Exception as err:
+    print("I2V stills parent upload skipped:", err)
+    print("Files are still in", out_dir)
+print("SCENE_67_DIR", out_dir)
+print("I2V_STILLS_ID", I2V_STILLS_ID)
+print("I2V_FILE_IDS", i2v_ids)
+print("Cell 67 done. LoRA files were not written. Male LoRA was not loaded.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
     """## Done
 
 Locked production LoRA:
 `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 
-Male LoRA (already trained; cells 57-61 overwrite v1 if retraining; cells 63-66 load only):
+Male LoRA (already trained; cells 57-61 overwrite v1 if retraining; cells 63-66 load only; cell 67 does not load it):
 `MyDrive/FiratSuper/loras/henry_penis_flux_v1.safetensors`
 
 Run ONE series cell at a time. Keep the tab open.
@@ -4668,6 +4837,10 @@ Cell 65 (HISTORICAL couple -- male chest still feminine / wrong nipples; leave i
 Cell 66 (chest/nipple fix, 6 shots, v2 0.90-1.05 + hrmale 0.55-0.75, load only) writes to:
 `MyDrive/FiratSuper/generate/scene_66_chest_nipple_fix_*/`
 
+Cell 67 (I2V woman-only still, v2 @ 1.15, no male LoRA, seeds 6700-6701) writes to:
+`MyDrive/FiratSuper/generate/scene_67_i2v_still_*/`
+and uploads `i2v_still_waist_lingerie_seed6700.png` / `seed6701.png` to Drive folder `1cPHexNDhpMNy5uUww5fkzeWTp97oKsKe`.
+
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
 
@@ -4689,14 +4862,16 @@ Also locked:
 6. Cell 63: historical male LoRA preview (solo woman). Do not rerun for couple intent.
 7. Cell 64: historical couple preview (breast bleed on the man). Do not rerun for this goal.
 8. Cell 65: historical couple (feminine male chest / wrong nipples). Do not rerun for this goal.
-9. Cell 66: chest/nipple fix, load only. Setup 1-2-3 (+4). Skip training. Do not run while cell 60 is running. Do not overwrite LoRA files.
-10. Adult content only. Do not train on generated pictures.
+9. Cell 66: chest/nipple couple fix, load only. Setup 1-2-3 (+4). Skip training. Separate from cell 67.
+10. Cell 67: I2V woman-only still, v2 only. Setup 1-2-3 (+4). Skip training. Do not load male LoRA. Do not overwrite LoRA files.
+11. Adult content only. Do not train on generated pictures.
 
 ### If the runtime dies
 - v2 LoRA is already on Drive. Rerun 1, 2, 3, then the series cell. New runtime: also 4. Skip 5-9.
 - Male retrain: if cell 60 finished, run 61 to copy. If not, rerun 57-61. Skip 41-45.
-- Cells 63-65: historical. Prefer cell 66.
+- Cells 63-65: historical. Couple chest fix: cell 66. I2V still: cell 67 (v2 only).
 - Cell 66: both LoRAs already on Drive. Rerun 1, 2, 3, then 66. New runtime: also 4. Skip training.
+- Cell 67: v2 already on Drive. Rerun 1, 2, 3, then 67. New runtime: also 4. Skip training. Do not run 66 in the same GPU slot unless it has finished.
 - Hugging Face 403: accept FLUX.1-dev license, new READ token.
 - Drive popup: Allow ALL, one Google account."""
 )
