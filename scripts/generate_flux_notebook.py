@@ -50,7 +50,7 @@ Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. D
 
 **Generate path (woman LoRA only):** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22 far strip, 23-27 explicit sets, 28-37 far strip, or 38-40 explicit couple). Skip 5-9. Cells 13-40 still load only `lapetitemilf_flux_v2`.
 
-**Male LoRA path (does not touch v2):** cells **41-45** are the first male train (KEEP list includes Dalia -- do not rerun). Cells **57-61** retrain/overwrite `henry_penis_flux_v1` from all `ADD_HENRY_BODY_PHOTOS` except documented exclusions. Cells **46-51** are rejected history; do not rerun them. **Cell 52** loads only locked v2 at 1.0 (no male LoRA) for a 2-shot face identity check. **Cell 62** is face+chest scene stills (v2 only @ 1.15, keepers 01-04, no male LoRA). **Cell 63** is generate-only: load existing `henry_penis_flux_v1` at low weight with v2 face lock. Do not train. Do not overwrite v2 or the male LoRA file.
+**Male LoRA path (does not touch v2):** cells **41-45** are the first male train (KEEP list includes Dalia -- do not rerun). Cells **57-61** retrain/overwrite `henry_penis_flux_v1` from all `ADD_HENRY_BODY_PHOTOS` except documented exclusions. Cells **46-51** are rejected history; do not rerun them. **Cell 52** loads only locked v2 at 1.0 (no male LoRA) for a 2-shot face identity check. **Cell 62** is face+chest scene stills (v2 only @ 1.15, keepers 01-04, no male LoRA). **Cell 63** is historical generate-only (often solo woman -- leave it). **Cell 64** is generate-only couple preview: two people in every frame, existing `henry_penis_flux_v1` + v2 face lock. Do not train. Do not overwrite v2 or the male LoRA file.
 
 **Trigger:** `ohwx woman` (her LoRA). Male trigger: `hrmale`. Do not write "no scars" in prompts. Adult subject only.
 Do not train on generated pictures. Two-person sex shots often glitch on Flux; rerun with a new SEED_BASE if anatomy breaks.
@@ -115,7 +115,8 @@ Do not train on generated pictures. Two-person sex shots often glitch on Flux; r
 60. Retrain male LoRA: full train -> overwrite henry_penis_flux_v1
 61. Retrain male LoRA: copy overwrite to Drive/loras/ (will not overwrite v2)
 62. Face+chest scene stills (6 shots, v2 only, keepers 01-04)
-63. Male LoRA preview -- low weight + v2 face lock (6 shots, load only)
+63. Male LoRA preview -- low weight + v2 face lock (6 shots, load only, HISTORICAL)
+64. Male couple preview -- two people + v2 face lock (6 shots, load only)
 
 ## Drive layout
 ```
@@ -128,7 +129,7 @@ MyDrive/FiratSuper/
 |-- loras/lapetitemilf_flux.safetensors    # v1, locked
 |-- loras/lapetitemilf_face.safetensors    # locked
 |-- output/lapetitemilf/flux_eval_v2/      # generations from cell 10
-|-- generate/                             # generate-only stills (54-56, 62, 63)
+|-- generate/                             # generate-only stills (54-56, 62-64)
 `-- keepers/                              # copy keepers here (01_face_ok-04_face_ok, chest_real)
 ```"""
 )
@@ -3986,12 +3987,208 @@ print("Do not put these pictures back into ADD_* or training folders.")"""
 )
 
 md(
+    """Skip 5-9. Skip training cells 41-45 and 57-61. Skip rejected 46-51. Leave cell 63 as history (solo woman).
+
+**Cell 64 -- Male couple preview -- two people + v2 face lock.** Load existing `henry_penis_flux_v1` only. Do not train. Do not overwrite `lapetitemilf_flux_v2.safetensors` or `henry_penis_flux_v1.safetensors`.
+
+**Run:** A100 preferred. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Do not run while training cells (8, 44, 60) are running.
+
+Every shot is a couple frame (waist-up / 3/4): both people visible. v2 @ 1.15 + male `hrmale` @ 0.55 / 0.65 / 0.75. Face keepers 01_face_ok-04_face_ok (same prompt steer as cell 62). Chest lock from chest_real. Seeds 6300-6305.
+Writes `MyDrive/FiratSuper/generate/scene_64_male_couple_preview_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df (5-9, 41-45, 57-61). \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 64**. \u05dc\u05d0 \u05dc\u05d4\u05e8\u05d9\u05e5 \u05d1\u05d6\u05de\u05df \u05e9\u05ea\u05d0 \u05d0\u05d9\u05de\u05d5\u05df \u05e8\u05e5. \u05ea\u05d0 63 \u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9 -- \u05dc\u05d0 \u05dc\u05d4\u05e8\u05d9\u05e5 \u05e2\u05d1\u05d5\u05e8 \u05d6\u05d5\u05d2."""
+)
+
+code(
+    r"""# @title 64) Male couple preview -- two people + v2 face lock
+# Generate-only. LOAD existing male LoRA. Do NOT train. Do NOT overwrite:
+#   MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors
+#   MyDrive/FiratSuper/loras/henry_penis_flux_v1.safetensors
+# Cell 63 history: solo woman. This cell forces a man AND a woman in every frame.
+# v2 @ 1.15 (default -> default_0). Male hrmale @ 0.55 / 0.65 / 0.75.
+# Face steer = cell 62 prompt keepers 01_face_ok-04_face_ok
+#   (keepers/output, folder 1McbLdO0usQC_IoaVDieGc0ubHO2wSLe5). Not a train set.
+# Chest lock from chest_real (folder 1Fti6dG9nydaIyhrzNXYOPDj_lke1iOjO).
+# Writes MyDrive/FiratSuper/generate/scene_64_male_couple_preview_<timestamp>/
+# Generate parent folder id: 10cu3OCM5lHgZ9kTKTlWgybPIbKqJaxmZ
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 6
+SLUG = "64_male_couple_preview"
+SEEDS = [6300, 6301, 6302, 6303, 6304, 6305]
+FEMALE_W = 1.15
+NEG = "solo, alone, single person, one person, cropped to face only, missing man"
+TWO = (
+    "two people, a man and a woman, couple, both people fully visible in one photograph, "
+)
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+)
+CHEST = (
+    "fair pale skin, natural soft teardrop breasts, "
+    "medium circular pinkish-tan textured areolae, prominent nipples, "
+)
+MAN = (
+    "an adult man with her, his head and body visible, hrmale, "
+)
+PLACE = (
+    "waist-up couple photograph, both heads and torsos in frame, "
+    "photorealistic raw photo, natural skin texture"
+)
+SHOTS = [
+    ("01_couple_stand_both_visible", "sex", 0.55, "the woman and the man stand side by side, both looking toward the camera"),
+    ("02_couple_bed_both_visible", "sex", 0.65, "the couple sits together on a bed, the man beside the woman, both bodies in frame"),
+    ("03_couple_three_q_both_visible", "sex", 0.65, "three-quarter couple standing close, both people visible from the thighs up"),
+    ("04_couple_waist_anatomy_both_visible", "sex", 0.75, "waist-up couple, the man's body visible beside her, hrmale erect penis visible on the man"),
+    ("05_couple_embrace_both_visible", "sex", 0.65, "standing couple embrace, both heads and torsos visible, indoor daylight"),
+    ("06_couple_seated_both_visible", "sex", 0.75, "the couple seated on a sofa, both people visible waist-up, the man's body in frame"),
+]
+POS_BANNED = (
+    "solo", "alone", "single person", "one person", "cropped to face only",
+    "missing man", "no scars", "surgical",
+)
+
+if SHOT_END != 6 or len(SHOTS) != 6 or len(SEEDS) != 6:
+    raise RuntimeError("Cell 64 must be exactly 6 couple stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+male_path = os.path.join(LORAS_DIR, HENRY_OUTPUT_LORA)
+for label, path in ((OUTPUT_LORA_NAME, v2_path), (HENRY_OUTPUT_LORA, male_path)):
+    if not os.path.isfile(path):
+        raise RuntimeError("Load-only: missing " + path + " (will not train).")
+    print("LOAD ONLY", label, "bytes", os.path.getsize(path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+male_mtime, male_size = os.path.getmtime(male_path), os.path.getsize(male_path)
+
+keeper_names = ["01_face_ok.png", "02_face_ok.png", "03_face_ok.png", "04_face_ok.png"]
+found_keepers = {}
+search_roots = [
+    os.path.join(KEEPERS_DIR, "output"),
+    KEEPERS_DIR,
+    os.path.join(ROOT, "keepers", "output"),
+]
+for root in search_roots:
+    if not os.path.isdir(root):
+        continue
+    for dirpath, _dirs, files in os.walk(root):
+        for name in keeper_names:
+            if name in files and name not in found_keepers:
+                found_keepers[name] = os.path.join(dirpath, name)
+print("Face keepers found (prompt steer, not a dataset):", found_keepers or "(names only, like cell 62)")
+print("Same face+chest prompt lock as cell 62. Couple composition first so the man stays in frame.")
+print("Male LoRA is LOAD ONLY. Do not overwrite LoRA files.")
+ensure_flux_dual_pipe()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("negative_prompt:", NEG)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, male_w, action = SHOTS[pidx]
+    used = set_pipe_adapters(pipe, ["default", "hrmale"], [FEMALE_W, male_w])
+    prompt = (
+        TWO + IDENT + FACE + CHEST + MAN + action + ". " + PLACE
+    )
+    low = prompt.lower()
+    hit = [w for w in POS_BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 64 positive prompt has banned words: " + ", ".join(hit))
+    for lock in (
+        "two people",
+        "a man and a woman",
+        "couple",
+        "both people",
+        "ohwx woman",
+        "hrmale",
+        "his head and body visible",
+        "01_face_ok",
+        "04_face_ok",
+        "fair pale skin",
+        "natural soft teardrop breasts",
+        "medium circular pinkish-tan textured areolae",
+        "prominent nipples",
+        "waist-up couple",
+    ):
+        if lock not in low:
+            raise RuntimeError("Cell 64 prompt missing lock: " + lock)
+    seed = SEEDS[pidx]
+    print("---", shot_slug, "seed", seed, "lora", used, "v2", FEMALE_W, "male", male_w)
+    print(prompt)
+    call_kw = dict(
+        prompt=prompt,
+        negative_prompt=NEG,
+        guidance_scale=3.0,
+        height=1024,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    )
+    try:
+        image = pipe(true_cfg_scale=2.0, **call_kw).images[0]
+    except TypeError:
+        image = pipe(**call_kw).images[0]
+    path = os.path.join(out_dir, shot_slug + ".png")
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+if os.path.getmtime(male_path) != male_mtime or os.path.getsize(male_path) != male_size:
+    raise RuntimeError("Male LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "couple stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 64.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    if found:
+        fid = found["id"]
+        print("Drive folder id:", fid)
+        print("Drive URL: https://drive.google.com/drive/folders/" + fid)
+    else:
+        print("Drive folder id: generate parent", gen_folder, "10cu3OCM5lHgZ9kTKTlWgybPIbKqJaxmZ")
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_64_DIR", out_dir)
+print("DRIVE_FOLDER_ID", fid)
+print("Cell 64 done. LoRA files were not written.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
     """## Done
 
 Locked production LoRA:
 `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 
-Male LoRA (already trained; cells 57-61 overwrite v1 if retraining; cell 63 loads only):
+Male LoRA (already trained; cells 57-61 overwrite v1 if retraining; cells 63-64 load only):
 `MyDrive/FiratSuper/loras/henry_penis_flux_v1.safetensors`
 
 Run ONE series cell at a time. Keep the tab open.
@@ -4032,8 +4229,11 @@ Cells 57-61 retrain/overwrite henry_penis_flux_v1 from ADD_HENRY_BODY_PHOTOS
 Cell 62 (face+chest scene stills, 6 shots, v2 only, keepers 01-04) writes to:
 `MyDrive/FiratSuper/generate/scene_62_face_chest_scenes_*/`
 
-Cell 63 (male LoRA preview, 6 shots, v2 @ 1.15 + hrmale @ 0.4/0.55/0.7, load only) writes to:
+Cell 63 (HISTORICAL male LoRA preview -- often solo woman; leave it) wrote to:
 `MyDrive/FiratSuper/generate/scene_63_male_lora_preview_*/`
+
+Cell 64 (couple two-person preview, 6 shots, v2 @ 1.15 + hrmale @ 0.55/0.65/0.75, load only) writes to:
+`MyDrive/FiratSuper/generate/scene_64_male_couple_preview_*/`
 
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
@@ -4053,13 +4253,15 @@ Also locked:
 3. Cells 13-22 and 28-37: far camera strip. Cells 23-27 and 38-40: explicit couple / POV / facial sets (20).
 4. If it dies, set SHOT_START and rerun that cell.
 5. Cell 52: v2 at 1.0. Cell 54: v2 at 1.15, keeper-steered. Cell 56: waist-hold chest-locked. Cell 62: face+chest scenes. No hrmale. No scar words.
-6. Cell 63: male LoRA preview, load only. Setup 1-2-3 (+4). Skip training. Do not run while cell 60 is running. Do not overwrite LoRA files.
-7. Adult content only. Do not train on generated pictures.
+6. Cell 63: historical male LoRA preview (solo woman). Do not rerun for couple intent.
+7. Cell 64: couple two-person preview, load only. Setup 1-2-3 (+4). Skip training. Do not run while cell 60 is running. Do not overwrite LoRA files.
+8. Adult content only. Do not train on generated pictures.
 
 ### If the runtime dies
 - v2 LoRA is already on Drive. Rerun 1, 2, 3, then the series cell. New runtime: also 4. Skip 5-9.
 - Male retrain: if cell 60 finished, run 61 to copy. If not, rerun 57-61. Skip 41-45.
-- Cell 63: both LoRAs already on Drive. Rerun 1, 2, 3, then 63. New runtime: also 4. Skip training.
+- Cell 63: historical. Prefer cell 64.
+- Cell 64: both LoRAs already on Drive. Rerun 1, 2, 3, then 64. New runtime: also 4. Skip training.
 - Hugging Face 403: accept FLUX.1-dev license, new READ token.
 - Drive popup: Allow ALL, one Google account."""
 )
