@@ -50,7 +50,7 @@ Also locked: `lapetitemilf_flux` (v1) and `lapetitemilf_face`. Do not retrain. D
 
 **Generate path (woman LoRA only):** cells 1, 2, 3, then 4 if new runtime, then **one series cell** (13-22 far strip, 23-27 explicit sets, 28-37 far strip, or 38-40 explicit couple). Skip 5-9. Cells 13-40 still load only `lapetitemilf_flux_v2`.
 
-**Male LoRA path (does not touch v2):** cells **41-45** are the first male train (KEEP list includes Dalia -- do not rerun). Cells **57-61** retrain/overwrite `henry_penis_flux_v1` from all `ADD_HENRY_BODY_PHOTOS` except documented exclusions. Cells **46-51** are rejected history; do not rerun them. **Cell 52** loads only locked v2 at 1.0 (no male LoRA) for a 2-shot face identity check. **Cell 62** is face+chest scene stills (v2 only @ 1.15, keepers 01-04, no male LoRA).
+**Male LoRA path (does not touch v2):** cells **41-45** are the first male train (KEEP list includes Dalia -- do not rerun). Cells **57-61** retrain/overwrite `henry_penis_flux_v1` from all `ADD_HENRY_BODY_PHOTOS` except documented exclusions. Cells **46-51** are rejected history; do not rerun them. **Cell 52** loads only locked v2 at 1.0 (no male LoRA) for a 2-shot face identity check. **Cell 62** is face+chest scene stills (v2 only @ 1.15, keepers 01-04, no male LoRA). **Cells 63-72** are historical generate-only (leave them). **Cell 68** APPROVED woman-only I2V stills (v2 @ 1.15). **Cells 69-72** couple rejected. **Cells 73-76** experimental -- **PAUSED** after cell 73 identity failure (wrong face, dark hair, multi-woman glitches). **Cell 77** restores the approved cell-68 woman-only recipe (v2 @ 1.15, same face+chest prompt). Do not train. Do not overwrite v2 or the male LoRA file.
 
 **Trigger:** `ohwx woman` (her LoRA). Male trigger: `hrmale`. Do not write "no scars" in prompts. Adult subject only.
 Do not train on generated pictures. Two-person sex shots often glitch on Flux; rerun with a new SEED_BASE if anatomy breaks.
@@ -115,6 +115,21 @@ Do not train on generated pictures. Two-person sex shots often glitch on Flux; r
 60. Retrain male LoRA: full train -> overwrite henry_penis_flux_v1
 61. Retrain male LoRA: copy overwrite to Drive/loras/ (will not overwrite v2)
 62. Face+chest scene stills (6 shots, v2 only, keepers 01-04)
+63. Male LoRA preview -- low weight + v2 face lock (6 shots, load only, HISTORICAL)
+64. Male couple preview -- two people + v2 face lock (6 shots, load only, HISTORICAL)
+65. Male couple preview -- no breast bleed (6 shots, load only, HISTORICAL)
+66. Chest/nipple fix -- male flat + woman chest_real (6 shots, load only, HISTORICAL)
+67. I2V still -- woman only, waist-up lingerie (2 seeds, v2 only, HISTORICAL)
+68. I2V still -- woman only, v2 1.15 face+chest (2 seeds, APPROVED / HISTORICAL)
+69. Couple face-first -- v2 1.15, man chest covered (6 shots, HISTORICAL -- nipples rejected)
+70. Couple normal nipples -- v2 1.15, chest_real lock, man covered (6 shots, HISTORICAL -- rejected)
+71. Couple clothed man + cell 68 woman chest (6 shots, HISTORICAL -- CLIP truncated)
+72. Couple short CLIP prompt -- clothed man + cell 68 chest (6 shots, HISTORICAL -- two women / warped nipples)
+73. A woman-only chest QA -- v2 only (4 shots, PAUSED -- identity failure)
+74. B couple, NO male LoRA (4 shots, PAUSED)
+75. C couple + hrmale, anti-two-women (4 shots, PAUSED)
+76. D couple, lace-covered breasts (4 shots, PAUSED)
+77. Clone cell 68 woman-only face+chest (4 shots)
 
 ## Drive layout
 ```
@@ -127,7 +142,8 @@ MyDrive/FiratSuper/
 |-- loras/lapetitemilf_flux.safetensors    # v1, locked
 |-- loras/lapetitemilf_face.safetensors    # locked
 |-- output/lapetitemilf/flux_eval_v2/      # generations from cell 10
-`-- keepers/                              # copy keepers here
+|-- generate/                             # generate-only stills (54-56, 62-77)
+`-- keepers/                              # copy keepers here (01_face_ok-04_face_ok, chest_real)
 ```"""
 )
 
@@ -3830,12 +3846,2643 @@ print("Do not put these pictures back into ADD_* or training folders.")"""
 )
 
 md(
+    """Skip 5-9. Skip training cells 41-45 and 57-61. Skip rejected 46-51.
+
+**Cell 63 -- Male LoRA preview -- low weight + v2 face lock.** Load existing `henry_penis_flux_v1` only. Do not train. Do not overwrite `lapetitemilf_flux_v2.safetensors` or `henry_penis_flux_v1.safetensors`.
+
+**Run:** A100 preferred. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Do not run while training cells (8, 44, 60) are running.
+
+v2 @ 1.15 + male LoRA `hrmale` @ 0.4 / 0.55 / 0.7. Face keepers 01_face_ok-04_face_ok. Chest lock from chest_real. Seeds 6200-6205.
+Writes `MyDrive/FiratSuper/generate/scene_63_male_lora_preview_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df (5-9, 41-45, 57-61). \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 63**. \u05dc\u05d0 \u05dc\u05d4\u05e8\u05d9\u05e5 \u05d1\u05d6\u05de\u05df \u05e9\u05ea\u05d0 \u05d0\u05d9\u05de\u05d5\u05df \u05e8\u05e5."""
+)
+
+code(
+    r"""# @title 63) Male LoRA preview -- low weight + v2 face lock
+# Generate-only. LOAD existing male LoRA. Do NOT train. Do NOT overwrite:
+#   MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors
+#   MyDrive/FiratSuper/loras/henry_penis_flux_v1.safetensors
+# v2 @ 1.15 (default -> default_0). Male hrmale @ 0.4 / 0.55 / 0.7.
+# Face steered only by keepers 01_face_ok-04_face_ok (folder 1McbLdO0usQC_IoaVDieGc0ubHO2wSLe5).
+# Chest lock from chest_real (folder 1Fti6dG9nydaIyhrzNXYOPDj_lke1iOjO).
+# Writes MyDrive/FiratSuper/generate/scene_63_male_lora_preview_<timestamp>/
+# Generate parent folder id: 10cu3OCM5lHgZ9kTKTlWgybPIbKqJaxmZ
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 6
+SLUG = "63_male_lora_preview"
+SEEDS = [6200, 6201, 6202, 6203, 6204, 6205]
+FEMALE_W = 1.15
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+    "head fully in frame, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+)
+CHEST = (
+    "fair pale skin, natural soft teardrop breasts, "
+    "medium circular pinkish-tan textured areolae, prominent nipples, "
+)
+PLACE = "full head in frame, chest visible, her face clearly visible"
+SHOTS = [
+    ("01_couple_stand", "sex", 0.40, "hrmale erect penis visible beside her, standing couple, she looks at the camera, soft smile"),
+    ("02_couple_bed", "sex", 0.55, "hrmale erect penis visible, couple on a bed, she looks at the camera, face clearly visible"),
+    ("03_waist_join", "sex", 0.55, "hrmale erect penis at her waist, glans visible, she looks at the camera, chest and face in frame"),
+    ("04_oral_face", "sex", 0.55, "hrmale erect penis, her mouth near the glans as two distinct objects, she looks up, face clearly visible"),
+    ("05_genital_face", "sex", 0.70, "hrmale erect penis, glans at her vulva, shaft veins visible, her face still in frame looking at the camera"),
+    ("06_facial_glans", "sex", 0.70, "hrmale erect penis, glans beside her smiling face, thick white semen on her cheek, full head in frame"),
+]
+
+if SHOT_END != 6 or len(SHOTS) != 6 or len(SEEDS) != 6:
+    raise RuntimeError("Cell 63 must be exactly 6 preview stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+male_path = os.path.join(LORAS_DIR, HENRY_OUTPUT_LORA)
+for label, path in ((OUTPUT_LORA_NAME, v2_path), (HENRY_OUTPUT_LORA, male_path)):
+    if not os.path.isfile(path):
+        raise RuntimeError("Load-only: missing " + path + " (will not train).")
+    print("LOAD ONLY", label, "bytes", os.path.getsize(path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+male_mtime, male_size = os.path.getmtime(male_path), os.path.getsize(male_path)
+print("Prompt-only face+chest steer. Do not train. Do not load keeper files as a dataset.")
+print("Male LoRA is LOAD ONLY at low weight. Do not overwrite LoRA files.")
+ensure_flux_dual_pipe()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, male_w, action = SHOTS[pidx]
+    used = set_pipe_adapters(pipe, ["default", "hrmale"], [FEMALE_W, male_w])
+    prompt = (
+        IDENT + FACE + CHEST + action + ". " + PLACE +
+        ", photorealistic raw photo, natural skin texture"
+    )
+    low = prompt.lower()
+    for lock in (
+        "ohwx woman",
+        "hrmale",
+        "01_face_ok",
+        "04_face_ok",
+        "fair pale skin",
+        "natural soft teardrop breasts",
+        "medium circular pinkish-tan textured areolae",
+        "prominent nipples",
+        "full head in frame",
+    ):
+        if lock not in low:
+            raise RuntimeError("Cell 63 prompt missing lock: " + lock)
+    if "no scars" in low or "surgical" in low:
+        raise RuntimeError("Cell 63 must not write scar words.")
+    seed = SEEDS[pidx]
+    print("---", shot_slug, "seed", seed, "lora", used, "v2", FEMALE_W, "male", male_w)
+    print(prompt)
+    image = pipe(
+        prompt=prompt,
+        guidance_scale=3.5,
+        height=1024,
+        width=768,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    ).images[0]
+    path = os.path.join(out_dir, "%s_seed%d.png" % (shot_slug, seed))
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+if os.path.getmtime(male_path) != male_mtime or os.path.getsize(male_path) != male_size:
+    raise RuntimeError("Male LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "male LoRA preview stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 63.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    if found:
+        fid = found["id"]
+        print("Drive folder id:", fid)
+        print("Drive URL: https://drive.google.com/drive/folders/" + fid)
+    else:
+        print("Drive folder id: generate parent", gen_folder, "10cu3OCM5lHgZ9kTKTlWgybPIbKqJaxmZ")
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_63_DIR", out_dir)
+print("DRIVE_FOLDER_ID", fid)
+print("Cell 63 done. LoRA files were not written.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """Skip 5-9. Skip training cells 41-45 and 57-61. Skip rejected 46-51. Leave cell 63 as history (solo woman).
+
+**Cell 64 -- Male couple preview -- two people + v2 face lock.** Load existing `henry_penis_flux_v1` only. Do not train. Do not overwrite `lapetitemilf_flux_v2.safetensors` or `henry_penis_flux_v1.safetensors`.
+
+**Run:** A100 preferred. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Do not run while training cells (8, 44, 60) are running.
+
+Every shot is a couple frame (waist-up / 3/4): both people visible. v2 @ 1.15 + male `hrmale` @ 0.55 / 0.65 / 0.75. Face keepers 01_face_ok-04_face_ok (same prompt steer as cell 62). Chest lock from chest_real. Seeds 6300-6305.
+Writes `MyDrive/FiratSuper/generate/scene_64_male_couple_preview_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df (5-9, 41-45, 57-61). \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 64**. \u05dc\u05d0 \u05dc\u05d4\u05e8\u05d9\u05e5 \u05d1\u05d6\u05de\u05df \u05e9\u05ea\u05d0 \u05d0\u05d9\u05de\u05d5\u05df \u05e8\u05e5. \u05ea\u05d0 63 \u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9 -- \u05dc\u05d0 \u05dc\u05d4\u05e8\u05d9\u05e5 \u05e2\u05d1\u05d5\u05e8 \u05d6\u05d5\u05d2."""
+)
+
+code(
+    r"""# @title 64) Male couple preview -- two people + v2 face lock
+# Generate-only. LOAD existing male LoRA. Do NOT train. Do NOT overwrite:
+#   MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors
+#   MyDrive/FiratSuper/loras/henry_penis_flux_v1.safetensors
+# Cell 63 history: solo woman. This cell forces a man AND a woman in every frame.
+# v2 @ 1.15 (default -> default_0). Male hrmale @ 0.55 / 0.65 / 0.75.
+# Face steer = cell 62 prompt keepers 01_face_ok-04_face_ok
+#   (keepers/output, folder 1McbLdO0usQC_IoaVDieGc0ubHO2wSLe5). Not a train set.
+# Chest lock from chest_real (folder 1Fti6dG9nydaIyhrzNXYOPDj_lke1iOjO).
+# Writes MyDrive/FiratSuper/generate/scene_64_male_couple_preview_<timestamp>/
+# Generate parent folder id: 10cu3OCM5lHgZ9kTKTlWgybPIbKqJaxmZ
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 6
+SLUG = "64_male_couple_preview"
+SEEDS = [6300, 6301, 6302, 6303, 6304, 6305]
+FEMALE_W = 1.15
+NEG = "solo, alone, single person, one person, cropped to face only, missing man"
+TWO = (
+    "two people, a man and a woman, couple, both people fully visible in one photograph, "
+)
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+)
+CHEST = (
+    "fair pale skin, natural soft teardrop breasts, "
+    "medium circular pinkish-tan textured areolae, prominent nipples, "
+)
+MAN = (
+    "an adult man with her, his head and body visible, hrmale, "
+)
+PLACE = (
+    "waist-up couple photograph, both heads and torsos in frame, "
+    "photorealistic raw photo, natural skin texture"
+)
+SHOTS = [
+    ("01_couple_stand_both_visible", "sex", 0.55, "the woman and the man stand side by side, both looking toward the camera"),
+    ("02_couple_bed_both_visible", "sex", 0.65, "the couple sits together on a bed, the man beside the woman, both bodies in frame"),
+    ("03_couple_three_q_both_visible", "sex", 0.65, "three-quarter couple standing close, both people visible from the thighs up"),
+    ("04_couple_waist_anatomy_both_visible", "sex", 0.75, "waist-up couple, the man's body visible beside her, hrmale erect penis visible on the man"),
+    ("05_couple_embrace_both_visible", "sex", 0.65, "standing couple embrace, both heads and torsos visible, indoor daylight"),
+    ("06_couple_seated_both_visible", "sex", 0.75, "the couple seated on a sofa, both people visible waist-up, the man's body in frame"),
+]
+POS_BANNED = (
+    "solo", "alone", "single person", "one person", "cropped to face only",
+    "missing man", "no scars", "surgical",
+)
+
+if SHOT_END != 6 or len(SHOTS) != 6 or len(SEEDS) != 6:
+    raise RuntimeError("Cell 64 must be exactly 6 couple stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+male_path = os.path.join(LORAS_DIR, HENRY_OUTPUT_LORA)
+for label, path in ((OUTPUT_LORA_NAME, v2_path), (HENRY_OUTPUT_LORA, male_path)):
+    if not os.path.isfile(path):
+        raise RuntimeError("Load-only: missing " + path + " (will not train).")
+    print("LOAD ONLY", label, "bytes", os.path.getsize(path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+male_mtime, male_size = os.path.getmtime(male_path), os.path.getsize(male_path)
+
+keeper_names = ["01_face_ok.png", "02_face_ok.png", "03_face_ok.png", "04_face_ok.png"]
+found_keepers = {}
+search_roots = [
+    os.path.join(KEEPERS_DIR, "output"),
+    KEEPERS_DIR,
+    os.path.join(ROOT, "keepers", "output"),
+]
+for root in search_roots:
+    if not os.path.isdir(root):
+        continue
+    for dirpath, _dirs, files in os.walk(root):
+        for name in keeper_names:
+            if name in files and name not in found_keepers:
+                found_keepers[name] = os.path.join(dirpath, name)
+print("Face keepers found (prompt steer, not a dataset):", found_keepers or "(names only, like cell 62)")
+print("Same face+chest prompt lock as cell 62. Couple composition first so the man stays in frame.")
+print("Male LoRA is LOAD ONLY. Do not overwrite LoRA files.")
+ensure_flux_dual_pipe()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("negative_prompt:", NEG)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, male_w, action = SHOTS[pidx]
+    used = set_pipe_adapters(pipe, ["default", "hrmale"], [FEMALE_W, male_w])
+    prompt = (
+        TWO + IDENT + FACE + CHEST + MAN + action + ". " + PLACE
+    )
+    low = prompt.lower()
+    hit = [w for w in POS_BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 64 positive prompt has banned words: " + ", ".join(hit))
+    for lock in (
+        "two people",
+        "a man and a woman",
+        "couple",
+        "both people",
+        "ohwx woman",
+        "hrmale",
+        "his head and body visible",
+        "01_face_ok",
+        "04_face_ok",
+        "fair pale skin",
+        "natural soft teardrop breasts",
+        "medium circular pinkish-tan textured areolae",
+        "prominent nipples",
+        "waist-up couple",
+    ):
+        if lock not in low:
+            raise RuntimeError("Cell 64 prompt missing lock: " + lock)
+    seed = SEEDS[pidx]
+    print("---", shot_slug, "seed", seed, "lora", used, "v2", FEMALE_W, "male", male_w)
+    print(prompt)
+    call_kw = dict(
+        prompt=prompt,
+        negative_prompt=NEG,
+        guidance_scale=3.0,
+        height=1024,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    )
+    try:
+        image = pipe(true_cfg_scale=2.0, **call_kw).images[0]
+    except TypeError:
+        image = pipe(**call_kw).images[0]
+    path = os.path.join(out_dir, shot_slug + ".png")
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+if os.path.getmtime(male_path) != male_mtime or os.path.getsize(male_path) != male_size:
+    raise RuntimeError("Male LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "couple stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 64.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    if found:
+        fid = found["id"]
+        print("Drive folder id:", fid)
+        print("Drive URL: https://drive.google.com/drive/folders/" + fid)
+    else:
+        print("Drive folder id: generate parent", gen_folder, "10cu3OCM5lHgZ9kTKTlWgybPIbKqJaxmZ")
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_64_DIR", out_dir)
+print("DRIVE_FOLDER_ID", fid)
+print("Cell 64 done. LoRA files were not written.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """Skip 5-9. Skip training cells 41-45 and 57-61. Skip rejected 46-51. Leave cells 63-64 as history.
+
+**Cell 65 -- Male couple preview -- no breast bleed.** Load existing `henry_penis_flux_v1` only. Do not train. Do not overwrite `lapetitemilf_flux_v2.safetensors` or `henry_penis_flux_v1.safetensors`.
+
+**Run:** A100 preferred. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Do not run while training cells (8, 44, 60) are running.
+
+Couple frames, both torsos readable. Woman: v2 1.05-1.15 + keepers 01-04 + chest_real. Man: flat male chest, generic male face, `hrmale` body only @ 0.55-0.75. Seeds 6400-6405.
+Writes `MyDrive/FiratSuper/generate/scene_65_male_couple_no_bleed_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df (5-9, 41-45, 57-61). \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 65**. \u05dc\u05d0 \u05dc\u05d4\u05e8\u05d9\u05e5 \u05d1\u05d6\u05de\u05df \u05e9\u05ea\u05d0 \u05d0\u05d9\u05de\u05d5\u05df \u05e8\u05e5. \u05ea\u05d0\u05d9\u05dd 63-64 \u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9\u05d9\u05dd."""
+)
+
+code(
+    r"""# @title 65) Male couple preview -- no breast bleed
+# Generate-only. LOAD existing male LoRA. Do NOT train. Do NOT overwrite:
+#   MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors
+#   MyDrive/FiratSuper/loras/henry_penis_flux_v1.safetensors
+# Cell 63 history: solo woman. Cell 64 history: man grew female breasts (v2 bleed).
+# Cell 40 / 23-40 sex shots used v2-only at 0.7 (no male LoRA). Dual 46-48 used
+# v2@0.7 + hrmale@0.85. Cell 64 used v2@1.15 on both bodies -> gender bleed.
+# This cell: woman face lock stays high; body-heavy shots drop v2 to 1.05-1.10.
+# Man = generic adult male face (NOT Henry identity). hrmale = body/genital only.
+# Flux draws "no X" if those words sit in the POSITIVE prompt. "no breasts" /
+# "no cleavage" / gynecomastia phrases stay in negative_prompt only.
+# Writes MyDrive/FiratSuper/generate/scene_65_male_couple_no_bleed_<timestamp>/
+# Generate parent folder id: 10cu3OCM5lHgZ9kTKTlWgybPIbKqJaxmZ
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 6
+SLUG = "65_male_couple_no_bleed"
+SEEDS = [6400, 6401, 6402, 6403, 6404, 6405]
+NEG = (
+    "solo, alone, single person, one person, cropped to face only, missing man, "
+    "man with breasts, male gynecomastia, male gynocomastia, female breasts on man, "
+    "large nipples on man, feminine chest on man, boobs on man, "
+    "no breasts, no cleavage"
+)
+TWO = (
+    "two people, a man and a woman, couple, both people fully visible in one photograph, "
+)
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+)
+WOMAN_CHEST = (
+    "the woman has fair pale skin, natural soft teardrop breasts, "
+    "medium circular pinkish-tan textured areolae, prominent nipples, "
+)
+MAN = (
+    "a generic adult man with a typical male face, "
+    "flat male chest, male pectorals, small male nipples, masculine torso, "
+    "hrmale body and genital anatomy, "
+)
+PLACE = (
+    "waist-up standing couple photograph, both heads and both torsos readable, "
+    "photorealistic raw photo, natural skin texture"
+)
+# slug, kind, female_w, male_w, action
+SHOTS = [
+    ("01_stand_flat_chest", "sex", 1.15, 0.55, "the woman and the man stand side by side, both looking toward the camera, both torsos readable"),
+    ("02_stand_three_q", "sex", 1.10, 0.65, "three-quarter standing couple, both people visible from the waist up, both chests readable"),
+    ("03_waist_both_torsos", "sex", 1.15, 0.60, "waist-up couple facing the camera, the woman's face clearly visible, both torsos in frame"),
+    ("04_stand_anatomy_readable", "sex", 1.05, 0.70, "standing couple, both torsos readable, hrmale erect penis visible on the man, not an extreme close-up"),
+    ("05_stand_close_torsos", "sex", 1.10, 0.65, "standing couple close together, both heads and both torsos readable, indoor daylight"),
+    ("06_stand_side_male_chest", "sex", 1.05, 0.75, "standing couple, the man slightly to the side so his flat male chest is readable, hrmale anatomy visible without a genital crop"),
+]
+POS_BANNED = (
+    "solo", "alone", "single person", "one person", "cropped to face only",
+    "missing man", "no scars", "surgical", "no breasts", "no cleavage",
+    "gynecomastia", "gynocomastia", "boobs on man",
+)
+
+if SHOT_END != 6 or len(SHOTS) != 6 or len(SEEDS) != 6:
+    raise RuntimeError("Cell 65 must be exactly 6 couple stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+male_path = os.path.join(LORAS_DIR, HENRY_OUTPUT_LORA)
+for label, path in ((OUTPUT_LORA_NAME, v2_path), (HENRY_OUTPUT_LORA, male_path)):
+    if not os.path.isfile(path):
+        raise RuntimeError("Load-only: missing " + path + " (will not train).")
+    print("LOAD ONLY", label, "bytes", os.path.getsize(path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+male_mtime, male_size = os.path.getmtime(male_path), os.path.getsize(male_path)
+
+keeper_names = ["01_face_ok.png", "02_face_ok.png", "03_face_ok.png", "04_face_ok.png"]
+found_keepers = {}
+search_roots = [
+    os.path.join(KEEPERS_DIR, "output"),
+    KEEPERS_DIR,
+    os.path.join(ROOT, "keepers", "output"),
+]
+for root in search_roots:
+    if not os.path.isdir(root):
+        continue
+    for dirpath, _dirs, files in os.walk(root):
+        for name in keeper_names:
+            if name in files and name not in found_keepers:
+                found_keepers[name] = os.path.join(dirpath, name)
+print("Face keepers found (prompt steer, not a dataset):", found_keepers or "(names only, like cell 62)")
+print("Woman chest lock is hers only. Man gets flat male chest + generic male face.")
+print("hrmale is body/genital only. Do not overwrite LoRA files.")
+ensure_flux_dual_pipe()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("negative_prompt:", NEG)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, female_w, male_w, action = SHOTS[pidx]
+    used = set_pipe_adapters(pipe, ["default", "hrmale"], [female_w, male_w])
+    prompt = TWO + IDENT + FACE + WOMAN_CHEST + MAN + action + ". " + PLACE
+    low = prompt.lower()
+    hit = [w for w in POS_BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 65 positive prompt has banned words: " + ", ".join(hit))
+    for lock in (
+        "two people",
+        "a man and a woman",
+        "couple",
+        "both people",
+        "ohwx woman",
+        "01_face_ok",
+        "04_face_ok",
+        "the woman has",
+        "natural soft teardrop breasts",
+        "medium circular pinkish-tan textured areolae",
+        "prominent nipples",
+        "generic adult man",
+        "flat male chest",
+        "male pectorals",
+        "small male nipples",
+        "masculine torso",
+        "hrmale",
+        "both torsos",
+    ):
+        if lock not in low:
+            raise RuntimeError("Cell 65 prompt missing lock: " + lock)
+    seed = SEEDS[pidx]
+    print("---", shot_slug, "seed", seed, "lora", used, "v2", female_w, "male", male_w)
+    print(prompt)
+    call_kw = dict(
+        prompt=prompt,
+        negative_prompt=NEG,
+        guidance_scale=3.0,
+        height=1024,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    )
+    try:
+        image = pipe(true_cfg_scale=2.0, **call_kw).images[0]
+    except TypeError:
+        image = pipe(**call_kw).images[0]
+    path = os.path.join(out_dir, shot_slug + ".png")
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+if os.path.getmtime(male_path) != male_mtime or os.path.getsize(male_path) != male_size:
+    raise RuntimeError("Male LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "couple stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 65.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    if found:
+        fid = found["id"]
+        print("Drive folder id:", fid)
+        print("Drive URL: https://drive.google.com/drive/folders/" + fid)
+    else:
+        print("Drive folder id: generate parent", gen_folder, "10cu3OCM5lHgZ9kTKTlWgybPIbKqJaxmZ")
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_65_DIR", out_dir)
+print("DRIVE_FOLDER_ID", fid)
+print("Cell 65 done. LoRA files were not written.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """Skip 5-9. Skip training cells 41-45 and 57-61. Skip rejected 46-51. Leave cells 63-65 as history.
+
+**Cell 66 -- Chest/nipple fix -- male flat + woman chest_real.** Load existing `henry_penis_flux_v1` only. Do not train. Do not overwrite `lapetitemilf_flux_v2.safetensors` or `henry_penis_flux_v1.safetensors`.
+
+**Run:** A100 preferred. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Do not run while training cells (8, 44, 60) are running.
+
+Couple 1024x1024, both chests readable. Woman: v2 0.90-1.05 + keepers 01-04 + chest_real teardrop/textured areolae. Man: athletic flat pecs, tiny pale male areolae. Bleed words in negative only. Seeds 6500-6505.
+Writes `MyDrive/FiratSuper/generate/scene_66_chest_nipple_fix_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df (5-9, 41-45, 57-61). \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 66**. \u05dc\u05d0 \u05dc\u05d4\u05e8\u05d9\u05e5 \u05d1\u05d6\u05de\u05df \u05e9\u05ea\u05d0 \u05d0\u05d9\u05de\u05d5\u05df \u05e8\u05e5. \u05ea\u05d0\u05d9\u05dd 63-65 \u05d4\u05d9\u05e1\u05d8\u05d5\u05e8\u05d9\u05d9\u05dd."""
+)
+
+code(
+    r"""# @title 66) Chest/nipple fix -- male flat + woman chest_real
+# Generate-only. LOAD existing male LoRA. Do NOT train. Do NOT overwrite:
+#   MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors
+#   MyDrive/FiratSuper/loras/henry_penis_flux_v1.safetensors
+# 63 solo woman. 64-65 couple OK but male chest still feminine; nipples wrong on both.
+# No IP-Adapter helper in this notebook. ADD_HENRY_BODY_PHOTOS is waist-down
+# genital set, not front-torso refs. Prompt + lower v2 on torso shots only.
+# Flux draws "no X" in the POSITIVE prompt. Bleed / fake-breast words stay
+# in negative_prompt only.
+# Writes MyDrive/FiratSuper/generate/scene_66_chest_nipple_fix_<timestamp>/
+# Generate parent folder id: 10cu3OCM5lHgZ9kTKTlWgybPIbKqJaxmZ
+# chest_real folder id: 1Fti6dG9nydaIyhrzNXYOPDj_lke1iOjO
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 6
+SLUG = "66_chest_nipple_fix"
+SEEDS = [6500, 6501, 6502, 6503, 6504, 6505]
+NEG = (
+    "solo, alone, single person, one person, cropped to face only, missing man, "
+    "breasts, boobs, cleavage, gynecomastia, gynocomastia, puffy nipples, "
+    "large areolae, feminine chest, female nipples on man, man with breasts, "
+    "soft rounded breast shape, female breasts on man, "
+    "fake bolted-on breasts, oversized areolae, blurry nipples"
+)
+TWO = (
+    "two people, a man and a woman, couple, both people fully visible in one photograph, "
+)
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+)
+WOMAN_CHEST = (
+    "the woman has fair pale skin, natural teardrop hang, "
+    "medium circular pinkish-tan areolae with real texture, "
+    "prominent natural nipples, matching chest_real, "
+)
+MAN = (
+    "a generic adult man with a typical male face, "
+    "flat masculine pectorals, athletic male chest, "
+    "very small pale male areolae, tiny flat male nipples, "
+    "hrmale body and genital anatomy, "
+)
+PLACE = (
+    "waist-up standing couple photograph, both heads and both chests readable, "
+    "photorealistic raw photo, natural skin texture"
+)
+# slug, kind, female_w, male_w, action
+SHOTS = [
+    ("01_stand_both_chests", "sex", 1.05, 0.55, "the woman and the man stand side by side facing the camera, both chests readable"),
+    ("02_stand_three_q_chests", "sex", 0.95, 0.65, "three-quarter standing couple, both chests clearly readable"),
+    ("03_waist_chest_compare", "sex", 1.00, 0.60, "waist-up couple, the woman's face clearly visible, both chests in frame for comparison"),
+    ("04_stand_anatomy_chests", "sex", 0.90, 0.70, "standing couple, both chests readable, hrmale erect penis visible on the man, not an extreme close-up"),
+    ("05_stand_close_chests", "sex", 0.95, 0.65, "standing couple close together, both chests readable, indoor daylight"),
+    ("06_stand_male_pecs", "sex", 0.90, 0.75, "standing couple, the man slightly turned so his flat masculine pectorals and tiny male nipples are readable"),
+]
+POS_BANNED = (
+    "solo", "alone", "single person", "one person", "cropped to face only",
+    "missing man", "no scars", "surgical", "no breasts", "no cleavage",
+    "gynecomastia", "gynocomastia", "boobs", "puffy nipples",
+    "feminine chest", "female nipples on man", "bolted-on",
+    "oversized areolae", "blurry nipples", "soft rounded breast",
+)
+
+if SHOT_END != 6 or len(SHOTS) != 6 or len(SEEDS) != 6:
+    raise RuntimeError("Cell 66 must be exactly 6 couple stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+male_path = os.path.join(LORAS_DIR, HENRY_OUTPUT_LORA)
+for label, path in ((OUTPUT_LORA_NAME, v2_path), (HENRY_OUTPUT_LORA, male_path)):
+    if not os.path.isfile(path):
+        raise RuntimeError("Load-only: missing " + path + " (will not train).")
+    print("LOAD ONLY", label, "bytes", os.path.getsize(path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+male_mtime, male_size = os.path.getmtime(male_path), os.path.getsize(male_path)
+
+keeper_names = ["01_face_ok.png", "02_face_ok.png", "03_face_ok.png", "04_face_ok.png"]
+found_keepers = {}
+search_roots = [
+    os.path.join(KEEPERS_DIR, "output"),
+    KEEPERS_DIR,
+    os.path.join(ROOT, "keepers", "output"),
+    os.path.join(KEEPERS_DIR, "chest_real"),
+]
+for root in search_roots:
+    if not os.path.isdir(root):
+        continue
+    for dirpath, _dirs, files in os.walk(root):
+        for name in keeper_names:
+            if name in files and name not in found_keepers:
+                found_keepers[name] = os.path.join(dirpath, name)
+chest_real_dir = os.path.join(KEEPERS_DIR, "chest_real")
+print("Face keepers found (prompt steer, not a dataset):", found_keepers or "(names only, like cell 62)")
+print("chest_real dir:", chest_real_dir, "exists" if os.path.isdir(chest_real_dir) else "missing (prompt-only)")
+print("No IP-Adapter. Woman chest_real in prompt. Man pecs + tiny male nipples.")
+print("hrmale is body/genital only. Do not overwrite LoRA files.")
+ensure_flux_dual_pipe()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("negative_prompt:", NEG)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, female_w, male_w, action = SHOTS[pidx]
+    used = set_pipe_adapters(pipe, ["default", "hrmale"], [female_w, male_w])
+    prompt = TWO + IDENT + FACE + WOMAN_CHEST + MAN + action + ". " + PLACE
+    low = prompt.lower()
+    hit = [w for w in POS_BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 66 positive prompt has banned words: " + ", ".join(hit))
+    for lock in (
+        "two people",
+        "a man and a woman",
+        "couple",
+        "both people",
+        "ohwx woman",
+        "01_face_ok",
+        "04_face_ok",
+        "the woman has",
+        "natural teardrop hang",
+        "medium circular pinkish-tan areolae",
+        "real texture",
+        "prominent natural nipples",
+        "chest_real",
+        "generic adult man",
+        "flat masculine pectorals",
+        "athletic male chest",
+        "very small pale male areolae",
+        "tiny flat male nipples",
+        "hrmale",
+        "both chests",
+    ):
+        if lock not in low:
+            raise RuntimeError("Cell 66 prompt missing lock: " + lock)
+    seed = SEEDS[pidx]
+    print("---", shot_slug, "seed", seed, "lora", used, "v2", female_w, "male", male_w)
+    print(prompt)
+    call_kw = dict(
+        prompt=prompt,
+        negative_prompt=NEG,
+        guidance_scale=3.0,
+        height=1024,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    )
+    try:
+        image = pipe(true_cfg_scale=2.0, **call_kw).images[0]
+    except TypeError:
+        image = pipe(**call_kw).images[0]
+    path = os.path.join(out_dir, shot_slug + ".png")
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+if os.path.getmtime(male_path) != male_mtime or os.path.getsize(male_path) != male_size:
+    raise RuntimeError("Male LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "couple stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 66.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    if found:
+        fid = found["id"]
+        print("Drive folder id:", fid)
+        print("Drive URL: https://drive.google.com/drive/folders/" + fid)
+    else:
+        print("Drive folder id: generate parent", gen_folder, "10cu3OCM5lHgZ9kTKTlWgybPIbKqJaxmZ")
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_66_DIR", out_dir)
+print("DRIVE_FOLDER_ID", fid)
+print("Cell 66 done. LoRA files were not written.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """Skip 5-9. Skip training. Skip 41-45, 46-51, 57-61. Leave 63-66 as their own runs. This cell is woman-only.
+
+**Cell 67 -- I2V still -- woman only, waist-up lingerie.** Load locked `lapetitemilf_flux_v2` only. Do not load `henry_penis_flux_v1`. Do not train. Do not overwrite any `.safetensors`.
+
+**Run:** A100 preferred. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell** (separate from cell 66). Do not run while training cells are running.
+
+v2 @ 1.15. Face keepers 01-04. chest_real lock. Full head + headroom for 704x544 letterbox. Soft lingerie bedroom. Seeds 6700-6701.
+Primary: Video bot stills folder `1cPHexNDhpMNy5uUww5fkzeWTp97oKsKe`. Copy also under `MyDrive/FiratSuper/generate/scene_67_i2v_still_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df. \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 67** (\u05e0\u05e4\u05e8\u05d3 \u05de\u05ea\u05d0 66)."""
+)
+
+code(
+    r"""# @title 67) I2V still -- woman only, waist-up lingerie
+# Generate-only. Woman ONLY. Load locked v2. Do NOT load henry_penis / hrmale.
+# Do NOT train. Do NOT overwrite any .safetensors.
+# Full head + headroom for later 704x544 letterbox. Waist-up medium shot.
+# chest_real lock. Do not copy chest-ref outfits (glasses, gold necklace,
+# black tank, gold curtains).
+# Primary Drive stills parent: 1cPHexNDhpMNy5uUww5fkzeWTp97oKsKe
+# Also writes MyDrive/FiratSuper/generate/scene_67_i2v_still_<timestamp>/
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+I2V_STILLS_ID = "1cPHexNDhpMNy5uUww5fkzeWTp97oKsKe"
+SHOT_START = 0
+SHOT_END = 2
+SLUG = "67_i2v_still"
+SEEDS = [6700, 6701]
+LORA_W = 1.15
+NEG = (
+    "glasses, gold necklace, black tank, gold curtains, "
+    "chin crop, missing top of head, hrmale, man, couple, penis"
+)
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+)
+CHEST = (
+    "fair pale skin, natural teardrop hang, slim torso, "
+    "medium circular pinkish-tan areolae with Montgomery texture, "
+    "prominent nipples, matching chest_real, "
+)
+PLACE = (
+    "full head in frame, space above the hair, waist-up medium shot, "
+    "soft pale lace lingerie, intimate bedroom, looking at the camera, "
+    "photorealistic raw photo, natural skin texture"
+)
+SHOTS = [
+    ("i2v_still_waist_lingerie", "scene", "standing waist-up"),
+    ("i2v_still_waist_lingerie", "scene", "standing waist-up"),
+]
+BANNED = (
+    "hrmale", "penis", "glans", "semen", "glasses", "gold necklace",
+    "black tank", "gold curtains", "chin crop",
+)
+
+if SHOT_END != 2 or len(SHOTS) != 2 or len(SEEDS) != 2:
+    raise RuntimeError("Cell 67 must be exactly 2 I2V stills (two seeds).")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+if not os.path.isfile(v2_path):
+    raise RuntimeError("Load-only: missing " + v2_path + " (will not train).")
+print("LOAD ONLY", OUTPUT_LORA_NAME, "bytes", os.path.getsize(v2_path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+print("Woman-only I2V still. Do not load henry_penis_flux_v1. Do not set hrmale.")
+print("Prompt-only face+chest steer. Not a dataset.")
+ensure_flux_pipe()
+used = set_pipe_adapters(pipe, ["default"], [LORA_W])
+print("Female-only v2. Adapter:", used, "weight", LORA_W)
+print("Male LoRA not loaded for this cell.")
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("I2V stills parent:", I2V_STILLS_ID)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, action = SHOTS[pidx]
+    used = set_pipe_adapters(pipe, ["default"], [LORA_W])
+    prompt = IDENT + FACE + CHEST + action + ". " + PLACE
+    low = prompt.lower()
+    hit = [w for w in BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 67 prompt has banned words: " + ", ".join(hit))
+    for lock in (
+        "ohwx woman",
+        "01_face_ok",
+        "04_face_ok",
+        "fair pale skin",
+        "natural teardrop hang",
+        "slim torso",
+        "medium circular pinkish-tan areolae",
+        "Montgomery texture",
+        "prominent nipples",
+        "chest_real",
+        "full head in frame",
+        "space above the hair",
+        "waist-up medium shot",
+        "soft pale lace lingerie",
+    ):
+        if lock not in prompt and lock not in low:
+            raise RuntimeError("Cell 67 prompt missing lock: " + lock)
+    seed = SEEDS[pidx]
+    fname = "%s_seed%d.png" % (shot_slug, seed)
+    print("---", fname, "seed", seed, "lora", used, LORA_W)
+    print(prompt)
+    image = pipe(
+        prompt=prompt,
+        negative_prompt=NEG,
+        guidance_scale=3.5,
+        height=768,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    ).images[0]
+    path = os.path.join(out_dir, fname)
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "I2V stills in", out_dir)
+print("Drive copy: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 67.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+i2v_ids = []
+try:
+    service = DRIVE_SERVICE or _api_service()
+    for path in saved:
+        name = os.path.basename(path)
+        if name.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 67.")
+        fid = api_upload_file(service, path, I2V_STILLS_ID, name)
+        i2v_ids.append(fid)
+        print("I2V stills parent uploaded:", name, fid)
+    print("I2V stills folder: https://drive.google.com/drive/folders/" + I2V_STILLS_ID)
+except Exception as err:
+    print("I2V stills parent upload skipped:", err)
+    print("Files are still in", out_dir)
+print("SCENE_67_DIR", out_dir)
+print("I2V_STILLS_ID", I2V_STILLS_ID)
+print("I2V_FILE_IDS", i2v_ids)
+print("Cell 67 done. LoRA files were not written. Male LoRA was not loaded.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """Skip 5-9. Skip training. Leave 63-67 as history. This cell is woman-only I2V.
+
+**Cell 68 -- I2V still -- woman only, v2 1.15 face+chest.** Same recipe as cell 62. Load locked `lapetitemilf_flux_v2` only. Do not load `henry_penis_flux_v1`. Do not train. Do not overwrite any `.safetensors`.
+
+**Run:** A100 preferred. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Separate from cell 69.
+
+v2 @ 1.15. Face keepers 01-04 plus accepted 02_stand_three_q_chests (face only). chest_real lock. Full head + headroom, 1024x768. Seeds 6800-6801.
+Primary: Video bot stills `1cPHexNDhpMNy5uUww5fkzeWTp97oKsKe`. Copy: `MyDrive/FiratSuper/generate/scene_68_i2v_face_chest_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df. \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 68**."""
+)
+
+code(
+    r"""# @title 68) I2V still -- woman only, v2 1.15 face+chest
+# Generate-only. Woman ONLY. Mirror cell 62: v2 @ 1.15, keepers 01-04, chest_real.
+# Extra face steer: 02_stand_three_q_chests (folder 1QZMUC79DFg3kPPLT51lES-Xfml0zTPIs).
+# Do NOT load henry_penis / hrmale. Do NOT train. Do NOT write .safetensors.
+# Full head + headroom for 704x544 letterbox. 1024x768. Soft lingerie.
+# Do not copy chest-ref outfits.
+# Primary stills parent: 1cPHexNDhpMNy5uUww5fkzeWTp97oKsKe
+# Also writes MyDrive/FiratSuper/generate/scene_68_i2v_face_chest_<timestamp>/
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+I2V_STILLS_ID = "1cPHexNDhpMNy5uUww5fkzeWTp97oKsKe"
+FACE_OK_SCENE66 = "1QZMUC79DFg3kPPLT51lES-Xfml0zTPIs"
+SHOT_START = 0
+SHOT_END = 2
+SLUG = "68_i2v_face_chest"
+SEEDS = [6800, 6801]
+LORA_W = 1.15
+NEG = (
+    "glasses, gold necklace, black tank, gold curtains, "
+    "chin crop, missing top of head, hrmale, man, couple, penis"
+)
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+    "head fully in frame, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+    "and the accepted face in 02_stand_three_q_chests, "
+)
+CHEST = (
+    "fair pale skin, slim torso, natural teardrop hang, "
+    "medium circular pinkish-tan Montgomery-textured areolae, "
+    "prominent nipples, matching chest_real, "
+)
+PLACE = (
+    "full head in frame, space above the hair, waist-up medium shot, "
+    "soft pale lace lingerie, intimate bedroom, looking at the camera, "
+    "photorealistic raw photo, natural skin texture"
+)
+SHOTS = [
+    ("i2v_still_waist_lingerie", "scene", "standing waist-up"),
+    ("i2v_still_waist_lingerie", "scene", "standing waist-up"),
+]
+BANNED = (
+    "hrmale", "penis", "glans", "semen", "glasses", "gold necklace",
+    "black tank", "gold curtains", "chin crop",
+)
+
+if SHOT_END != 2 or len(SHOTS) != 2 or len(SEEDS) != 2:
+    raise RuntimeError("Cell 68 must be exactly 2 I2V stills (two seeds).")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+if not os.path.isfile(v2_path):
+    raise RuntimeError("Load-only: missing " + v2_path + " (will not train).")
+print("LOAD ONLY", OUTPUT_LORA_NAME, "bytes", os.path.getsize(v2_path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+print("Woman-only. Cell 62 recipe: v2 @ 1.15. Extra face name 02_stand_three_q_chests.")
+print("Prompt-only steer (folder %s). Not a dataset. No male LoRA." % FACE_OK_SCENE66)
+ensure_flux_pipe()
+used = set_pipe_adapters(pipe, ["default"], [LORA_W])
+print("Female-only v2. Adapter:", used, "weight", LORA_W)
+print("Male LoRA not loaded for this cell.")
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("I2V stills parent:", I2V_STILLS_ID)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, action = SHOTS[pidx]
+    used = set_pipe_adapters(pipe, ["default"], [LORA_W])
+    prompt = IDENT + FACE + CHEST + action + ". " + PLACE
+    low = prompt.lower()
+    hit = [w for w in BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 68 prompt has banned words: " + ", ".join(hit))
+    for lock in (
+        "ohwx woman",
+        "01_face_ok",
+        "04_face_ok",
+        "02_stand_three_q_chests",
+        "fair pale skin",
+        "slim torso",
+        "natural teardrop hang",
+        "medium circular pinkish-tan Montgomery-textured areolae",
+        "prominent nipples",
+        "chest_real",
+        "full head in frame",
+        "space above the hair",
+        "waist-up medium shot",
+        "soft pale lace lingerie",
+    ):
+        if lock not in prompt and lock not in low:
+            raise RuntimeError("Cell 68 prompt missing lock: " + lock)
+    seed = SEEDS[pidx]
+    fname = "%s_seed%d.png" % (shot_slug, seed)
+    print("---", fname, "seed", seed, "lora", used, LORA_W)
+    print(prompt)
+    image = pipe(
+        prompt=prompt,
+        negative_prompt=NEG,
+        guidance_scale=3.5,
+        height=768,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    ).images[0]
+    path = os.path.join(out_dir, fname)
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "I2V stills in", out_dir)
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 68.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+i2v_ids = []
+try:
+    service = DRIVE_SERVICE or _api_service()
+    for path in saved:
+        name = os.path.basename(path)
+        if name.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 68.")
+        fid = api_upload_file(service, path, I2V_STILLS_ID, name)
+        i2v_ids.append(fid)
+        print("I2V stills parent uploaded:", name, fid)
+    print("I2V stills folder: https://drive.google.com/drive/folders/" + I2V_STILLS_ID)
+except Exception as err:
+    print("I2V stills parent upload skipped:", err)
+    print("Files are still in", out_dir)
+print("SCENE_68_DIR", out_dir)
+print("I2V_STILLS_ID", I2V_STILLS_ID)
+print("I2V_FILE_IDS", i2v_ids)
+print("Cell 68 done. LoRA files were not written. Male LoRA was not loaded.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """Skip 5-9. Skip training. Leave 63-67 as history. Do not lower v2 (cell 66 face drift).
+
+**Cell 69 -- Couple face-first -- v2 1.15, man chest covered.** Load existing `henry_penis_flux_v1` only. Do not train. Do not overwrite any `.safetensors`.
+
+**Run:** A100 preferred. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Separate from cell 68.
+
+Woman v2 @ 1.15 (face first). Face keepers 01-04 + 02_stand_three_q_chests. Man: thin open shirt / robe / towel on 4 shots; 2 shirtless with flat-pec + tiny-areola negatives. hrmale 0.55-0.75. Seeds 6900-6905.
+Writes `MyDrive/FiratSuper/generate/scene_69_couple_face_first_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df. \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 69**."""
+)
+
+code(
+    r"""# @title 69) Couple face-first -- v2 1.15, man chest covered
+# Generate-only. Do NOT train. Do NOT overwrite .safetensors.
+# Cell 66 lowered v2 and the woman face drifted. This cell keeps v2 @ 1.15.
+# Bleed fix: cover the man's chest on 4/6 shots (open shirt / robe / towel).
+# 2 shirtless shots use flat pecs + tiny male areolae; bleed words in NEG only.
+# Extra face steer: 02_stand_three_q_chests (face only).
+# Writes MyDrive/FiratSuper/generate/scene_69_couple_face_first_<timestamp>/
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 6
+SLUG = "69_couple_face_first"
+SEEDS = [6900, 6901, 6902, 6903, 6904, 6905]
+FEMALE_W = 1.15
+NEG = (
+    "solo, alone, single person, one person, cropped to face only, missing man, "
+    "man with breasts, male gynecomastia, male gynocomastia, female breasts on man, "
+    "large nipples on man, feminine chest on man, boobs on man, puffy nipples, "
+    "large areolae, female nipples on man"
+)
+TWO = (
+    "two people, a man and a woman, couple, both people fully visible in one photograph, "
+)
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+    "head fully in frame, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+    "and the accepted face in 02_stand_three_q_chests, "
+)
+WOMAN_CHEST = (
+    "the woman has fair pale skin, slim torso, natural teardrop hang, "
+    "medium circular pinkish-tan Montgomery-textured areolae, prominent nipples, "
+)
+MAN = (
+    "a generic adult man with a typical male face, hrmale body and genital anatomy, "
+)
+PLACE = (
+    "waist-up couple photograph, both heads in frame, "
+    "photorealistic raw photo, natural skin texture"
+)
+# slug, kind, female_w, male_w, action
+SHOTS = [
+    ("01_stand_open_shirt", "sex", 1.15, 0.55, "the woman and the man stand side by side, he wears a thin open shirt covering his chest"),
+    ("02_three_q_robe", "sex", 1.15, 0.65, "three-quarter standing couple, he wears a light robe covering his chest, her face clearly visible"),
+    ("03_waist_towel", "sex", 1.15, 0.60, "waist-up couple, he has a towel over his chest and shoulders, both looking toward the camera"),
+    ("04_stand_anatomy_shirt", "sex", 1.15, 0.70, "standing couple, thin open shirt covering his chest, hrmale erect penis visible, not an extreme close-up"),
+    ("05_shirtless_flat", "sex", 1.15, 0.65, "standing couple, the man is shirtless with flat masculine pectorals and very small pale male areolae, tiny flat male nipples"),
+    ("06_shirtless_side_flat", "sex", 1.15, 0.75, "standing couple, the man slightly turned, shirtless flat masculine pectorals, very small pale male areolae, tiny flat male nipples"),
+]
+POS_BANNED = (
+    "solo", "alone", "single person", "one person", "cropped to face only",
+    "missing man", "no scars", "surgical", "no breasts", "no cleavage",
+    "gynecomastia", "gynocomastia", "boobs", "puffy nipples",
+    "feminine chest", "female nipples on man",
+)
+
+if SHOT_END != 6 or len(SHOTS) != 6 or len(SEEDS) != 6:
+    raise RuntimeError("Cell 69 must be exactly 6 couple stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+male_path = os.path.join(LORAS_DIR, HENRY_OUTPUT_LORA)
+for label, path in ((OUTPUT_LORA_NAME, v2_path), (HENRY_OUTPUT_LORA, male_path)):
+    if not os.path.isfile(path):
+        raise RuntimeError("Load-only: missing " + path + " (will not train).")
+    print("LOAD ONLY", label, "bytes", os.path.getsize(path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+male_mtime, male_size = os.path.getmtime(male_path), os.path.getsize(male_path)
+print("Face-first: v2 stays 1.15. Man chest covered on 4/6. Extra face 02_stand_three_q_chests.")
+print("Prompt-only steer. Do not train.")
+ensure_flux_dual_pipe()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("negative_prompt:", NEG)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, female_w, male_w, action = SHOTS[pidx]
+    if abs(female_w - 1.15) > 1e-6:
+        raise RuntimeError("Cell 69 must keep v2 at 1.15 (face first).")
+    used = set_pipe_adapters(pipe, ["default", "hrmale"], [female_w, male_w])
+    prompt = TWO + IDENT + FACE + WOMAN_CHEST + MAN + action + ". " + PLACE
+    low = prompt.lower()
+    hit = [w for w in POS_BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 69 positive prompt has banned words: " + ", ".join(hit))
+    for lock in (
+        "two people",
+        "a man and a woman",
+        "couple",
+        "both people",
+        "ohwx woman",
+        "01_face_ok",
+        "04_face_ok",
+        "02_stand_three_q_chests",
+        "the woman has",
+        "natural teardrop hang",
+        "medium circular pinkish-tan Montgomery-textured areolae",
+        "prominent nipples",
+        "generic adult man",
+        "hrmale",
+    ):
+        if lock not in prompt and lock not in low:
+            raise RuntimeError("Cell 69 prompt missing lock: " + lock)
+    seed = SEEDS[pidx]
+    print("---", shot_slug, "seed", seed, "lora", used, "v2", female_w, "male", male_w)
+    print(prompt)
+    call_kw = dict(
+        prompt=prompt,
+        negative_prompt=NEG,
+        guidance_scale=3.5,
+        height=1024,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    )
+    try:
+        image = pipe(true_cfg_scale=2.0, **call_kw).images[0]
+    except TypeError:
+        image = pipe(**call_kw).images[0]
+    path = os.path.join(out_dir, shot_slug + ".png")
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+if os.path.getmtime(male_path) != male_mtime or os.path.getsize(male_path) != male_size:
+    raise RuntimeError("Male LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "couple stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 69.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    if found:
+        fid = found["id"]
+        print("Drive folder id:", fid)
+        print("Drive URL: https://drive.google.com/drive/folders/" + fid)
+    else:
+        print("Drive folder id: generate parent", gen_folder)
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_69_DIR", out_dir)
+print("DRIVE_FOLDER_ID", fid)
+print("Cell 69 done. LoRA files were not written.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """Skip 5-9. Skip training. Leave 63-69 as history. Do not lower v2 (cell 66 face drift). Cell 68 APPROVED I2V. Cell 69 couple rejected for nipples.
+
+**Cell 70 -- Couple normal nipples -- v2 1.15, chest_real lock, man covered.** Load existing `henry_penis_flux_v1` only. Do not train. Do not overwrite any `.safetensors`.
+
+**Run:** A100 preferred. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Separate from cells 68-69.
+
+Woman v2 @ 1.15 (do not lower). Face keepers 01-04 + 02_stand_three_q_chests. Man chest covered on all shots (open shirt / robe / towel). Woman nipples locked to chest_real: fair skin, natural teardrop soft hang, medium circular pinkish-tan Montgomery/real-texture areolae, prominent but normal natural nipples. Nipple bans in negative only. hrmale 0.55-0.75. Seeds 7000-7005.
+Writes `MyDrive/FiratSuper/generate/scene_70_couple_normal_nipples_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df. \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 70**."""
+)
+
+code(
+    r"""# @title 70) Couple normal nipples -- v2 1.15, chest_real lock, man covered
+# Generate-only. Do NOT train. Do NOT overwrite .safetensors.
+# Keep cell 69 working bits: two people visible, v2 @ 1.15, face keepers 01-04
+# plus 02_stand_three_q_chests (scene 66 accepted face). Do not lower woman v2.
+# Man chest covered on ALL shots (open shirt / robe / towel) so nipple QA is her.
+# Woman nipples hard-lock to chest_real. Bad nipple words in NEG only.
+# Writes MyDrive/FiratSuper/generate/scene_70_couple_normal_nipples_<timestamp>/
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 6
+SLUG = "70_couple_normal_nipples"
+SEEDS = [7000, 7001, 7002, 7003, 7004, 7005]
+FEMALE_W = 1.15
+NEG = (
+    "solo, alone, single person, one person, cropped to face only, missing man, "
+    "man with breasts, male gynecomastia, male gynocomastia, female breasts on man, "
+    "large nipples on man, feminine chest on man, boobs on man, female nipples on man, "
+    "inverted nipples, puffy nipples, misshapen areolae, oversized areolae, "
+    "blurry nipples, melted nipples, asymmetrical weird nipples, plastic nipples"
+)
+TWO = (
+    "two people, a man and a woman, couple, both people fully visible in one photograph, "
+)
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+    "head fully in frame, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+    "and the accepted face in 02_stand_three_q_chests, "
+)
+WOMAN_CHEST = (
+    "the woman has fair pale skin, slim torso, natural teardrop soft hang, "
+    "medium circular pinkish-tan areolae with Montgomery real texture, "
+    "prominent but normal natural nipples, matching chest_real, "
+)
+MAN = (
+    "a generic adult man with a typical male face, hrmale body and genital anatomy, "
+)
+PLACE = (
+    "waist-up couple photograph, both heads in frame, "
+    "the woman's face and chest readable, "
+    "photorealistic raw photo, natural skin texture"
+)
+# slug, kind, female_w, male_w, action
+SHOTS = [
+    ("01_waist_open_shirt", "sex", 1.15, 0.55, "waist-up standing couple side by side, her face and chest readable, he wears a thin open shirt covering his chest"),
+    ("02_waist_robe", "sex", 1.15, 0.65, "waist-up three-quarter couple, her face and chest readable, he wears a light robe covering his chest"),
+    ("03_waist_towel", "sex", 1.15, 0.60, "waist-up couple looking toward the camera, her face and chest readable, he has a towel over his chest and shoulders"),
+    ("04_waist_shirt_anatomy", "sex", 1.15, 0.70, "waist-up standing couple, her face and chest readable, thin open shirt covering his chest, hrmale erect penis visible, not an extreme close-up"),
+    ("05_waist_unbuttoned", "sex", 1.15, 0.65, "waist-up couple close together, her face and chest readable, he wears an unbuttoned shirt covering his chest"),
+    ("06_waist_wrap_robe", "sex", 1.15, 0.75, "waist-up standing couple, her face and chest readable, he wears a wrap robe covering his chest"),
+]
+POS_BANNED = (
+    "solo", "alone", "single person", "one person", "cropped to face only",
+    "missing man", "no scars", "surgical", "no breasts", "no cleavage",
+    "gynecomastia", "gynocomastia", "boobs", "inverted nipples",
+    "puffy nipples", "misshapen areolae", "oversized areolae",
+    "blurry nipples", "melted nipples", "asymmetrical weird nipples",
+    "plastic nipples", "feminine chest", "female nipples on man",
+)
+
+if SHOT_END != 6 or len(SHOTS) != 6 or len(SEEDS) != 6:
+    raise RuntimeError("Cell 70 must be exactly 6 couple stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+if abs(FEMALE_W - 1.15) > 1e-6:
+    raise RuntimeError("Cell 70 must keep v2 at 1.15 (do not lower woman v2).")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+male_path = os.path.join(LORAS_DIR, HENRY_OUTPUT_LORA)
+for label, path in ((OUTPUT_LORA_NAME, v2_path), (HENRY_OUTPUT_LORA, male_path)):
+    if not os.path.isfile(path):
+        raise RuntimeError("Load-only: missing " + path + " (will not train).")
+    print("LOAD ONLY", label, "bytes", os.path.getsize(path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+male_mtime, male_size = os.path.getmtime(male_path), os.path.getsize(male_path)
+print("Face lock: v2 stays 1.15. Keepers 01-04 + 02_stand_three_q_chests.")
+print("Man chest covered on all 6. Woman nipples locked to chest_real.")
+print("Prompt-only steer. Do not train.")
+ensure_flux_dual_pipe()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("negative_prompt:", NEG)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, female_w, male_w, action = SHOTS[pidx]
+    if abs(female_w - 1.15) > 1e-6:
+        raise RuntimeError("Cell 70 must keep v2 at 1.15 (do not lower woman v2).")
+    used = set_pipe_adapters(pipe, ["default", "hrmale"], [female_w, male_w])
+    prompt = TWO + IDENT + FACE + WOMAN_CHEST + MAN + action + ". " + PLACE
+    low = prompt.lower()
+    hit = [w for w in POS_BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 70 positive prompt has banned words: " + ", ".join(hit))
+    for lock in (
+        "two people",
+        "a man and a woman",
+        "couple",
+        "both people",
+        "ohwx woman",
+        "01_face_ok",
+        "04_face_ok",
+        "02_stand_three_q_chests",
+        "the woman has",
+        "fair pale skin",
+        "natural teardrop soft hang",
+        "medium circular pinkish-tan areolae",
+        "Montgomery real texture",
+        "prominent but normal natural nipples",
+        "chest_real",
+        "generic adult man",
+        "hrmale",
+        "waist-up",
+    ):
+        if lock not in prompt and lock not in low:
+            raise RuntimeError("Cell 70 prompt missing lock: " + lock)
+    seed = SEEDS[pidx]
+    print("---", shot_slug, "seed", seed, "lora", used, "v2", female_w, "male", male_w)
+    print(prompt)
+    call_kw = dict(
+        prompt=prompt,
+        negative_prompt=NEG,
+        guidance_scale=3.5,
+        height=1024,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    )
+    try:
+        image = pipe(true_cfg_scale=2.0, **call_kw).images[0]
+    except TypeError:
+        image = pipe(**call_kw).images[0]
+    path = os.path.join(out_dir, shot_slug + ".png")
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+if os.path.getmtime(male_path) != male_mtime or os.path.getsize(male_path) != male_size:
+    raise RuntimeError("Male LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "couple stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 70.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    if found:
+        fid = found["id"]
+        print("Drive folder id:", fid)
+        print("Drive URL: https://drive.google.com/drive/folders/" + fid)
+    else:
+        print("Drive folder id: generate parent", gen_folder)
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_70_DIR", out_dir)
+print("DRIVE_FOLDER_ID", fid)
+print("Cell 70 done. LoRA files were not written.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """Skip 5-9. Skip training. Leave 63-70 as history. Do not lower v2 (cell 66 face drift). Cell 68 APPROVED I2V. Cells 69-70 couple rejected (nipples / open-chest bleed).
+
+**Cell 71 -- Couple clothed man + cell 68 woman chest.** Load existing `henry_penis_flux_v1` only (low weight; waist-up, no bare male chest). Do not train. Do not overwrite any `.safetensors`.
+
+**Run:** A100 preferred. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Separate from cells 68-70.
+
+Woman: clone cell 68 chest/nipple recipe at v2 @ 1.15. Face keepers 01-04 + 02_stand_three_q_chests. Soft pale lace lingerie so her chest is readable.
+Man: fully opaque closed shirt / sweater / tee covering the entire torso. No open shirt, no robe, no towel, no male nipples.
+hrmale adapter low (implied presence only). Seeds 7100-7105.
+Writes `MyDrive/FiratSuper/generate/scene_71_couple_clothed_man_68chest_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df. \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 71**."""
+)
+
+code(
+    r"""# @title 71) Couple clothed man + cell 68 woman chest
+# Generate-only. Do NOT train. Do NOT overwrite .safetensors.
+# Leave 70 historical. Open shirt / robe / towel leaked a feminine male chest.
+# NEW: man wears a fully opaque closed shirt/sweater/tee. Entire torso covered.
+# No open shirt, no robe gap, no towel, no visible male nipples / pecs.
+# Woman: cell 68 chest recipe VERBATIM at v2 @ 1.15. Soft lingerie OK.
+# Face: keepers 01-04 + 02_stand_three_q_chests. Do not lower woman v2.
+# hrmale loaded at low weight for male presence only; shots are waist-up.
+# Writes MyDrive/FiratSuper/generate/scene_71_couple_clothed_man_68chest_<timestamp>/
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 6
+SLUG = "71_couple_clothed_man_68chest"
+SEEDS = [7100, 7101, 7102, 7103, 7104, 7105]
+FEMALE_W = 1.15
+NEG = (
+    "solo, alone, single person, one person, cropped to face only, missing man, "
+    "feminine chest on man, gynecomastia, male breasts, male gynecomastia, "
+    "open shirt showing chest, open shirt, unbuttoned shirt, robe, towel, "
+    "bare male chest, male nipples, shirtless man, female breasts on man, "
+    "inverted nipples, puffy nipples, misshapen nipples"
+)
+TWO = (
+    "two people, a man and a woman, couple, both people fully visible in one photograph, "
+)
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+    "head fully in frame, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+    "and the accepted face in 02_stand_three_q_chests, "
+)
+# Cell 68 CHEST recipe verbatim.
+CHEST = (
+    "fair pale skin, slim torso, natural teardrop hang, "
+    "medium circular pinkish-tan Montgomery-textured areolae, "
+    "prominent nipples, matching chest_real, "
+)
+WOMAN = (
+    "the woman has " + CHEST +
+    "the woman wears soft pale lace lingerie, "
+)
+MAN = (
+    "a generic adult man with a typical male face, "
+    "fully opaque closed clothing covering his entire torso, "
+)
+PLACE = (
+    "waist-up couple photograph, both heads in frame, "
+    "the woman's face and chest readable, "
+    "photorealistic raw photo, natural skin texture"
+)
+# slug, kind, female_w, male_w, action
+# Do not use open shirt, robe, or towel. Entire male torso stays covered.
+SHOTS = [
+    ("01_waist_closed_shirt", "sex", 1.15, 0.40, "waist-up standing couple side by side, her face and chest readable, he wears a fully opaque closed button shirt covering his entire torso"),
+    ("02_waist_sweater", "sex", 1.15, 0.45, "waist-up three-quarter couple, her face and chest readable, he wears a fully opaque closed sweater covering his entire torso"),
+    ("03_waist_tee", "sex", 1.15, 0.40, "waist-up couple looking toward the camera, her face and chest readable, he wears a fully opaque closed cotton tee covering his entire torso"),
+    ("04_three_q_closed_shirt", "sex", 1.15, 0.50, "waist-up three-quarter standing couple, her face and chest readable, he wears a fully opaque closed shirt covering his entire torso"),
+    ("05_close_sweater", "sex", 1.15, 0.45, "waist-up couple close together, her face and chest readable, he wears a fully opaque closed sweater covering his entire torso"),
+    ("06_waist_henley", "sex", 1.15, 0.50, "waist-up standing couple, her face and chest readable, he wears a fully opaque closed henley covering his entire torso"),
+]
+POS_BANNED = (
+    "solo", "alone", "single person", "one person", "cropped to face only",
+    "missing man", "no scars", "surgical", "open shirt", "unbuttoned",
+    "robe", "towel", "gynecomastia", "male breasts", "feminine chest",
+    "inverted nipples", "puffy nipples", "misshapen nipples",
+    "shirtless", "male nipples", "bare male chest", "hrmale",
+)
+COVER_BANNED = ("open shirt", "robe", "towel", "unbuttoned", "shirtless")
+
+if SHOT_END != 6 or len(SHOTS) != 6 or len(SEEDS) != 6:
+    raise RuntimeError("Cell 71 must be exactly 6 couple stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+if abs(FEMALE_W - 1.15) > 1e-6:
+    raise RuntimeError("Cell 71 must keep v2 at 1.15 (do not lower woman v2).")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+male_path = os.path.join(LORAS_DIR, HENRY_OUTPUT_LORA)
+for label, path in ((OUTPUT_LORA_NAME, v2_path), (HENRY_OUTPUT_LORA, male_path)):
+    if not os.path.isfile(path):
+        raise RuntimeError("Load-only: missing " + path + " (will not train).")
+    print("LOAD ONLY", label, "bytes", os.path.getsize(path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+male_mtime, male_size = os.path.getmtime(male_path), os.path.getsize(male_path)
+print("Face lock: v2 stays 1.15. Keepers 01-04 + 02_stand_three_q_chests.")
+print("Woman chest: cell 68 recipe verbatim. Man: opaque closed clothes, no pecs.")
+print("hrmale low weight only. Prompt-only steer. Do not train.")
+ensure_flux_dual_pipe()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("negative_prompt:", NEG)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, female_w, male_w, action = SHOTS[pidx]
+    if abs(female_w - 1.15) > 1e-6:
+        raise RuntimeError("Cell 71 must keep v2 at 1.15 (do not lower woman v2).")
+    act_low = action.lower()
+    cover_hit = [w for w in COVER_BANNED if w in act_low]
+    if cover_hit:
+        raise RuntimeError("Cell 71 action repeats open-chest male: " + ", ".join(cover_hit))
+    used = set_pipe_adapters(pipe, ["default", "hrmale"], [female_w, male_w])
+    prompt = TWO + IDENT + FACE + WOMAN + MAN + action + ". " + PLACE
+    low = prompt.lower()
+    hit = [w for w in POS_BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 71 positive prompt has banned words: " + ", ".join(hit))
+    for lock in (
+        "two people",
+        "a man and a woman",
+        "couple",
+        "both people",
+        "ohwx woman",
+        "01_face_ok",
+        "04_face_ok",
+        "02_stand_three_q_chests",
+        "fair pale skin",
+        "slim torso",
+        "natural teardrop hang",
+        "medium circular pinkish-tan Montgomery-textured areolae",
+        "prominent nipples",
+        "chest_real",
+        "soft pale lace lingerie",
+        "fully opaque closed",
+        "entire torso",
+        "generic adult man",
+        "waist-up",
+    ):
+        if lock not in prompt and lock not in low:
+            raise RuntimeError("Cell 71 prompt missing lock: " + lock)
+    seed = SEEDS[pidx]
+    print("---", shot_slug, "seed", seed, "lora", used, "v2", female_w, "male", male_w)
+    print(prompt)
+    call_kw = dict(
+        prompt=prompt,
+        negative_prompt=NEG,
+        guidance_scale=3.5,
+        height=1024,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    )
+    try:
+        image = pipe(true_cfg_scale=2.0, **call_kw).images[0]
+    except TypeError:
+        image = pipe(**call_kw).images[0]
+    path = os.path.join(out_dir, shot_slug + ".png")
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+if os.path.getmtime(male_path) != male_mtime or os.path.getsize(male_path) != male_size:
+    raise RuntimeError("Male LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "couple stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 71.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    if found:
+        fid = found["id"]
+        print("Drive folder id:", fid)
+        print("Drive URL: https://drive.google.com/drive/folders/" + fid)
+    else:
+        print("Drive folder id: generate parent", gen_folder)
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_71_DIR", out_dir)
+print("DRIVE_FOLDER_ID", fid)
+print("Cell 71 done. LoRA files were not written.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """Skip 5-9. Skip training. Leave 63-71 as history. Cell 71 CLIP-truncated (215 > 77); face keepers and chest_real fell off the CLIP window.
+
+**Cell 72 -- Couple short CLIP prompt -- clothed man + cell 68 chest.** Load existing `henry_penis_flux_v1` only. Do not train. Do not overwrite any `.safetensors`.
+
+**Run:** A100 preferred. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Separate from cells 68-71.
+
+Short prompt so CLIP stays under 70 tokens. Critical tokens first: ohwx woman, 01-04 face keepers, chest_real nipple phrase. Then couple, pale lace, man opaque closed shirt. v2 @ 1.15. Seeds 7200-7205.
+Writes `MyDrive/FiratSuper/generate/scene_72_couple_short_prompt_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df. \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 72**."""
+)
+
+code(
+    r"""# @title 72) Couple short CLIP prompt -- clothed man + cell 68 chest
+# Generate-only. Do NOT train. Do NOT overwrite .safetensors.
+# Cell 71 CLIP-truncated at 77 tokens (215 > 77). Face keepers + chest_real
+# were in the truncated tail, so identity/nipples never reached CLIP.
+# This cell uses a short prompt (~68 CLIP tokens). Critical tokens FIRST.
+# Man: opaque closed shirt/sweater/tee. No open shirt, robe, towel, pecs.
+# Woman chest: compressed cell 68 (chest_real, teardrop hang, pinkish-tan
+# areolae, prominent nipples) at the start. v2 @ 1.15. Do not lower v2.
+# Writes MyDrive/FiratSuper/generate/scene_72_couple_short_prompt_<timestamp>/
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 6
+SLUG = "72_couple_short_prompt"
+SEEDS = [7200, 7201, 7202, 7203, 7204, 7205]
+FEMALE_W = 1.15
+CLIP_MAX = 70
+NEG = (
+    "solo, missing man, feminine chest on man, gynecomastia, male breasts, "
+    "open shirt, inverted nipples, puffy nipples, misshapen nipples"
+)
+# Critical tokens first (CLIP sees ~77). Keep this under CLIP_MAX.
+CORE = (
+    "ohwx woman 01_face_ok 02_face_ok 03_face_ok 04_face_ok, "
+    "chest_real fair skin teardrop hang medium pinkish-tan areolae prominent nipples, "
+    "two people couple, pale lace lingerie, man opaque closed %s, "
+    "waist-up, photorealistic"
+)
+# slug, kind, female_w, male_w, garment
+SHOTS = [
+    ("01_shirt", "sex", 1.15, 0.40, "shirt"),
+    ("02_sweater", "sex", 1.15, 0.45, "sweater"),
+    ("03_tee", "sex", 1.15, 0.40, "tee"),
+    ("04_shirt", "sex", 1.15, 0.50, "shirt"),
+    ("05_sweater", "sex", 1.15, 0.45, "sweater"),
+    ("06_henley", "sex", 1.15, 0.50, "henley"),
+]
+POS_BANNED = (
+    "solo", "missing man", "no scars", "open shirt", "unbuttoned",
+    "robe", "towel", "shirtless", "hrmale", "inverted nipples",
+    "puffy nipples", "misshapen nipples", "gynecomastia",
+)
+COVER_BANNED = ("open shirt", "robe", "towel", "unbuttoned", "shirtless")
+
+if SHOT_END != 6 or len(SHOTS) != 6 or len(SEEDS) != 6:
+    raise RuntimeError("Cell 72 must be exactly 6 couple stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+if abs(FEMALE_W - 1.15) > 1e-6:
+    raise RuntimeError("Cell 72 must keep v2 at 1.15 (do not lower woman v2).")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+male_path = os.path.join(LORAS_DIR, HENRY_OUTPUT_LORA)
+for label, path in ((OUTPUT_LORA_NAME, v2_path), (HENRY_OUTPUT_LORA, male_path)):
+    if not os.path.isfile(path):
+        raise RuntimeError("Load-only: missing " + path + " (will not train).")
+    print("LOAD ONLY", label, "bytes", os.path.getsize(path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+male_mtime, male_size = os.path.getmtime(male_path), os.path.getsize(male_path)
+print("Short CLIP prompt. Identity/chest FIRST. v2 1.15. Man opaque closed clothes.")
+print("Cell 71 bug: CLIP truncated face keepers + chest_real. Do not train.")
+ensure_flux_dual_pipe()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("negative_prompt:", NEG)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, female_w, male_w, garment = SHOTS[pidx]
+    if abs(female_w - 1.15) > 1e-6:
+        raise RuntimeError("Cell 72 must keep v2 at 1.15 (do not lower woman v2).")
+    g_low = garment.lower()
+    cover_hit = [w for w in COVER_BANNED if w in g_low]
+    if cover_hit:
+        raise RuntimeError("Cell 72 garment repeats open-chest male: " + ", ".join(cover_hit))
+    used = set_pipe_adapters(pipe, ["default", "hrmale"], [female_w, male_w])
+    prompt = CORE % garment
+    low = prompt.lower()
+    hit = [w for w in POS_BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 72 positive prompt has banned words: " + ", ".join(hit))
+    for lock in (
+        "ohwx woman",
+        "01_face_ok",
+        "04_face_ok",
+        "chest_real",
+        "teardrop hang",
+        "pinkish-tan",
+        "prominent nipples",
+        "two people",
+        "couple",
+        "pale lace",
+        "opaque closed",
+        "waist-up",
+        "man",
+    ):
+        if lock not in prompt and lock not in low:
+            raise RuntimeError("Cell 72 prompt missing lock: " + lock)
+    clip_tok = getattr(pipe, "tokenizer", None)
+    clip_n = None
+    if clip_tok is not None:
+        clip_n = len(clip_tok(prompt, add_special_tokens=True).input_ids)
+        print("CLIP tokens", clip_n, "(max", CLIP_MAX, ")")
+        if clip_n > CLIP_MAX:
+            raise RuntimeError("Cell 72 CLIP prompt too long: %d > %d" % (clip_n, CLIP_MAX))
+    t5_tok = getattr(pipe, "tokenizer_2", None)
+    if t5_tok is not None:
+        print("T5 tokens", len(t5_tok(prompt, add_special_tokens=True).input_ids))
+    seed = SEEDS[pidx]
+    print("---", shot_slug, "seed", seed, "lora", used, "v2", female_w, "male", male_w, "clip", clip_n)
+    print(prompt)
+    call_kw = dict(
+        prompt=prompt,
+        negative_prompt=NEG,
+        guidance_scale=3.5,
+        height=1024,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    )
+    try:
+        image = pipe(true_cfg_scale=2.0, **call_kw).images[0]
+    except TypeError:
+        image = pipe(**call_kw).images[0]
+    path = os.path.join(out_dir, shot_slug + ".png")
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+if os.path.getmtime(male_path) != male_mtime or os.path.getsize(male_path) != male_size:
+    raise RuntimeError("Male LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "couple stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 72.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    if found:
+        fid = found["id"]
+        print("Drive folder id:", fid)
+        print("Drive URL: https://drive.google.com/drive/folders/" + fid)
+    else:
+        print("Drive folder id: generate parent", gen_folder)
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_72_DIR", out_dir)
+print("DRIVE_FOLDER_ID", fid)
+print("Cell 72 done. LoRA files were not written.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """Skip 5-9. Skip training. Leave 63-72 as history. **A/B cell -- run ONLY this cell.**
+
+**Cell 73 -- A woman-only chest QA (baseline).** No male LoRA. Tests nipples without dual-LoRA. Load locked `lapetitemilf_flux_v2` only. Do not train. Do not overwrite any `.safetensors`.
+
+**Run:** A100. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Parallel to 74-76; do not run them in the same pass.
+
+Woman only, v2 @ 1.15. Face keepers 01-04. chest_real teardrop / medium pinkish-tan textured areolae / prominent natural nipples. Waist-up soft lingerie. Short CLIP prompt (raise if >70). Seeds 7300-7303.
+Writes `MyDrive/FiratSuper/generate/scene_73_woman_only_chest_qa_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df. \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 73**. \u05d1\u05d3\u05d9\u05e7\u05ea \u05e4\u05d8\u05de\u05d5\u05ea \u05d1\u05dc\u05d9 LoRA \u05d2\u05d1\u05e8."""
+)
+
+code(
+    r"""# @title 73) A woman-only chest QA -- v2 only, no male LoRA
+# Generate-only. Do NOT train. Do NOT overwrite .safetensors.
+# A/B baseline: prove chest_real nipples WITHOUT dual-LoRA / hrmale.
+# Leave 72 historical (two-women collapse + warped nipples).
+# Short CLIP prompt. Identity/chest FIRST. Raise if CLIP tokens > 70.
+# Writes MyDrive/FiratSuper/generate/scene_73_woman_only_chest_qa_<timestamp>/
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 4
+SLUG = "73_woman_only_chest_qa"
+SEEDS = [7300, 7301, 7302, 7303]
+FEMALE_W = 1.15
+CLIP_MAX = 70
+NEG = "man, couple, hrmale, penis, warped nipples, triangular nipples"
+PROMPT = (
+    "ohwx woman 01_face_ok 02_face_ok 03_face_ok 04_face_ok, "
+    "chest_real fair skin teardrop hang medium pinkish-tan textured areolae prominent natural nipples, "
+    "waist-up pale lace lingerie, photorealistic"
+)
+POS_BANNED = (
+    "couple", "hrmale", "penis", "no scars", "two women", "a man",
+)
+SHOTS = ["01_qa", "02_qa", "03_qa", "04_qa"]
+
+if SHOT_END != 4 or len(SHOTS) != 4 or len(SEEDS) != 4:
+    raise RuntimeError("Cell 73 must be exactly 4 woman-only stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+if abs(FEMALE_W - 1.15) > 1e-6:
+    raise RuntimeError("Cell 73 must keep v2 at 1.15.")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+if not os.path.isfile(v2_path):
+    raise RuntimeError("Load-only: missing " + v2_path + " (will not train).")
+print("LOAD ONLY", OUTPUT_LORA_NAME, "bytes", os.path.getsize(v2_path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+print("Woman-only chest QA. No male LoRA. Short CLIP. Do not train.")
+ensure_flux_pipe()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("negative_prompt:", NEG)
+
+low = PROMPT.lower()
+hit = [w for w in POS_BANNED if w in low]
+if hit:
+    raise RuntimeError("Cell 73 positive prompt has banned words: " + ", ".join(hit))
+for lock in (
+    "ohwx woman", "01_face_ok", "04_face_ok", "chest_real",
+    "teardrop hang", "pinkish-tan", "textured areolae",
+    "prominent natural nipples", "waist-up", "pale lace",
+):
+    if lock not in PROMPT and lock not in low:
+        raise RuntimeError("Cell 73 prompt missing lock: " + lock)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    used = set_pipe_adapters(pipe, ["default"], [FEMALE_W])
+    clip_tok = getattr(pipe, "tokenizer", None)
+    clip_n = None
+    if clip_tok is not None:
+        clip_n = len(clip_tok(PROMPT, add_special_tokens=True).input_ids)
+        print("CLIP tokens", clip_n, "(max", CLIP_MAX, ")")
+        if clip_n > CLIP_MAX:
+            raise RuntimeError("Cell 73 CLIP prompt too long: %d > %d" % (clip_n, CLIP_MAX))
+    seed = SEEDS[pidx]
+    print("---", SHOTS[pidx], "seed", seed, "lora", used, "v2", FEMALE_W, "clip", clip_n)
+    print(PROMPT)
+    call_kw = dict(
+        prompt=PROMPT,
+        negative_prompt=NEG,
+        guidance_scale=3.5,
+        height=1024,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    )
+    try:
+        image = pipe(true_cfg_scale=2.0, **call_kw).images[0]
+    except TypeError:
+        image = pipe(**call_kw).images[0]
+    path = os.path.join(out_dir, SHOTS[pidx] + ".png")
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 73.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    fid = found["id"] if found else gen_folder
+    print("Drive folder id:", fid)
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_73_DIR", out_dir)
+print("Cell 73 done. LoRA files were not written. Male LoRA was not loaded.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """Skip 5-9. Skip training. Leave 63-72 as history. **A/B cell -- run ONLY this cell.**
+
+**Cell 74 -- B couple, NO male LoRA.** Tests whether removing hrmale stops two-women collapse. Load locked `lapetitemilf_flux_v2` only. Do not load `henry_penis_flux_v1`. Do not train. Do not overwrite any `.safetensors`.
+
+**Run:** A100. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Parallel to 73/75/76.
+
+v2 @ 1.15. One man + one woman. Man opaque closed shirt. Face keepers 01-04 + chest_real first. Negatives: two women, lesbian couple, two females. Short CLIP (raise if >70). Seeds 7400-7403.
+Writes `MyDrive/FiratSuper/generate/scene_74_couple_no_male_lora_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df. \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 74**. \u05d6\u05d5\u05d2 \u05d1\u05dc\u05d9 LoRA \u05d2\u05d1\u05e8."""
+)
+
+code(
+    r"""# @title 74) B couple, NO male LoRA -- one man + one woman
+# Generate-only. Do NOT train. Do NOT overwrite .safetensors.
+# A/B: v2 only. Does dropping hrmale stop dual-woman collapse?
+# Man: opaque closed shirt. No open shirt / robe / towel.
+# Short CLIP. Identity/chest FIRST. Raise if CLIP tokens > 70.
+# Writes MyDrive/FiratSuper/generate/scene_74_couple_no_male_lora_<timestamp>/
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 4
+SLUG = "74_couple_no_male_lora"
+SEEDS = [7400, 7401, 7402, 7403]
+FEMALE_W = 1.15
+CLIP_MAX = 70
+NEG = "two women, lesbian couple, two females, solo, open shirt"
+PROMPT = (
+    "ohwx woman 01_face_ok 02_face_ok 03_face_ok 04_face_ok, "
+    "chest_real fair skin teardrop hang medium pinkish-tan textured areolae prominent natural nipples, "
+    "one man and one woman, man opaque closed shirt, waist-up, photorealistic"
+)
+POS_BANNED = (
+    "two women", "lesbian", "two females", "solo", "open shirt",
+    "hrmale", "no scars", "robe", "towel", "shirtless",
+)
+SHOTS = ["01_couple", "02_couple", "03_couple", "04_couple"]
+
+if SHOT_END != 4 or len(SHOTS) != 4 or len(SEEDS) != 4:
+    raise RuntimeError("Cell 74 must be exactly 4 couple stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+if abs(FEMALE_W - 1.15) > 1e-6:
+    raise RuntimeError("Cell 74 must keep v2 at 1.15.")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+if not os.path.isfile(v2_path):
+    raise RuntimeError("Load-only: missing " + v2_path + " (will not train).")
+print("LOAD ONLY", OUTPUT_LORA_NAME, "bytes", os.path.getsize(v2_path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+print("Couple, NO male LoRA. Anti two-women. Short CLIP. Do not train.")
+ensure_flux_pipe()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("negative_prompt:", NEG)
+
+low = PROMPT.lower()
+hit = [w for w in POS_BANNED if w in low]
+if hit:
+    raise RuntimeError("Cell 74 positive prompt has banned words: " + ", ".join(hit))
+for lock in (
+    "ohwx woman", "01_face_ok", "04_face_ok", "chest_real",
+    "teardrop hang", "pinkish-tan", "prominent natural nipples",
+    "one man and one woman", "opaque closed", "waist-up",
+):
+    if lock not in PROMPT and lock not in low:
+        raise RuntimeError("Cell 74 prompt missing lock: " + lock)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    used = set_pipe_adapters(pipe, ["default"], [FEMALE_W])
+    clip_tok = getattr(pipe, "tokenizer", None)
+    clip_n = None
+    if clip_tok is not None:
+        clip_n = len(clip_tok(PROMPT, add_special_tokens=True).input_ids)
+        print("CLIP tokens", clip_n, "(max", CLIP_MAX, ")")
+        if clip_n > CLIP_MAX:
+            raise RuntimeError("Cell 74 CLIP prompt too long: %d > %d" % (clip_n, CLIP_MAX))
+    seed = SEEDS[pidx]
+    print("---", SHOTS[pidx], "seed", seed, "lora", used, "v2", FEMALE_W, "clip", clip_n)
+    print(PROMPT)
+    call_kw = dict(
+        prompt=PROMPT,
+        negative_prompt=NEG,
+        guidance_scale=3.5,
+        height=1024,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    )
+    try:
+        image = pipe(true_cfg_scale=2.0, **call_kw).images[0]
+    except TypeError:
+        image = pipe(**call_kw).images[0]
+    path = os.path.join(out_dir, SHOTS[pidx] + ".png")
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 74.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    fid = found["id"] if found else gen_folder
+    print("Drive folder id:", fid)
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_74_DIR", out_dir)
+print("Cell 74 done. LoRA files were not written. Male LoRA was not loaded.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """Skip 5-9. Skip training. Leave 63-72 as history. **A/B cell -- run ONLY this cell.**
+
+**Cell 75 -- C couple + hrmale, anti-two-women.** Tests low hrmale plus heterosexual couple wording. Load existing `henry_penis_flux_v1` only. Do not train. Do not overwrite any `.safetensors`.
+
+**Run:** A100. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Parallel to 73/74/76.
+
+v2 @ 1.15 + hrmale @ 0.4. Man opaque closed shirt. After face/chest: heterosexual couple, one adult man and one adult woman. Negatives first: two women, two females, both female, lesbian. Short CLIP (raise if >70). Seeds 7500-7503.
+Writes `MyDrive/FiratSuper/generate/scene_75_couple_hrmale_anti2w_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df. \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 75**. \u05d6\u05d5\u05d2 + hrmale, \u05e0\u05d2\u05d3 \u05e9\u05ea\u05d9 \u05e0\u05e9\u05d9\u05dd."""
+)
+
+code(
+    r"""# @title 75) C couple + hrmale, anti-two-women
+# Generate-only. Do NOT train. Do NOT overwrite .safetensors.
+# A/B: v2 @ 1.15 + hrmale @ 0.4. Anti two-women wording.
+# Man: opaque closed shirt. Short CLIP. Identity/chest FIRST.
+# Writes MyDrive/FiratSuper/generate/scene_75_couple_hrmale_anti2w_<timestamp>/
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 4
+SLUG = "75_couple_hrmale_anti2w"
+SEEDS = [7500, 7501, 7502, 7503]
+FEMALE_W = 1.15
+MALE_W = 0.4
+CLIP_MAX = 70
+NEG = "two women, two females, both female, lesbian, solo, open shirt"
+PROMPT = (
+    "ohwx woman 01_face_ok 02_face_ok 03_face_ok 04_face_ok, "
+    "chest_real fair skin teardrop hang medium pinkish-tan areolae prominent nipples, "
+    "heterosexual couple, one adult man and one adult woman, "
+    "man opaque closed shirt, waist-up"
+)
+POS_BANNED = (
+    "two women", "two females", "both female", "lesbian", "solo",
+    "open shirt", "hrmale", "no scars", "robe", "towel", "shirtless",
+)
+SHOTS = ["01_couple", "02_couple", "03_couple", "04_couple"]
+
+if SHOT_END != 4 or len(SHOTS) != 4 or len(SEEDS) != 4:
+    raise RuntimeError("Cell 75 must be exactly 4 couple stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+if abs(FEMALE_W - 1.15) > 1e-6:
+    raise RuntimeError("Cell 75 must keep v2 at 1.15.")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+male_path = os.path.join(LORAS_DIR, HENRY_OUTPUT_LORA)
+for label, path in ((OUTPUT_LORA_NAME, v2_path), (HENRY_OUTPUT_LORA, male_path)):
+    if not os.path.isfile(path):
+        raise RuntimeError("Load-only: missing " + path + " (will not train).")
+    print("LOAD ONLY", label, "bytes", os.path.getsize(path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+male_mtime, male_size = os.path.getmtime(male_path), os.path.getsize(male_path)
+print("Couple + hrmale 0.4. Anti two-women. Short CLIP. Do not train.")
+ensure_flux_dual_pipe()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("negative_prompt:", NEG)
+
+low = PROMPT.lower()
+hit = [w for w in POS_BANNED if w in low]
+if hit:
+    raise RuntimeError("Cell 75 positive prompt has banned words: " + ", ".join(hit))
+for lock in (
+    "ohwx woman", "01_face_ok", "04_face_ok", "chest_real",
+    "teardrop hang", "pinkish-tan", "prominent nipples",
+    "heterosexual couple", "one adult man", "one adult woman",
+    "opaque closed", "waist-up",
+):
+    if lock not in PROMPT and lock not in low:
+        raise RuntimeError("Cell 75 prompt missing lock: " + lock)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    used = set_pipe_adapters(pipe, ["default", "hrmale"], [FEMALE_W, MALE_W])
+    clip_tok = getattr(pipe, "tokenizer", None)
+    clip_n = None
+    if clip_tok is not None:
+        clip_n = len(clip_tok(PROMPT, add_special_tokens=True).input_ids)
+        print("CLIP tokens", clip_n, "(max", CLIP_MAX, ")")
+        if clip_n > CLIP_MAX:
+            raise RuntimeError("Cell 75 CLIP prompt too long: %d > %d" % (clip_n, CLIP_MAX))
+    seed = SEEDS[pidx]
+    print("---", SHOTS[pidx], "seed", seed, "lora", used, "v2", FEMALE_W, "male", MALE_W, "clip", clip_n)
+    print(PROMPT)
+    call_kw = dict(
+        prompt=PROMPT,
+        negative_prompt=NEG,
+        guidance_scale=3.5,
+        height=1024,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    )
+    try:
+        image = pipe(true_cfg_scale=2.0, **call_kw).images[0]
+    except TypeError:
+        image = pipe(**call_kw).images[0]
+    path = os.path.join(out_dir, SHOTS[pidx] + ".png")
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+if os.path.getmtime(male_path) != male_mtime or os.path.getsize(male_path) != male_size:
+    raise RuntimeError("Male LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 75.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    fid = found["id"] if found else gen_folder
+    print("Drive folder id:", fid)
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_75_DIR", out_dir)
+print("Cell 75 done. LoRA files were not written.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """Skip 5-9. Skip training. Leave 63-72 as history. **A/B cell -- run ONLY this cell.**
+
+**Cell 76 -- D couple, lace-covered breasts (no bare nipples).** Tests couple + face without exposing warped nipple geometry. No male LoRA. Load locked `lapetitemilf_flux_v2` only. Do not train. Do not overwrite any `.safetensors`.
+
+**Run:** A100. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**. Parallel to 73-75.
+
+v2 @ 1.15. Soft lace/bralette covering nipples. Man opaque closed shirt. Anti two-women negatives. Short CLIP (raise if >70). Seeds 7600-7603.
+Writes `MyDrive/FiratSuper/generate/scene_76_couple_covered_chest_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df. \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 76**. \u05d6\u05d5\u05d2, \u05d7\u05d6\u05d4 \u05de\u05db\u05e1\u05d4."""
+)
+
+code(
+    r"""# @title 76) D couple, lace-covered breasts -- no bare nipples
+# Generate-only. Do NOT train. Do NOT overwrite .safetensors.
+# A/B: couple + face, lace/bralette COVERS nipples (no bare geometry).
+# No male LoRA (simpler). Man opaque closed shirt. Anti two-women.
+# Short CLIP. Identity/chest FIRST. Raise if CLIP tokens > 70.
+# Writes MyDrive/FiratSuper/generate/scene_76_couple_covered_chest_<timestamp>/
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+SHOT_START = 0
+SHOT_END = 4
+SLUG = "76_couple_covered_chest"
+SEEDS = [7600, 7601, 7602, 7603]
+FEMALE_W = 1.15
+CLIP_MAX = 70
+NEG = "two women, two females, lesbian, bare nipples, solo, open shirt"
+PROMPT = (
+    "ohwx woman 01_face_ok 02_face_ok 03_face_ok 04_face_ok, "
+    "chest_real fair skin teardrop hang, "
+    "lace bralette covering nipples, one man and one woman, "
+    "man opaque closed shirt, waist-up, photorealistic"
+)
+POS_BANNED = (
+    "two women", "two females", "lesbian", "solo", "open shirt",
+    "hrmale", "no scars", "robe", "towel", "shirtless",
+    "prominent nipples", "bare nipples",
+)
+SHOTS = ["01_covered", "02_covered", "03_covered", "04_covered"]
+
+if SHOT_END != 4 or len(SHOTS) != 4 or len(SEEDS) != 4:
+    raise RuntimeError("Cell 76 must be exactly 4 couple stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+if abs(FEMALE_W - 1.15) > 1e-6:
+    raise RuntimeError("Cell 76 must keep v2 at 1.15.")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+if not os.path.isfile(v2_path):
+    raise RuntimeError("Load-only: missing " + v2_path + " (will not train).")
+print("LOAD ONLY", OUTPUT_LORA_NAME, "bytes", os.path.getsize(v2_path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+print("Couple, lace covering nipples. No male LoRA. Short CLIP. Do not train.")
+ensure_flux_pipe()
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+print("negative_prompt:", NEG)
+
+low = PROMPT.lower()
+hit = [w for w in POS_BANNED if w in low]
+if hit:
+    raise RuntimeError("Cell 76 positive prompt has banned words: " + ", ".join(hit))
+for lock in (
+    "ohwx woman", "01_face_ok", "04_face_ok", "chest_real",
+    "teardrop hang", "covering nipples", "one man and one woman",
+    "opaque closed", "waist-up", "lace bralette",
+):
+    if lock not in PROMPT and lock not in low:
+        raise RuntimeError("Cell 76 prompt missing lock: " + lock)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    used = set_pipe_adapters(pipe, ["default"], [FEMALE_W])
+    clip_tok = getattr(pipe, "tokenizer", None)
+    clip_n = None
+    if clip_tok is not None:
+        clip_n = len(clip_tok(PROMPT, add_special_tokens=True).input_ids)
+        print("CLIP tokens", clip_n, "(max", CLIP_MAX, ")")
+        if clip_n > CLIP_MAX:
+            raise RuntimeError("Cell 76 CLIP prompt too long: %d > %d" % (clip_n, CLIP_MAX))
+    seed = SEEDS[pidx]
+    print("---", SHOTS[pidx], "seed", seed, "lora", used, "v2", FEMALE_W, "clip", clip_n)
+    print(PROMPT)
+    call_kw = dict(
+        prompt=PROMPT,
+        negative_prompt=NEG,
+        guidance_scale=3.5,
+        height=1024,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    )
+    try:
+        image = pipe(true_cfg_scale=2.0, **call_kw).images[0]
+    except TypeError:
+        image = pipe(**call_kw).images[0]
+    path = os.path.join(out_dir, SHOTS[pidx] + ".png")
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 76.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    fid = found["id"] if found else gen_folder
+    print("Drive folder id:", fid)
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_76_DIR", out_dir)
+print("Cell 76 done. LoRA files were not written. Male LoRA was not loaded.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
+    """**Cells 73-76 -- experimental, PAUSED.** Cell 73 failed identity (not LaPetiteMilf: wrong face, dark hair, multi-woman / triplicate glitches). The short-prompt recipe broke the approved cell-68 look. Skip 73-76 for now. Restore baseline with **cell 77** (clone of cell 68)."""
+)
+
+md(
+    """Skip 5-9. Skip training. Skip 73-76 (paused). This cell restores the approved woman-only baseline.
+
+**Cell 77 -- Clone of successful cell 68 (woman-only face+chest).** Same load path, same prompt blocks, same 1024x768 / 32 steps / guidance 3.5. Load locked `lapetitemilf_flux_v2` only @ 1.15. No IP-Adapter (cell 68 was prompt-only keeper names). Do not load `henry_penis_flux_v1`. Do not train. Do not overwrite any `.safetensors`.
+
+**Run:** A100 preferred. Cells **1 -> 2 -> 3** (also **4** on a fresh runtime). Then run **ONLY this cell**.
+
+v2 @ 1.15. Face keepers 01-04 plus accepted 02_stand_three_q_chests (face only). chest_real lock. Full head + headroom, soft pale lace lingerie. Extra negatives: multiple women, triplets, clone army, duplicate person. Seeds 7700-7703.
+Writes `MyDrive/FiratSuper/generate/scene_77_clone68_woman_only_<timestamp>/`.
+
+### \u05e2\u05d1\u05e8\u05d9\u05ea
+A100. \u05ea\u05d0\u05d9\u05dd **1, 2, 3**. \u05e8\u05d9\u05e6\u05d4 \u05d7\u05d3\u05e9\u05d4: \u05d2\u05dd **4**. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc \u05d0\u05d9\u05de\u05d5\u05df. \u05dc\u05d3\u05dc\u05d2 \u05e2\u05dc 73-76. \u05dc\u05d4\u05e8\u05d9\u05e5 **\u05e8\u05e7 \u05ea\u05d0 77**."""
+)
+
+code(
+    r"""# @title 77) Clone cell 68 woman-only face+chest
+# Generate-only. CLONE of approved cell 68. Do NOT invent a short recipe.
+# Woman ONLY. v2 @ 1.15, keepers 01-04, 02_stand_three_q_chests, chest_real.
+# Same IDENT/FACE/CHEST/PLACE as cell 68. Same 1024x768, 32 steps, 3.5.
+# Prompt-only face steer (no IP-Adapter -- cell 68 had none).
+# Do NOT load henry_penis / hrmale. Do NOT train. Do NOT write .safetensors.
+# Extra NEG vs 68: multiple women, triplets, clone army, duplicate person.
+# Writes MyDrive/FiratSuper/generate/scene_77_clone68_woman_only_<timestamp>/
+import os
+import torch
+from datetime import datetime
+from IPython.display import display
+
+FACE_OK_SCENE66 = "1QZMUC79DFg3kPPLT51lES-Xfml0zTPIs"
+SHOT_START = 0
+SHOT_END = 4
+SLUG = "77_clone68_woman_only"
+SEEDS = [7700, 7701, 7702, 7703]
+LORA_W = 1.15
+NEG = (
+    "glasses, gold necklace, black tank, gold curtains, "
+    "chin crop, missing top of head, hrmale, man, couple, penis, "
+    "multiple women, triplets, clone army, duplicate person"
+)
+# Cell 68 prompt blocks -- do not shorten.
+IDENT = (
+    "ohwx woman, adult woman, long highlighted blonde hair, brown eyes, "
+    "head fully in frame, "
+)
+FACE = (
+    "matching the face identity of keeper stills "
+    "01_face_ok, 02_face_ok, 03_face_ok, 04_face_ok, "
+    "and the accepted face in 02_stand_three_q_chests, "
+)
+CHEST = (
+    "fair pale skin, slim torso, natural teardrop hang, "
+    "medium circular pinkish-tan Montgomery-textured areolae, "
+    "prominent nipples, matching chest_real, "
+)
+PLACE = (
+    "full head in frame, space above the hair, waist-up medium shot, "
+    "soft pale lace lingerie, intimate bedroom, looking at the camera, "
+    "photorealistic raw photo, natural skin texture"
+)
+SHOTS = [
+    ("clone68_waist_lingerie", "scene", "standing waist-up"),
+    ("clone68_waist_lingerie", "scene", "standing waist-up"),
+    ("clone68_waist_lingerie", "scene", "standing waist-up"),
+    ("clone68_waist_lingerie", "scene", "standing waist-up"),
+]
+BANNED = (
+    "hrmale", "penis", "glans", "semen", "glasses", "gold necklace",
+    "black tank", "gold curtains", "chin crop",
+)
+
+if SHOT_END != 4 or len(SHOTS) != 4 or len(SEEDS) != 4:
+    raise RuntimeError("Cell 77 must be exactly 4 woman-only stills.")
+if not SUBJECT_IS_ADULT:
+    raise RuntimeError("Adult subject only.")
+if abs(LORA_W - 1.15) > 1e-6:
+    raise RuntimeError("Cell 77 must keep v2 at 1.15 (clone of cell 68).")
+
+v2_path = os.path.join(LORAS_DIR, OUTPUT_LORA_NAME)
+if not os.path.isfile(v2_path):
+    raise RuntimeError("Load-only: missing " + v2_path + " (will not train).")
+print("LOAD ONLY", OUTPUT_LORA_NAME, "bytes", os.path.getsize(v2_path))
+v2_mtime, v2_size = os.path.getmtime(v2_path), os.path.getsize(v2_path)
+print("CLONE of cell 68. Woman-only. v2 @ 1.15. Extra face 02_stand_three_q_chests.")
+print("Prompt-only steer (folder %s). Not a dataset. No IP-Adapter. No male LoRA." % FACE_OK_SCENE66)
+ensure_flux_pipe()
+used = set_pipe_adapters(pipe, ["default"], [LORA_W])
+print("Female-only v2. Adapter:", used, "weight", LORA_W)
+print("Male LoRA not loaded for this cell.")
+
+stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+gen_parent = os.path.join(ROOT, "generate")
+parts = gen_parent.split(os.sep)
+if "keepers" in parts or "loras" in parts or any(p.startswith("ADD_") for p in parts):
+    raise RuntimeError("Refusing to write under keepers/loras/ADD_*")
+os.makedirs(gen_parent, exist_ok=True)
+out_dir = os.path.join(gen_parent, "scene_" + SLUG + "_" + stamp)
+os.makedirs(out_dir, exist_ok=True)
+print("Out dir:", out_dir)
+
+saved = []
+for pidx in range(SHOT_START, SHOT_END):
+    shot_slug, kind, action = SHOTS[pidx]
+    used = set_pipe_adapters(pipe, ["default"], [LORA_W])
+    prompt = IDENT + FACE + CHEST + action + ". " + PLACE
+    low = prompt.lower()
+    hit = [w for w in BANNED if w in low]
+    if hit:
+        raise RuntimeError("Cell 77 prompt has banned words: " + ", ".join(hit))
+    for lock in (
+        "ohwx woman",
+        "long highlighted blonde hair",
+        "brown eyes",
+        "01_face_ok",
+        "04_face_ok",
+        "02_stand_three_q_chests",
+        "fair pale skin",
+        "slim torso",
+        "natural teardrop hang",
+        "medium circular pinkish-tan Montgomery-textured areolae",
+        "prominent nipples",
+        "chest_real",
+        "full head in frame",
+        "space above the hair",
+        "waist-up medium shot",
+        "soft pale lace lingerie",
+    ):
+        if lock not in prompt and lock not in low:
+            raise RuntimeError("Cell 77 prompt missing lock: " + lock)
+    clip_tok = getattr(pipe, "tokenizer", None)
+    if clip_tok is not None:
+        clip_n = len(clip_tok(prompt, add_special_tokens=True).input_ids)
+        print("CLIP tokens", clip_n, "(info only; cell 68 length is intentional)")
+    seed = SEEDS[pidx]
+    fname = "%s_seed%d.png" % (shot_slug, seed)
+    print("---", fname, "seed", seed, "lora", used, LORA_W)
+    print(prompt)
+    image = pipe(
+        prompt=prompt,
+        negative_prompt=NEG,
+        guidance_scale=3.5,
+        height=768,
+        width=1024,
+        num_inference_steps=32,
+        generator=torch.Generator("cuda").manual_seed(seed),
+    ).images[0]
+    path = os.path.join(out_dir, fname)
+    image.save(path)
+    saved.append(path)
+    print("saved", path)
+    display(image)
+
+if os.path.getmtime(v2_path) != v2_mtime or os.path.getsize(v2_path) != v2_size:
+    raise RuntimeError("v2 LoRA file changed during generate. Stop.")
+print("Saved", len(saved), "stills in", out_dir)
+print("Drive path: MyDrive/FiratSuper/generate/" + os.path.basename(out_dir))
+if USE_DRIVE_API:
+    for path in saved:
+        if path.endswith(".safetensors"):
+            raise RuntimeError("Refusing to upload safetensors from cell 77.")
+        upload_project_file(path, os.path.relpath(path, ROOT))
+fid = None
+try:
+    service = DRIVE_SERVICE or _api_service()
+    gen_folder = api_ensure_folder(service, FIRATSUPER_DRIVE_ID, "generate")
+    found = api_find_child(service, gen_folder, os.path.basename(out_dir))
+    fid = found["id"] if found else gen_folder
+    print("Drive folder id:", fid)
+except Exception as err:
+    print("Drive folder id lookup skipped:", err)
+print("SCENE_77_DIR", out_dir)
+print("Cell 77 done. LoRA files were not written. Male LoRA was not loaded.")
+print("Do not put these pictures back into ADD_* or training folders.")"""
+)
+
+md(
     """## Done
 
 Locked production LoRA:
 `MyDrive/FiratSuper/loras/lapetitemilf_flux_v2.safetensors`
 
-Male LoRA (cells 57-61 overwrite v1, does not overwrite v2):
+Male LoRA (already trained; cells 57-61 overwrite v1 if retraining; cells 63-66, 69-72, and 75 load only; 67-68, 73-74, 76-77 do not load it):
 `MyDrive/FiratSuper/loras/henry_penis_flux_v1.safetensors`
 
 Run ONE series cell at a time. Keep the tab open.
@@ -3876,6 +6523,43 @@ Cells 57-61 retrain/overwrite henry_penis_flux_v1 from ADD_HENRY_BODY_PHOTOS
 Cell 62 (face+chest scene stills, 6 shots, v2 only, keepers 01-04) writes to:
 `MyDrive/FiratSuper/generate/scene_62_face_chest_scenes_*/`
 
+Cell 63 (HISTORICAL male LoRA preview -- often solo woman; leave it) wrote to:
+`MyDrive/FiratSuper/generate/scene_63_male_lora_preview_*/`
+
+Cell 64 (HISTORICAL couple preview -- man grew female breasts; leave it) wrote to:
+`MyDrive/FiratSuper/generate/scene_64_male_couple_preview_*/`
+
+Cell 65 (HISTORICAL couple -- male chest still feminine / wrong nipples; leave it) wrote to:
+`MyDrive/FiratSuper/generate/scene_65_male_couple_no_bleed_*/`
+
+Cell 66 (HISTORICAL -- rejected: face drift + nipples; leave it) wrote to:
+`MyDrive/FiratSuper/generate/scene_66_chest_nipple_fix_*/`
+
+Cell 67 (HISTORICAL I2V -- rejected chest/nipples; leave it) wrote to:
+`MyDrive/FiratSuper/generate/scene_67_i2v_still_*/`
+
+Cell 68 (HISTORICAL APPROVED I2V woman-only, v2 @ 1.15, seeds 6800-6801) wrote to:
+`MyDrive/FiratSuper/generate/scene_68_i2v_face_chest_*/`
+and uploads `i2v_still_waist_lingerie_seed6800.png` / `seed6801.png` to Drive folder `1cPHexNDhpMNy5uUww5fkzeWTp97oKsKe`.
+
+Cell 69 (HISTORICAL couple -- rejected nipples; leave it) wrote to:
+`MyDrive/FiratSuper/generate/scene_69_couple_face_first_*/`
+
+Cell 70 (HISTORICAL couple -- rejected nipples + feminine male chest; leave it) wrote to:
+`MyDrive/FiratSuper/generate/scene_70_couple_normal_nipples_*/`
+
+Cell 71 (HISTORICAL couple -- CLIP truncated 215 > 77; leave it) wrote to:
+`MyDrive/FiratSuper/generate/scene_71_couple_clothed_man_68chest_*/`
+
+Cell 72 (HISTORICAL couple -- two-women collapse + warped nipples; leave it) wrote to:
+`MyDrive/FiratSuper/generate/scene_72_couple_short_prompt_*/`
+
+Cells 73-76 (EXPERIMENTAL -- PAUSED after cell 73 identity failure) wrote / would write to:
+`scene_73_woman_only_chest_qa_*/` `scene_74_couple_no_male_lora_*/` `scene_75_couple_hrmale_anti2w_*/` `scene_76_couple_covered_chest_*/`
+
+Cell 77 (clone of approved cell 68 woman-only, v2 @ 1.15, seeds 7700-7703) writes to:
+`MyDrive/FiratSuper/generate/scene_77_clone68_woman_only_*/`
+
 Copy keepers to:
 `MyDrive/FiratSuper/keepers/`
 
@@ -3894,11 +6578,23 @@ Also locked:
 3. Cells 13-22 and 28-37: far camera strip. Cells 23-27 and 38-40: explicit couple / POV / facial sets (20).
 4. If it dies, set SHOT_START and rerun that cell.
 5. Cell 52: v2 at 1.0. Cell 54: v2 at 1.15, keeper-steered. Cell 56: waist-hold chest-locked. Cell 62: face+chest scenes. No hrmale. No scar words.
-6. Adult content only. Do not train on generated pictures.
+6. Cell 63: historical male LoRA preview (solo woman). Do not rerun for couple intent.
+7. Cell 64: historical couple preview (breast bleed on the man). Do not rerun for this goal.
+8. Cell 65: historical couple (feminine male chest / wrong nipples). Do not rerun for this goal.
+9. Cells 66-67: historical (rejected chest/nipples; 66 also face-drifted). Do not rerun for this goal.
+10. Cells 68-72: historical (68 APPROVED I2V; 69-72 couple rejected). Do not rerun for this goal.
+11. Cells 73-76: PAUSED (73 identity failure). Skip them.
+12. Cell 77: clone of cell 68 woman-only. Setup 1-2-3 (+4). Skip training. Run ONLY 77.
+13. Adult content only. Do not train on generated pictures.
 
 ### If the runtime dies
 - v2 LoRA is already on Drive. Rerun 1, 2, 3, then the series cell. New runtime: also 4. Skip 5-9.
 - Male retrain: if cell 60 finished, run 61 to copy. If not, rerun 57-61. Skip 41-45.
+- Cells 63-76: historical / paused. Restore baseline: cell 77 (clone of 68).
+- Cell 68: historical APPROVED I2V. Leave it (recipe copied into 77).
+- Cells 69-72: historical couple. Leave them.
+- Cells 73-76: PAUSED after 73 identity failure. Do not rerun.
+- Cell 77: v2 already on Drive. Rerun 1, 2, 3, then 77. New runtime: also 4. Skip training. No male LoRA.
 - Hugging Face 403: accept FLUX.1-dev license, new READ token.
 - Drive popup: Allow ALL, one Google account."""
 )
@@ -3932,8 +6628,12 @@ payload = json.loads(nbformat.writes(notebook))
 text = json.dumps(payload, ensure_ascii=True, indent=1) + "\n"
 if any(ord(ch) > 127 for ch in text):
     raise RuntimeError("notebook JSON is not ASCII")
-if "\\u" in text:
-    raise RuntimeError("notebook JSON still contains unicode escapes")
+for i, cell in enumerate(payload["cells"]):
+    if cell.get("cell_type") != "code":
+        continue
+    src = "".join(cell.get("source", []))
+    if any(ord(ch) > 127 for ch in src):
+        raise RuntimeError("code cell %d is not ASCII" % i)
 json.loads(text, strict=True)
 if any(ord(ch) < 32 and ch not in "\n\r\t" for ch in text):
     raise RuntimeError("notebook contains raw control characters")
